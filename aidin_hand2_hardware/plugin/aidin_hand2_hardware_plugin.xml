@@ -1,0 +1,12 @@
+<library path="aidin_hand2_hardware">
+  <class name="aidin_hand2_hardware/AidinHand2SystemInterface"
+         type="aidin_hand2_hardware::AidinHand2SystemInterface"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>AIDIN Hand Gen2 SDK ros2_control SystemInterface.</description>
+  </class>
+  <class name="aidin_hand2_hardware/AidinHand2MockSystemInterface"
+         type="aidin_hand2_hardware::AidinHand2MockSystemInterface"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>실하드웨어 없이 kinematics(clamp→IK→FK)로 도는 mock SystemInterface. joint_position_controller 검증·rviz 용.</description>
+  </class>
+</library>

@@ -1,0 +1,81 @@
+# MANUS 글러브 텔레오퍼 controller 파라미터 (예제).
+#
+# 하위 자세 controller(joint_position_controller/joint_impedance_controller)와 함께 controller_manager
+# 에 올린다. 이 controller 는 하위 controller 의 자세 reference 를 claim 하는 chain 최상위다.
+#
+# update_rate 는 controller_manager 와 동일(500). scale/offset 은 실기기 캘리브레이션 값 —
+# 초기값 0 이면 그 joint 는 항상 offset(=0) 을 지령하므로, 검증 전에는 소수 joint 만 열어 확인한다.
+# 단위(실측 2026-07-20): MANUS ergonomics value 는 0~1 이 아니라 **degree** 다(손 편 상태 stretch
+# ~30~40°, Pinky MCP ~66°). scale·offset 은 degree 도메인에서 적용하고 controller 가 마지막에
+# rad 로 변환한다:  rad_target = (value_deg · scale + offset_deg) · π/180.
+#   scale     = 방향 + 배율(단위 없음). 글러브 굽힘과 손 관절 +방향 반대면 음수, 배율은 절대값으로.
+#   offset_deg = **degree 단위** 보정(scale 곱한 뒤 더함). 편 손을 0 으로 맞추려면 offset ≈ -(편상태_value·scale).
+# thumb spread 2개(joint0·joint2)는 실측 후 채운다(현재 scale 0 = 미지령).
+
+left_glove_teleop_controller:
+  ros__parameters:
+    hand_side: "left"
+    # target_controller: 미지정 시 "{side}_joint_position_controller". impedance 로 보내려면 아래 지정.
+    #target_controller: "left_joint_impedance_controller"
+    glove_topic: "manus_glove_0"
+
+    # 관절 목표를 이 격자(deg)로 반올림 — 정지 시 미세 떨림 억제. 0 이면 비활성.
+    # 격자는 관절 목표(rad 변환 후)에 적용하므로 scale 배율과 무관하게 관절이 이 각도 단위로만 움직인다.
+    quantize_step_deg: 0.1
+
+    # ── 매핑 (joint 별 ergonomics_type·scale·offset) ──
+    # target_rad = (ergonomics_value_deg · scale + offset_deg) · π/180.
+    #   scale  = 방향+배율(단위 없음). 글러브와 손 관절 +방향 반대면 음수.
+    #   offset = deg (코드가 마지막에 π/180 적용). 편 손을 0 으로 맞추려면 ≈ -(편상태_value·scale).
+    # ergonomics_type 을 "" 로 두면 지령 안 함(하위 직전값 유지).
+    #
+    # 관절 정체(URDF limit): thumb j0=CMC abd, j1=MCP flex, j2=MCP abd, j3=DIP flex.
+    #   long finger j1=abduction, j2=MCP flex, j3=PIP flex.
+    mapping:
+      thumb_joint0:  { ergonomics_type: "ThumbMCPSpread",  scale:  2.0, offset:  30.0 }  # CMC abd [0,1.95]
+      thumb_joint1:  { ergonomics_type: "ThumbMCPStretch", scale: -2.0, offset:   80.0 }  # MCP flex [0,1.05]
+      thumb_joint2:  { ergonomics_type: "ThumbMCPSpread",  scale:  -1.0, offset:   15.0 }  # MCP abd [-0.52,0.52]
+      thumb_joint3:  { ergonomics_type: "ThumbDIPStretch", scale:  1.0, offset:  45.0 }  # DIP flex [0,1.23]
+      # long finger j1=abduction(Spread), j2=MCP flex(MCPStretch), j3=PIP flex(PIPStretch).
+      # abduction scale/offset 은 편 상태 기준 초기값 — 실측 조정. flexion 은 캘리브 산출값.
+      index_joint1:  { ergonomics_type: "IndexSpread",      scale: -2.0, offset:  0.0 }  # abduction
+      index_joint2:  { ergonomics_type: "IndexMCPStretch",  scale:  1.5, offset: -20.0 }
+      index_joint3:  { ergonomics_type: "IndexPIPStretch",  scale:  1.0, offset: 0.0 }
+      middle_joint1: { ergonomics_type: "MiddleSpread",     scale: -2.0, offset:   0.0 }
+      middle_joint2: { ergonomics_type: "MiddleMCPStretch", scale:  1.5, offset:  -20.0 }
+      middle_joint3: { ergonomics_type: "MiddlePIPStretch", scale:  1.0, offset: -0.0 }
+      ring_joint1:   { ergonomics_type: "RingSpread",       scale: -2.0, offset: -0.0 }
+      ring_joint2:   { ergonomics_type: "RingMCPStretch",   scale:  1.5, offset:  -20.0 }
+      ring_joint3:   { ergonomics_type: "RingPIPStretch",   scale:  1.0, offset: -0.0 }
+      baby_joint1:   { ergonomics_type: "PinkySpread",      scale: -2.0, offset: -0.0 }
+      baby_joint2:   { ergonomics_type: "PinkyMCPStretch",  scale:  1.5, offset: -20.0 }
+      baby_joint3:   { ergonomics_type: "PinkyPIPStretch",  scale:  1.0, offset: -0.0 }
+      # index_joint1:  { ergonomics_type: "IndexSpread",      scale: -1.0, offset:  16.2 }  # abduction
+      # index_joint2:  { ergonomics_type: "IndexMCPStretch",  scale:  1.1146, offset: 11.23 }
+      # index_joint3:  { ergonomics_type: "IndexPIPStretch",  scale:  1.3445, offset: -31.71 }
+      # middle_joint1: { ergonomics_type: "MiddleSpread",     scale: -1.0, offset:   2.4 }
+      # middle_joint2: { ergonomics_type: "MiddleMCPStretch", scale:  1.2152, offset:  3.98 }
+      # middle_joint3: { ergonomics_type: "MiddlePIPStretch", scale:  1.0480, offset: -14.80 }
+      # ring_joint1:   { ergonomics_type: "RingSpread",       scale: -1.0, offset: -11.8 }
+      # ring_joint2:   { ergonomics_type: "RingMCPStretch",   scale:  1.1821, offset:  7.62 }
+      # ring_joint3:   { ergonomics_type: "RingPIPStretch",   scale:  1.0751, offset: -17.51 }
+      # baby_joint1:   { ergonomics_type: "PinkySpread",      scale: -1.0, offset: -13.3 }
+      # baby_joint2:   { ergonomics_type: "PinkyMCPStretch",  scale:  1.1489, offset: -6.88 }
+      # baby_joint3:   { ergonomics_type: "PinkyPIPStretch",  scale:  1.3258, offset: -21.20 }
+
+
+
+
+
+      # index_joint1:  { terms: "IndexSpread*-1.0",     offset:   0.0 }  # abduction [-0.52,0.52]
+      # index_joint2:  { terms: "IndexMCPStretch*1.0",  offset:   0.0 }  # MCP flex [0,1.66]
+      # index_joint3:  { terms: "IndexPIPStretch*1.5",  offset: -18.0 }  # PIP flex [0,1.55]
+      # middle_joint1: { terms: "MiddleSpread*-1.0",    offset:  0.0 }
+      # middle_joint2: { terms: "MiddleMCPStretch*1.0", offset:  0.0 }
+      # middle_joint3: { terms: "MiddlePIPStretch*1.0", offset:  0.0 }
+      # ring_joint1:   { terms: "RingSpread*-1.0",      offset:  0.0 }
+      # ring_joint2:   { terms: "RingMCPStretch*1.0",   offset:  0.0 }
+      # ring_joint3:   { terms: "RingPIPStretch*1.0",   offset:  0.0 }
+      # baby_joint1:   { terms: "PinkySpread*-1.0",     offset:  0.0 }
+      # baby_joint2:   { terms: "PinkyMCPStretch*1.0",  offset:  0.0 }
+      # baby_joint3:   { terms: "PinkyPIPStretch*1.0",  offset:  0.0 }

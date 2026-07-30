@@ -1,0 +1,14 @@
+# JointImpedance 상위 controller skeleton 파라미터.
+# 하위 JointImpedanceController 의 reference(position ×16 + stiffness ×16 + damping ×16)를
+# claim 합니다. command_lock 때문에 다른 mode 의 basic controller 와 동시에 active 로 만들 수
+# 없으므로, 이 디렉터리의 네 yaml 중 하나만 선택해 spawn 합니다.
+controller_manager:
+  ros__parameters:
+    left_joint_impedance_upper:
+      type: aidin_hand2_examples/JointImpedanceUpperController
+
+left_joint_impedance_upper:
+  ros__parameters:
+    hand_side: left
+    target_controller: left_joint_impedance_controller
+    hand_state_topic: /left_hand_state_broadcaster/hand_state

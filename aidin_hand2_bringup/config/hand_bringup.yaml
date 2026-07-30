@@ -1,0 +1,38 @@
+# aidin_hand2.launch.py 기동 인자 모음 — 손별 CAN·미가동 actuator·RT affinity·자동 homing·
+# auto reconnect 정책을 한곳에서 관리한다. controllers.yaml(controller_manager·컨트롤러 파라미터)과
+# 역할이 다르다: 이 파일은 launch 인자값이지 node 파라미터가 아니다.
+#
+# 키 = launch 인자명(1:1). 여기 적은 값이 각 인자의 기본값을 덮고, 터미널에서 key:=value 로
+# 준 값이 다시 이 파일을 덮는다(CLI 우선). 다른 config 파일을 쓰려면:
+#   ros2 launch aidin_hand2_bringup aidin_hand2.launch.py config:=<경로>
+
+# ── 어느 손을 기동하나 ──
+use_left_hand: false
+use_right_hand: true
+
+# ── 손별 CAN interface ──
+left_hand_interface: auto
+right_hand_interface: auto
+
+# ── 손별 미가동 actuator index (콤마 구분, 예 "7,8"). 빈 문자열 = 전부 가동 ─
+# 물리적으로 없거나 끈 actuator 의 index. 여기 적힌 것은 enable 안 하고(건드리지 않음)
+# fault 로 보고하지 않으며(로그·diagnostics 에서 제외), homing 참여에서도 뺀다
+# index 는 아래 순서(0..15)
+# 0 thumb_actuator0    4 index_actuator1    7 middle_actuator1   10 ring_actuator1   13 baby_actuator1
+# 1 thumb_actuator1    5 index_actuator2    8 middle_actuator2   11 ring_actuator2   14 baby_actuator2
+# 2 thumb_actuator2    6 index_actuator3    9 middle_actuator3   12 ring_actuator3   15 baby_actuator3
+# 3 thumb_actuator3
+left_hand_disabled_actuators: ""
+right_hand_disabled_actuators: ""
+
+# ── 손별 SDK RT loop CPU 코어 pin (-1 = 미설정) ──
+left_hand_cpu_affinity: -1
+right_hand_cpu_affinity: -1
+
+# ── 자동 homing — true 면 기동 직후 실물이 움직인다 ──
+auto_home: true
+
+# ── auto reconnect 정책 (양손 공통) ──
+auto_reconnect: true
+auto_reconnect_timeout_ms: 0   # auto reconnect 포기 상한 [ms], 0 = 무제한
+auto_reconnect_home: true     # auto reconnect 복귀 시 run 전 homing 수행

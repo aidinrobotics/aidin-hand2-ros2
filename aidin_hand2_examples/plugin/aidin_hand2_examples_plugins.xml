@@ -1,0 +1,35 @@
+<class_libraries>
+<library path="aidin_hand2_examples_controllers">
+  <class name="aidin_hand2_examples/GloveTeleopController"
+         type="aidin_hand2_examples::GloveTeleopController"
+         base_class_type="controller_interface::ChainableControllerInterface">
+    <description>MANUS 글러브 ergonomics(0~1)를 active joint 목표(rad)로 매핑해 하위 자세 controller 의 reference 로 지령하는 텔레오퍼 예제. chainable.</description>
+  </class>
+</library>
+<library path="aidin_hand2_chainable_templates">
+  <class
+    name="aidin_hand2_examples/JointPositionUpperController"
+    type="aidin_hand2_examples::JointPositionUpperController"
+    base_class_type="controller_interface::ChainableControllerInterface">
+    <description>JointPosition basic controller용 빈 chainable 상위 controller skeleton.</description>
+  </class>
+  <class
+    name="aidin_hand2_examples/JointImpedanceUpperController"
+    type="aidin_hand2_examples::JointImpedanceUpperController"
+    base_class_type="controller_interface::ChainableControllerInterface">
+    <description>JointImpedance basic controller용 빈 chainable 상위 controller skeleton.</description>
+  </class>
+  <class
+    name="aidin_hand2_examples/ActuatorPositionUpperController"
+    type="aidin_hand2_examples::ActuatorPositionUpperController"
+    base_class_type="controller_interface::ChainableControllerInterface">
+    <description>ActuatorPosition basic controller용 빈 chainable 상위 controller skeleton.</description>
+  </class>
+  <class
+    name="aidin_hand2_examples/ActuatorEffortUpperController"
+    type="aidin_hand2_examples::ActuatorEffortUpperController"
+    base_class_type="controller_interface::ChainableControllerInterface">
+    <description>ActuatorEffort basic controller용 빈 chainable 상위 controller skeleton.</description>
+  </class>
+</library>
+</class_libraries>

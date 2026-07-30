@@ -1,0 +1,324 @@
+<?xml version="1.0"?>
+<!-- AIDIN Hand Gen2 한 손 ros2_control system — SDK(aidin_hand2) wrapper 인터페이스.
+     protocol·kinematics 는 SDK 소유. 여기는 SDK public 타입과 1:1 인 값 인터페이스만 선언한다. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Actuator 1개 — physical state만 소유한다. command는 아래 mode별 GPIO port가 소유한다.
+       state: position_cnt · velocity_rpm · current_ma (모션/센싱, hand_state_broadcaster).
+       actuator 헬스(enabled/fault)는 진단이라 아래 diagnostics gpio 로 모았다.
+       이름을 표준 position/velocity/effort 와 다르게 두는 이유: joint_state_broadcaster 가
+       count 스케일 값을 /joint_states 로 내보내지 않게 하기 위함. -->
+  <xacro:macro name="hand_actuator" params="joint_name">
+    <joint name="${joint_name}">
+      <!-- ── hand_state_broadcaster: 모션/센싱 → HandState ── -->
+      <state_interface name="position_cnt"/>
+      <state_interface name="velocity_rpm"/>
+      <state_interface name="current_ma"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- actuator 16 각각의 enabled·fault state 를 diagnostics gpio 에 방출.
+       gpio 이름(<prefix>diagnostics)이 이미 좌우를 가르므로 interface 이름엔 prefix 없이
+       actuator base 이름만 접미사로: enabled_<actuator_base>·fault_<actuator_base>. -->
+  <xacro:macro name="diagnostics_actuator_health" params="actuator_base">
+    <state_interface name="enabled_${actuator_base}"/>
+    <state_interface name="fault_${actuator_base}"/>
+  </xacro:macro>
+
+  <!-- Joint broadcaster가 소비하는 표준 position state만 둔다. -->
+  <xacro:macro name="hand_joint" params="joint_name">
+    <joint name="${joint_name}">
+      <state_interface name="position"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- state_interface 를 <prefix>idx_min..idx_max 로 방출 -->
+  <xacro:macro name="state_interface_range" params="prefix idx_min idx_max">
+    <state_interface name="${prefix}${idx_min}"/>
+    <xacro:if value="${idx_min &lt; idx_max}">
+      <xacro:state_interface_range prefix="${prefix}" idx_min="${idx_min + 1}" idx_max="${idx_max}"/>
+    </xacro:if>
+  </xacro:macro>
+
+  <!-- Finger tactile — 17 cell -->
+  <xacro:macro name="finger_tactile_sensor" params="sensor_name">
+    <sensor name="${sensor_name}">
+      <xacro:state_interface_range prefix="tactile_" idx_min="1" idx_max="17"/>
+    </sensor>
+  </xacro:macro>
+
+  <!-- Palm tactile — 3 region, 58 cell -->
+  <xacro:macro name="palm_tactile_sensor" params="sensor_name">
+    <sensor name="${sensor_name}">
+      <xacro:state_interface_range prefix="palm1_upper_" idx_min="1" idx_max="20"/>
+      <xacro:state_interface_range prefix="palm1_lower_" idx_min="1" idx_max="20"/>
+      <xacro:state_interface_range prefix="palm2_"       idx_min="1" idx_max="18"/>
+    </sensor>
+  </xacro:macro>
+
+  <!--
+    한 손 ros2_control system macro. params 는 SDK OpenConfig 와 1:1 (기본값 = SDK default):
+      identity : name, prefix, hand_side
+      CAN      : can_interface
+      homing   : auto_home (on_activate 자동 homing on/off)
+      effort   : max_effort (rated current %, 0~2000)
+      control  : control_rate (RT loop Hz)
+      realtime : rt_cpu_affinity (코어 pin, -1 = 미설정)
+      reconnect: auto_reconnect (통신 두절 시 자동 재수립),
+                 auto_reconnect_timeout_ms (재수립 포기 상한, 0=무제한),
+                 auto_reconnect_home (재수립 복귀 시 run 전 homing)
+  -->
+  <xacro:macro name="aidin_hand2_ros2_control"
+               params="name prefix hand_side
+                       can_interface
+                       auto_home:=^|true
+                       max_effort:=^|1000
+                       control_rate:=^|500
+                       rt_cpu_affinity:=^|-1
+                       disabled_actuators:=^|''
+                       auto_reconnect:=^|false
+                       auto_reconnect_timeout_ms:=^|0
+                       auto_reconnect_home:=^|false
+                       use_mock:=^|false">
+
+    <ros2_control name="${name}" type="system">
+      <hardware>
+        <!-- use_mock 이면 실 CAN 대신 kinematics(clamp→IK→FK) mock. 나머지 actuator/joint
+             선언은 실·mock 공통(같은 이름 규약이라 controller 가 동일하게 붙는다). -->
+        <xacro:if value="${use_mock}">
+          <plugin>aidin_hand2_hardware/AidinHand2MockSystemInterface</plugin>
+          <param name="hand_side">${hand_side}</param>
+          <param name="max_effort">${max_effort}</param>
+        </xacro:if>
+        <xacro:unless value="${use_mock}">
+          <plugin>aidin_hand2_hardware/AidinHand2SystemInterface</plugin>
+
+          <param name="hand_side">${hand_side}</param>
+          <param name="can_interface">${can_interface}</param>
+          <param name="auto_home">${auto_home}</param>
+          <param name="max_effort">${max_effort}</param>
+          <param name="control_rate">${control_rate}</param>
+          <param name="rt_cpu_affinity">${rt_cpu_affinity}</param>
+          <!-- 미가동 actuator index (콤마 구분, 예 "0,1,2,3"). 빈 값 = 전부 가동 -->
+          <param name="disabled_actuators">${disabled_actuators}</param>
+          <param name="auto_reconnect">${auto_reconnect}</param>
+          <param name="auto_reconnect_timeout_ms">${auto_reconnect_timeout_ms}</param>
+          <param name="auto_reconnect_home">${auto_reconnect_home}</param>
+        </xacro:unless>
+      </hardware>
+
+      <!-- Actuator 16 = thumb 4 + long finger 3×4. 실·mock 모두 같은 physical state 계약. -->
+        <xacro:hand_actuator joint_name="${prefix}thumb_actuator0"/>
+        <xacro:hand_actuator joint_name="${prefix}thumb_actuator1"/>
+        <xacro:hand_actuator joint_name="${prefix}thumb_actuator2"/>
+        <xacro:hand_actuator joint_name="${prefix}thumb_actuator3"/>
+
+        <xacro:hand_actuator joint_name="${prefix}index_actuator1"/>
+        <xacro:hand_actuator joint_name="${prefix}index_actuator2"/>
+        <xacro:hand_actuator joint_name="${prefix}index_actuator3"/>
+
+        <xacro:hand_actuator joint_name="${prefix}middle_actuator1"/>
+        <xacro:hand_actuator joint_name="${prefix}middle_actuator2"/>
+        <xacro:hand_actuator joint_name="${prefix}middle_actuator3"/>
+
+        <xacro:hand_actuator joint_name="${prefix}ring_actuator1"/>
+        <xacro:hand_actuator joint_name="${prefix}ring_actuator2"/>
+        <xacro:hand_actuator joint_name="${prefix}ring_actuator3"/>
+
+        <xacro:hand_actuator joint_name="${prefix}baby_actuator1"/>
+        <xacro:hand_actuator joint_name="${prefix}baby_actuator2"/>
+        <xacro:hand_actuator joint_name="${prefix}baby_actuator3"/>
+
+      <!-- Joint 21 — physical position state. -->
+      <xacro:hand_joint joint_name="${prefix}thumb_joint0"/>
+      <xacro:hand_joint joint_name="${prefix}thumb_joint1"/>
+      <xacro:hand_joint joint_name="${prefix}thumb_joint2"/>
+      <xacro:hand_joint joint_name="${prefix}thumb_joint3"/>
+      <xacro:hand_joint joint_name="${prefix}thumb_joint4"/>
+
+      <xacro:hand_joint joint_name="${prefix}index_joint1"/>
+      <xacro:hand_joint joint_name="${prefix}index_joint2"/>
+      <xacro:hand_joint joint_name="${prefix}index_joint3"/>
+      <xacro:hand_joint joint_name="${prefix}index_joint4"/>
+
+      <xacro:hand_joint joint_name="${prefix}middle_joint1"/>
+      <xacro:hand_joint joint_name="${prefix}middle_joint2"/>
+      <xacro:hand_joint joint_name="${prefix}middle_joint3"/>
+      <xacro:hand_joint joint_name="${prefix}middle_joint4"/>
+
+      <xacro:hand_joint joint_name="${prefix}ring_joint1"/>
+      <xacro:hand_joint joint_name="${prefix}ring_joint2"/>
+      <xacro:hand_joint joint_name="${prefix}ring_joint3"/>
+      <xacro:hand_joint joint_name="${prefix}ring_joint4"/>
+
+      <xacro:hand_joint joint_name="${prefix}baby_joint1"/>
+      <xacro:hand_joint joint_name="${prefix}baby_joint2"/>
+      <xacro:hand_joint joint_name="${prefix}baby_joint3"/>
+      <xacro:hand_joint joint_name="${prefix}baby_joint4"/>
+
+      <!-- Finger/Palm tactile — mock 은 촉각 미노출(제외) -->
+      <xacro:unless value="${use_mock}">
+        <!-- Finger tactile — 5 × 17 cell -->
+        <xacro:finger_tactile_sensor sensor_name="${prefix}thumb_sensor"/>
+        <xacro:finger_tactile_sensor sensor_name="${prefix}index_sensor"/>
+        <xacro:finger_tactile_sensor sensor_name="${prefix}middle_sensor"/>
+        <xacro:finger_tactile_sensor sensor_name="${prefix}ring_sensor"/>
+        <xacro:finger_tactile_sensor sensor_name="${prefix}baby_sensor"/>
+
+        <!-- Palm tactile — 3 region, 58 cell -->
+        <xacro:palm_tactile_sensor sensor_name="${prefix}palm_sensor"/>
+      </xacro:unless>
+
+      <!-- Homing 은 hardware 가 여는 ~/home service 로만 트리거·통지 (별도 state interface 없음) -->
+
+      <!-- Mode별 complete command port. 기존 4개 basic controller 중 하나만 lock과 한 port 전체를
+           claim한다. command_lock은 claim-only이며 수치값은 사용하지 않는다. -->
+      <gpio name="${prefix}hand_control">
+        <command_interface name="command_lock"/>
+      </gpio>
+
+      <gpio name="${prefix}joint_position_command">
+        <command_interface name="target_position_rad.thumb_joint0"/>
+        <command_interface name="target_position_rad.thumb_joint1"/>
+        <command_interface name="target_position_rad.thumb_joint2"/>
+        <command_interface name="target_position_rad.thumb_joint3"/>
+        <command_interface name="target_position_rad.index_joint1"/>
+        <command_interface name="target_position_rad.index_joint2"/>
+        <command_interface name="target_position_rad.index_joint3"/>
+        <command_interface name="target_position_rad.middle_joint1"/>
+        <command_interface name="target_position_rad.middle_joint2"/>
+        <command_interface name="target_position_rad.middle_joint3"/>
+        <command_interface name="target_position_rad.ring_joint1"/>
+        <command_interface name="target_position_rad.ring_joint2"/>
+        <command_interface name="target_position_rad.ring_joint3"/>
+        <command_interface name="target_position_rad.baby_joint1"/>
+        <command_interface name="target_position_rad.baby_joint2"/>
+        <command_interface name="target_position_rad.baby_joint3"/>
+        <command_interface name="speed_rad_s"/>
+      </gpio>
+
+      <gpio name="${prefix}joint_impedance_command">
+        <command_interface name="target_position_rad.thumb_joint0"/>
+        <command_interface name="target_position_rad.thumb_joint1"/>
+        <command_interface name="target_position_rad.thumb_joint2"/>
+        <command_interface name="target_position_rad.thumb_joint3"/>
+        <command_interface name="target_position_rad.index_joint1"/>
+        <command_interface name="target_position_rad.index_joint2"/>
+        <command_interface name="target_position_rad.index_joint3"/>
+        <command_interface name="target_position_rad.middle_joint1"/>
+        <command_interface name="target_position_rad.middle_joint2"/>
+        <command_interface name="target_position_rad.middle_joint3"/>
+        <command_interface name="target_position_rad.ring_joint1"/>
+        <command_interface name="target_position_rad.ring_joint2"/>
+        <command_interface name="target_position_rad.ring_joint3"/>
+        <command_interface name="target_position_rad.baby_joint1"/>
+        <command_interface name="target_position_rad.baby_joint2"/>
+        <command_interface name="target_position_rad.baby_joint3"/>
+        <command_interface name="stiffness.thumb_actuator0"/>
+        <command_interface name="stiffness.thumb_actuator1"/>
+        <command_interface name="stiffness.thumb_actuator2"/>
+        <command_interface name="stiffness.thumb_actuator3"/>
+        <command_interface name="stiffness.index_actuator1"/>
+        <command_interface name="stiffness.index_actuator2"/>
+        <command_interface name="stiffness.index_actuator3"/>
+        <command_interface name="stiffness.middle_actuator1"/>
+        <command_interface name="stiffness.middle_actuator2"/>
+        <command_interface name="stiffness.middle_actuator3"/>
+        <command_interface name="stiffness.ring_actuator1"/>
+        <command_interface name="stiffness.ring_actuator2"/>
+        <command_interface name="stiffness.ring_actuator3"/>
+        <command_interface name="stiffness.baby_actuator1"/>
+        <command_interface name="stiffness.baby_actuator2"/>
+        <command_interface name="stiffness.baby_actuator3"/>
+        <command_interface name="damping.thumb_actuator0"/>
+        <command_interface name="damping.thumb_actuator1"/>
+        <command_interface name="damping.thumb_actuator2"/>
+        <command_interface name="damping.thumb_actuator3"/>
+        <command_interface name="damping.index_actuator1"/>
+        <command_interface name="damping.index_actuator2"/>
+        <command_interface name="damping.index_actuator3"/>
+        <command_interface name="damping.middle_actuator1"/>
+        <command_interface name="damping.middle_actuator2"/>
+        <command_interface name="damping.middle_actuator3"/>
+        <command_interface name="damping.ring_actuator1"/>
+        <command_interface name="damping.ring_actuator2"/>
+        <command_interface name="damping.ring_actuator3"/>
+        <command_interface name="damping.baby_actuator1"/>
+        <command_interface name="damping.baby_actuator2"/>
+        <command_interface name="damping.baby_actuator3"/>
+      </gpio>
+
+      <gpio name="${prefix}actuator_position_command">
+        <command_interface name="target_position_cnt.thumb_actuator0"/>
+        <command_interface name="target_position_cnt.thumb_actuator1"/>
+        <command_interface name="target_position_cnt.thumb_actuator2"/>
+        <command_interface name="target_position_cnt.thumb_actuator3"/>
+        <command_interface name="target_position_cnt.index_actuator1"/>
+        <command_interface name="target_position_cnt.index_actuator2"/>
+        <command_interface name="target_position_cnt.index_actuator3"/>
+        <command_interface name="target_position_cnt.middle_actuator1"/>
+        <command_interface name="target_position_cnt.middle_actuator2"/>
+        <command_interface name="target_position_cnt.middle_actuator3"/>
+        <command_interface name="target_position_cnt.ring_actuator1"/>
+        <command_interface name="target_position_cnt.ring_actuator2"/>
+        <command_interface name="target_position_cnt.ring_actuator3"/>
+        <command_interface name="target_position_cnt.baby_actuator1"/>
+        <command_interface name="target_position_cnt.baby_actuator2"/>
+        <command_interface name="target_position_cnt.baby_actuator3"/>
+      </gpio>
+
+      <gpio name="${prefix}actuator_effort_command">
+        <command_interface name="target_effort_pct.thumb_actuator0"/>
+        <command_interface name="target_effort_pct.thumb_actuator1"/>
+        <command_interface name="target_effort_pct.thumb_actuator2"/>
+        <command_interface name="target_effort_pct.thumb_actuator3"/>
+        <command_interface name="target_effort_pct.index_actuator1"/>
+        <command_interface name="target_effort_pct.index_actuator2"/>
+        <command_interface name="target_effort_pct.index_actuator3"/>
+        <command_interface name="target_effort_pct.middle_actuator1"/>
+        <command_interface name="target_effort_pct.middle_actuator2"/>
+        <command_interface name="target_effort_pct.middle_actuator3"/>
+        <command_interface name="target_effort_pct.ring_actuator1"/>
+        <command_interface name="target_effort_pct.ring_actuator2"/>
+        <command_interface name="target_effort_pct.ring_actuator3"/>
+        <command_interface name="target_effort_pct.baby_actuator1"/>
+        <command_interface name="target_effort_pct.baby_actuator2"/>
+        <command_interface name="target_effort_pct.baby_actuator3"/>
+      </gpio>
+
+      <!-- SDK Diagnostics 노출 — broadcaster 가 /diagnostics 로 변환 (Stage 2).
+           hand 전역 7 필드 + actuator 16 각각의 enabled·fault. mock 은 미노출(제외).
+           lifecycle 은 double(HandLifecycle ordinal) — broadcaster 가 이름화. -->
+      <xacro:unless value="${use_mock}">
+      <gpio name="${prefix}diagnostics">
+        <state_interface name="lifecycle"/>
+        <state_interface name="nan_command_count"/>
+        <state_interface name="control_cycles"/>
+        <state_interface name="deadline_misses"/>
+        <state_interface name="last_period_ms"/>
+        <state_interface name="last_compute_ms"/>
+        <!-- 원점 확정 여부 (1=homed, 0=미확정/진행중/실패) -->
+        <state_interface name="homed"/>
+
+        <!-- per-actuator enabled·fault (actuator 16, hand_actuator 호출과 같은 순서) -->
+        <xacro:diagnostics_actuator_health actuator_base="thumb_actuator0"/>
+        <xacro:diagnostics_actuator_health actuator_base="thumb_actuator1"/>
+        <xacro:diagnostics_actuator_health actuator_base="thumb_actuator2"/>
+        <xacro:diagnostics_actuator_health actuator_base="thumb_actuator3"/>
+        <xacro:diagnostics_actuator_health actuator_base="index_actuator1"/>
+        <xacro:diagnostics_actuator_health actuator_base="index_actuator2"/>
+        <xacro:diagnostics_actuator_health actuator_base="index_actuator3"/>
+        <xacro:diagnostics_actuator_health actuator_base="middle_actuator1"/>
+        <xacro:diagnostics_actuator_health actuator_base="middle_actuator2"/>
+        <xacro:diagnostics_actuator_health actuator_base="middle_actuator3"/>
+        <xacro:diagnostics_actuator_health actuator_base="ring_actuator1"/>
+        <xacro:diagnostics_actuator_health actuator_base="ring_actuator2"/>
+        <xacro:diagnostics_actuator_health actuator_base="ring_actuator3"/>
+        <xacro:diagnostics_actuator_health actuator_base="baby_actuator1"/>
+        <xacro:diagnostics_actuator_health actuator_base="baby_actuator2"/>
+        <xacro:diagnostics_actuator_health actuator_base="baby_actuator3"/>
+      </gpio>
+      </xacro:unless>
+    </ros2_control>
+  </xacro:macro>
+</robot>

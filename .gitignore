@@ -1,0 +1,9 @@
+build/
+install/
+log/
+.cache/
+.vscode/
+*.pyc
+__pycache__/
+*.bak
+compile_commands.json

@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aidin_hand2_bringup</name>
+  <version>0.1.0</version>
+  <description>AIDIN Hand Gen2 ROS2 control stack bringup (launch + controllers.yaml).</description>
+  <maintainer email="jinh.lee@aidinrobotics.co.kr">jinh.lee</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>controller_manager</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>joint_state_broadcaster</exec_depend>
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>aidin_hand2_description</exec_depend>
+  <exec_depend>aidin_hand2_hardware</exec_depend>
+  <exec_depend>aidin_hand2_controllers</exec_depend>
+  <!-- GUI(roslib.js) 연결용 WebSocket bridge. gui_bridge.launch.py 가 사용. -->
+  <exec_depend>rosbridge_server</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

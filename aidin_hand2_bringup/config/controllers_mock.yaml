@@ -1,0 +1,39 @@
+# mock 전용 controller 설정. command interface 계약은 실 hardware와 동일하므로 basic controller
+# 4종을 모두 load할 수 있다. hand_state/diagnostics broadcaster는 mock이 센서 상태를 모델링하지
+# 않으므로 제외한다.
+# glove_teleop_controller 는 launch 에서 --param-file 로 별도 spawn 한다.
+
+controller_manager:
+  ros__parameters:
+    # SDK RT loop 와 맞출 필요 없는 mock 이지만 실 설정과 동일하게 500 유지.
+    update_rate: 500
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    left_joint_position_controller:
+      type: aidin_hand2_controllers/JointPositionController
+    left_joint_impedance_controller:
+      type: aidin_hand2_controllers/JointImpedanceController
+    left_actuator_position_controller:
+      type: aidin_hand2_controllers/ActuatorPositionController
+    left_actuator_effort_controller:
+      type: aidin_hand2_controllers/ActuatorEffortController
+
+    # 글러브 텔레오퍼(옵션, use_glove:=true 일 때 spawn). 파라미터는 glove_teleop_controller.yaml 에서.
+    left_glove_teleop_controller:
+      type: aidin_hand2_examples/GloveTeleopController
+
+left_joint_position_controller:
+  ros__parameters:
+    hand_side: "left"
+    speed_rad_s: 0.0
+left_joint_impedance_controller:
+  ros__parameters:
+    hand_side: "left"
+left_actuator_position_controller:
+  ros__parameters:
+    hand_side: "left"
+left_actuator_effort_controller:
+  ros__parameters:
+    hand_side: "left"
