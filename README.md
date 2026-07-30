@@ -166,24 +166,3 @@ Normal default YAML 기준:
 
 > [!WARNING]
 > Auto reconnect 중 wrapper는 ros2_control component를 살려 두기 위해 SDK read/write exception을 `OK`로 처리하고 마지막 state를 계속 publish할 수 있습니다. Header stamp와 `control_cycles`가 증가하는지 확인하지 않고 topic 수신만으로 health를 판정하지 마십시오.
-
-## 책임 경계
-
-ROS 2 문서는 wrapper가 추가하는 topic, service, controller와 launch behavior만 설명합니다. 다음 항목은 SDK 문서가 기준입니다.
-
-- CAN-FD bit timing과 host service
-- SDK lifecycle와 ErrorCode
-- Command latch, max effort, automatic clamp의 현재 상태
-- Kinematics, actuator·joint·tactile layout
-- Communication loss와 drive hold 위험
-- Logging과 diagnostics 원본 계약
-
-관련 문서:
-
-- [SDK C++ guide](https://github.com/JJhyeongg/aidin-hand2-sdk/blob/main/docs/ko/03_cpp_guide.md)
-- [SDK safety](https://github.com/JJhyeongg/aidin-hand2-sdk/blob/main/docs/ko/07_safety.md)
-- [SDK observability](https://github.com/JJhyeongg/aidin-hand2-sdk/blob/main/docs/ko/06_observability.md)
-
-## License 상태
-
-현재 repository root에 `LICENSE` file이 없고 6개 package 중 5개의 `package.xml` license가 `TODO`입니다. `aidin_hand2_description`만 `Apache-2.0`으로 선언돼 있습니다. Repository 전체를 Apache-2.0으로 추정하지 말고 재배포 전에 권리 조건을 확인하십시오.
