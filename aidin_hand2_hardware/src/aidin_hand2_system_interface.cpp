@@ -713,10 +713,9 @@ hardware_interface::return_type AidinHand2SystemInterface::read(
         static_cast<std::uint16_t>(diagnostics.actuator_health.fault[actuator]));
     }
   } catch (const ah2::Exception &) {
-    // SDK [exception] 로그가 유일 기록(한 실패 한 화자). auto_reconnect 가 켜져 있으면 컴포넌트를 내리지
-    // 않는다 — SDK 가 재수립을 계속하도록 OK 로 흘리고 stale snapshot 을 그대로 발행한다. off 면 fail-fast.
-    return auto_reconnect_ ? hardware_interface::return_type::OK
-                           : hardware_interface::return_type::ERROR;
+    // SDK [exception] 로그가 유일 기록(한 실패 한 화자). get_state/get_diagnostics 는 통신 두절로
+    // 던지지 않으므로(lock-free 버퍼 읽기) 여기 오면 핸들 무효(destroy 후) — 복구 불가라 fail-fast.
+    return hardware_interface::return_type::ERROR;
   }
   return hardware_interface::return_type::OK;
 }
@@ -733,13 +732,12 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
   }
 
   try {
-    // auto_reconnect 게이트 — SDK 가 통신 두절을 자체 복구(auto_reconnect)하는 동안엔 lifecycle 이 Running 이
-    // 아니다. 이때 start_homing()/set_command() 를 부르면 CommunicationLost 예외가 나고, 그 예외로 ERROR 를
-    // 올리면 ros2_control 이 하드웨어 컴포넌트를 내려(unconfigured) SDK 의 auto_reconnect 가 무력화된다.
-    // 비-Running 은 조용히 넘겨(OK) 컴포넌트를 active 로 유지하고, SDK 가 Running 으로 복귀하면 다음 cycle
-    // 부터 제어가 자연히 재개된다. auto_reconnect off 면 SDK 가 Faulted 로 굳으므로 이 게이트가 계속 OK 를
-    // 반환하나, 그건 아래 명령 미전송(fail-safe)과 같은 의미이고 복구는 ~/reconnect 로 한다.
-    if (auto_reconnect_ && hand_->get_diagnostics().lifecycle != ah2::HandLifecycle::Running) {
+    // 비-Running 게이트 — 이때 start_homing()/set_command() 를 부르면 예외가 나고, 그 예외로 ERROR 를
+    // 올리면 ros2_control 이 하드웨어 컴포넌트를 내린다(unconfigured). 그러면 같은 CM 의 다른 컴포넌트·
+    // joint_state_broadcaster 까지 함께 죽고 SDK 의 auto_reconnect 도 무력화되므로, 조용히 넘겨(OK)
+    // 컴포넌트를 active 로 유지한다. Running 복귀 시 다음 cycle 부터 제어가 자연히 재개된다.
+    // Faulted 로 굳은 경우도 명령 미전송(fail-safe)과 같은 의미이고 복구는 ~/reconnect 로 한다.
+    if (hand_->get_diagnostics().lifecycle != ah2::HandLifecycle::Running) {
       return hardware_interface::return_type::OK;
     }
 
@@ -803,10 +801,9 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
       }
     }
   } catch (const ah2::Exception &) {
-    // SDK [exception] 로그가 유일 기록. auto_reconnect 중이면 위 lifecycle 게이트를 스쳐 지난 race(체크 후
-    // 두절)도 있으므로 ERROR 대신 OK 로 흘려 컴포넌트를 내리지 않는다 — SDK 가 재수립을 계속한다. off 면 fail-fast.
-    return auto_reconnect_ ? hardware_interface::return_type::OK
-                           : hardware_interface::return_type::ERROR;
+    // SDK [exception] 로그가 유일 기록. 위 lifecycle 게이트를 스쳐 지난 race(체크 후 두절)라 OK 로
+    // 흘려 컴포넌트를 내리지 않는다 — 명령 미전송이 곧 fail-safe 이고 복구는 ~/reconnect 로 한다.
+    return hardware_interface::return_type::OK;
   }
   return hardware_interface::return_type::OK;
 }
