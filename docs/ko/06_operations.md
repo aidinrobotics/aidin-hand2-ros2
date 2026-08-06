@@ -183,7 +183,7 @@ Wrapper는 SDK 복구 loop가 유지되도록 read/write에서 `OK`를 반환합
 ```text
 통신 두절
   ↓
-SDK FaultStopping/Faulted → reconnect retry
+SDK Faulted → reconnect retry
   ↓                         ├─ topic은 stale snapshot 발행 가능
   ↓                         └─ command write skip
 재연결 성공
@@ -200,7 +200,7 @@ Default YAML은 timeout 0, 즉 무제한이고 reconnect home true입니다. 통
 1. 외부 안전 상태를 확보합니다.
 2. 전원·배선·SocketCAN error와 drive fault 원인을 제거합니다.
 3. Auto reconnect가 동작 중이면 중복 manual call 전에 lifecycle를 확인합니다.
-4. `FaultStopping` 또는 `Faulted`에서 reconnect를 호출합니다.
+4. `Faulted`에서 reconnect를 호출합니다.
 
 ```bash
 ros2 service call \

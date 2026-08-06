@@ -172,12 +172,11 @@ controller_interface::return_type DiagnosticsBroadcaster::update(
     }
 
     // DiagnosticStatus.level — lifecycle 과 actuator fault 로 그 자리에서 판정한다(별도 요약 필드
-    // 없음). 복구 필요(FaultStopping/Faulted) = ERROR, 정상 운영인데 fault 있음 = WARN(일부 mask 후 동작),
+    // 없음). 복구 필요(Faulted) = ERROR, 정상 운영인데 fault 있음 = WARN(일부 mask 후 동작),
     // 그 외 = OK.
     const auto lifecycle =
       static_cast<aidin_hand2::HandLifecycle>(static_cast<int>(state_interfaces_[0].get_value()));
-    const bool recovery_needed = lifecycle == aidin_hand2::HandLifecycle::FaultStopping ||
-                                 lifecycle == aidin_hand2::HandLifecycle::Faulted;
+    const bool recovery_needed = lifecycle == aidin_hand2::HandLifecycle::Faulted;
     if (recovery_needed) {
       status.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
       status.message = "recovery needed";

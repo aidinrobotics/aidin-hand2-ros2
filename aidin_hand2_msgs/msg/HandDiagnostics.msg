@@ -5,7 +5,7 @@ std_msgs/Header header
 string hand_side          # "right" / "left"
 
 # ── SDK/RT loop/통신 상태 ──
-string lifecycle          # SDK 동작 상태 (Disconnected/Connecting/Connected/Running/Stopped/FaultStopping/Faulted)
+string lifecycle          # SDK 동작 상태 (Disconnected/Connected/Running/Stopped/Faulted)
 uint64 nan_command_count  # 거부된 NaN/Inf command 누적 수
 uint64 control_cycles
 uint64 deadline_misses
