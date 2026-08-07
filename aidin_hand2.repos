@@ -4,4 +4,4 @@ repositories:
   aidin-hand2-sdk:
     type: git
     url: git@github.com:aidinrobotics/aidin-hand2-sdk.git
-    version: v0.1.0
+    version: v0.2.0

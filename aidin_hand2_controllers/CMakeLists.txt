@@ -16,7 +16,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(diagnostic_msgs REQUIRED)
 find_package(aidin_hand2_msgs REQUIRED)
-find_package(aidin_hand2 0.1 REQUIRED)  # 0.x 는 minor 가 breaking 경계
+find_package(aidin_hand2 0.2 REQUIRED)  # 0.x 는 minor 가 breaking 경계
 
 add_library(${PROJECT_NAME} SHARED
   src/joint_position_controller.cpp

@@ -16,7 +16,7 @@ find_package(std_msgs REQUIRED)
 # SDK 는 정적 라이브러리라 PRIVATE 의존(Eigen)도 소비자 링크 단계에 필요($<LINK_ONLY:> 전파)
 # → aidin_hand2Config 의 find_dependency(Eigen3) 가 이 스코프에서 타겟을 찾도록 직접 find.
 find_package(Eigen3 REQUIRED)
-find_package(aidin_hand2 0.1 REQUIRED)  # 0.x 는 minor 가 breaking 경계
+find_package(aidin_hand2 0.2 REQUIRED)  # 0.x 는 minor 가 breaking 경계
 
 add_library(${PROJECT_NAME} SHARED
   src/aidin_hand2_system_interface.cpp
