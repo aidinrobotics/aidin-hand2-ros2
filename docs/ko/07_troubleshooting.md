@@ -85,7 +85,7 @@ printf '%s\n' "$AMENT_PREFIX_PATH" | tr ':' '\n'
 
 ### `robot_description` deprecation warning
 
-실제·mock launch 모두 Humble에서 `Passing the robot description parameter directly ... is deprecated` warning을 출력할 수 있습니다. 현재 launch가 `robot_description` parameter를 직접 전달하기 때문이며 controller와 hardware가 이어서 정상 configure·activate되면 즉시 실패 원인은 아닙니다. Migration 상태는 [알려진 제한](07_known_limitations.md#15-controller-manager-integration-debt)을 참조하십시오.
+실제·mock launch 모두 Humble에서 `Passing the robot description parameter directly ... is deprecated` warning을 출력할 수 있습니다. 현재 launch가 `robot_description` parameter를 직접 전달하기 때문이며 controller와 hardware가 이어서 정상 configure·activate되면 즉시 실패 원인은 아닙니다. 이후 ros2_control migration 항목입니다.
 
 ## 5. Mock에서 expected controller가 없음
 
@@ -137,7 +137,7 @@ ip -details -statistics link show can0
 timeout 3 candump -L can0
 ```
 
-전체 host 절차는 [SDK troubleshooting](https://github.com/JJhyeongg/aidin-hand2-sdk/blob/main/docs/ko/09_troubleshooting.md)을 따르십시오.
+전체 host 절차는 [SDK 문제 해결](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/13_troubleshooting.md)을 따르십시오.
 
 ## 7. Default인데 `can0`가 아니라 `auto`를 사용함
 
@@ -151,7 +151,7 @@ ros2 launch aidin_hand2_bringup aidin_hand2.launch.py \
   auto_home:=false
 ```
 
-Config 우선순위는 [Launch reference](02_launch_reference.md#3-config-우선순위)를 참조하십시오.
+Config 우선순위는 [Bringup 예제](05_bringup_example.md#3-config-우선순위)를 참조하십시오.
 
 ## 8. Launch 직후 손이 움직임
 
@@ -167,7 +167,7 @@ ros2 launch aidin_hand2_bringup aidin_hand2.launch.py \
 
 ## 9. Affinity warning 또는 RT warning
 
-Default YAML은 left CPU 4, right CPU 6입니다.
+Default YAML은 양손 모두 `-1`(미설정)입니다.
 
 ```bash
 nproc
@@ -182,7 +182,7 @@ ros2 launch aidin_hand2_bringup aidin_hand2.launch.py \
   left_hand_cpu_affinity:=-1
 ```
 
-PREEMPT_RT와 permission은 [SDK host setup](https://github.com/JJhyeongg/aidin-hand2-sdk/blob/main/docs/ko/02_host_setup.md)을 완료합니다. SDK 실제 priority는 90입니다.
+PREEMPT_RT와 permission은 [SDK real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/01_real_time_kernel_setup.md)을 완료합니다. SDK 실제 priority는 90입니다.
 
 ## 10. `/left_hand_control/home` service가 없음
 
@@ -243,7 +243,7 @@ Wrapper는 homing 중 또는 homed false일 때 command를 error 없이 skip합�
 Speed 0은 정지가 아니라 무제한입니다.
 
 Speed는 별도 topic이 아니라 `JointPositionCommand.speed_rad_s`에 target 16개와 함께
-들어갑니다. [Joint position command 예제](03_usage.md#joint-position)처럼 complete message를
+들어갑니다. [Joint position command 예제](04_interfaces.md#joint-position)처럼 complete message를
 다시 보내십시오. Target 단위는 rad, speed는 rad/s입니다.
 
 ## 14. Out-of-range target이 clamp되지 않음
@@ -252,7 +252,7 @@ SDK `set_command()`는 joint position·impedance target을 자동 workspace clam
 `HandState.command_state`의 해당 controller input이 clamp 결과인지 확인하십시오.
 
 Clamp는 self-collision, 외부 장애물과 trajectory 속도 정책을 대신하지 않습니다. 기대한
-workspace 경계와 다르면 SDK [Workspace Clamp](https://github.com/JJhyeongg/aidin-hand2-sdk/blob/main/docs/ko/05_workspace_clamp.md)
+workspace 경계와 다르면 SDK [Workspace clamp](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_kinematics.md)
 문서와 사용 중인 SDK build를 확인하십시오.
 
 ## 15. Controller switch 실패
@@ -327,17 +327,7 @@ ros2 topic echo \
 
 Lifecycle, homed, cycle, timing과 actuator array를 직접 확인합니다.
 
-## 20. `description.launch.py`로 mock이 되지 않음
-
-현재 description launch가 잘못된 `use_mock_hardware` argument를 전달합니다. Mock control에는 다음을 사용합니다.
-
-```bash
-ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py
-```
-
-상세는 [알려진 제한](07_known_limitations.md#9-descriptionlaunchpy-mock-argument-typo)에 있습니다.
-
-## 21. Rosbridge GUI 연결 실패
+## 20. Rosbridge GUI 연결 실패
 
 ```bash
 ros2 launch aidin_hand2_bringup gui_bridge.launch.py
@@ -347,7 +337,7 @@ ss -ltn | grep 9090
 
 Remote browser에서 `localhost`는 robot host가 아니라 browser host입니다. Robot IP를 사용하되 port를 신뢰할 수 없는 network에 공개하지 마십시오.
 
-## 22. 지원 요청 bundle
+## 21. 지원 요청 bundle
 
 - Wrapper와 SDK Git commit
 - Package version 목록
@@ -359,6 +349,3 @@ Remote browser에서 `localhost`는 robot host가 아니라 browser host입니�
 - `/rosout`, `/diagnostics`, process journal
 - SocketCAN statistics와 CAN capture
 - 재현 순서와 안전 조치
-
-Root `LICENSE` 부재, dynamic state schema와 test 부재는 runtime troubleshooting으로 해결할
-수 없습니다. [알려진 제한](07_known_limitations.md)의 acceptance status를 함께 제출하십시오.

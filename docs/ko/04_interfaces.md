@@ -7,22 +7,15 @@
 ## 1. 명령 계층
 
 ```text
-상위 controller 또는 JointTrajectoryController
-  → basic controller가 export한 reference interface
-  → 기존 4개 basic controller(command-port adapter)
-  → mode별 complete hardware command port
-  → real/mock SystemInterface
-  → SDK ControllerCommand
+상위 controller (chaining) 또는 ~/command topic
+  → command controller
+  → SystemInterface (real·mock)
+  → SDK
 ```
 
-`JointPositionController`, `JointImpedanceController`,
-`ActuatorPositionController`, `ActuatorEffortController`가 기존 basic controller입니다.
-새로운 알고리즘 controller를 하나 더 넣은 것이 아니라, 이 네 controller가 topic/reference를
-완전한 SDK typed command로 바꾸는 hardware 직전 adapter 역할을 합니다.
-
-공통 `command_ports.hpp` 또는 별도 interface package는 없습니다. 각 basic controller
-source 최상단이 해당 controller의 hardware command·state·reference·topic 계약을 정의하며,
-real/mock hardware는 같은 고정 이름을 각각 검증합니다.
+`JointPositionController`, `JointImpedanceController`, `ActuatorPositionController`,
+`ActuatorEffortController` 네 개가 command controller입니다. 새 알고리즘 계층이 아니라 topic
+또는 reference를 완전한 SDK typed command로 바꾸는 adapter입니다.
 
 ## 2. Hardware plugin과 parameter
 
@@ -31,31 +24,10 @@ real/mock hardware는 같은 고정 이름을 각각 검증합니다.
 | `aidin_hand2_hardware/AidinHand2SystemInterface` | 실제 SDK·CAN hardware |
 | `aidin_hand2_hardware/AidinHand2MockSystemInterface` | 동일 command port를 쓰는 kinematics mock |
 
-실제 plugin lifecycle:
+Lifecycle callback과 SDK operation의 대응은 [운영과 복구](06_operations.md)에 있습니다.
 
-| Callback | SDK operation |
-|---|---|
-| `on_configure` | `create()` + `connect()` + initial max effort |
-| `on_activate` | `run()` + 현재 상태 기반 command seed |
-| `read` | State·diagnostics snapshot, optional auto-home trigger |
-| `write` | 활성 port를 완전한 SDK typed command로 변환 |
-| `on_deactivate` | blocking `stop()` |
-| `on_cleanup` | `disconnect()` + `destroy()` |
-
-| Hardware parameter | Type | Xacro default | 의미 |
-|---|---|---:|---|
-| `hand_side` | string | required | `left` 또는 `right` |
-| `can_interface` | string | side별 | `can0`, `can1`, `auto` |
-| `auto_home` | bool text | `true` | 활성화 뒤 non-blocking homing trigger |
-| `max_effort` | double | 1000 | Rated current % |
-| `control_rate` | int | 500 | SDK loop Hz |
-| `rt_cpu_affinity` | int | -1 | SDK RT thread CPU |
-| `disabled_actuators` | CSV | empty | 제외할 actuator index |
-| `auto_reconnect` | bool text | `false` | SDK automatic reconnect |
-| `auto_reconnect_timeout_ms` | int | 0 | 0은 무제한 |
-| `auto_reconnect_home` | bool text | `false` | 복구 후 homing |
-
-정상 launch는 [Launch reference](02_launch_reference.md)의 YAML 값으로 일부 default를 덮습니다.
+Hardware parameter 전체와 기본값은 [ros2_control 설정](03_setup.md)의 매크로 계약에 있습니다.
+정상 launch는 [Bringup 예제](05_bringup_example.md)의 YAML 값으로 일부를 덮습니다.
 
 ## 3. Standalone typed command topic
 
@@ -74,6 +46,119 @@ Partial update는 없습니다.
 모든 subscription은 `SystemDefaultsQoS`입니다. Basic controller는 NaN/Inf, 음수 speed,
 음수 gain을 거부합니다. SDK는 actuator position의 int32 범위를 검증하고 joint target을
 workspace 안으로 자동 clamp합니다.
+
+
+네 basic controller는 각각 `~/command` 하나를 받습니다. 한 message가 target과 speed/gain을
+포함한 완전한 한-cycle 입력이며 partial update는 허용하지 않습니다.
+
+### Joint position
+
+Default active controller입니다.
+
+```bash
+ros2 topic pub --once \
+  /left_joint_position_controller/command \
+  aidin_hand2_msgs/msg/JointPositionCommand \
+  "{target_position_rad: [
+      0.0, 0.0, 0.0, 0.0,
+      0.10, 0.20, 0.0,
+      0.0, 0.20, 0.0,
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0],
+    speed_rad_s: 0.25}"
+```
+
+Target 단위는 rad, speed는 rad/s입니다. `speed_rad_s: 0`은 정지가 아니라 slew 제한 없는
+즉시 추종입니다. SDK `set_command()`가 joint target을 reachable workspace 안으로 자동
+clamp합니다.
+
+### Joint impedance
+
+먼저 현재 controller와 원자적으로 전환합니다.
+
+```bash
+ros2 control load_controller \
+  --set-state inactive left_joint_impedance_controller
+ros2 control switch_controllers --strict \
+  --deactivate left_joint_position_controller \
+  --activate left_joint_impedance_controller
+```
+
+Target과 gain을 하나의 message로 보냅니다.
+
+```bash
+ros2 topic pub --once \
+  /left_joint_impedance_controller/command \
+  aidin_hand2_msgs/msg/JointImpedanceCommand \
+  "{target_position_rad: [
+      0.0, 0.0, 0.0, 0.0,
+      0.10, 0.20, 0.0,
+      0.0, 0.20, 0.0,
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0],
+    stiffness: [
+      0.02, 0.02, 0.02, 0.02,
+      0.01, 0.01, 0.02,
+      0.01, 0.01, 0.02,
+      0.01, 0.01, 0.02,
+      0.01, 0.01, 0.02],
+    damping: [
+      0.00001, 0.00001, 0.00001, 0.00001,
+      0.00001, 0.00001, 0.00001,
+      0.00001, 0.00001, 0.00001,
+      0.00001, 0.00001, 0.00001,
+      0.00001, 0.00001, 0.00001]}"
+```
+
+Stiffness와 damping은 actuator encoder-space PD gain이며 모두 유한하고 0 이상이어야 합니다.
+Joint target은 SDK에서 joint-position과 같은 방식으로 자동 clamp됩니다.
+
+### Actuator position
+
+Raw actuator mode입니다. 먼저 실물 `HandState.actuator_position`에서 현재 count 16개를 읽고
+그 근처의 작은 차이로 시작하십시오. 0 count를 일반 예제로 복사하지 마십시오.
+
+```bash
+ros2 control load_controller \
+  --set-state inactive left_actuator_position_controller
+ros2 control switch_controllers --strict \
+  --deactivate left_joint_impedance_controller \
+  --activate left_actuator_position_controller
+
+ros2 topic pub --once \
+  /left_actuator_position_controller/command \
+  aidin_hand2_msgs/msg/ActuatorPositionCommand \
+  "{target_position_cnt: [
+      CURRENT_CNT_0, CURRENT_CNT_1, CURRENT_CNT_2, CURRENT_CNT_3,
+      CURRENT_CNT_4, CURRENT_CNT_5, CURRENT_CNT_6, CURRENT_CNT_7,
+      CURRENT_CNT_8, CURRENT_CNT_9, CURRENT_CNT_10, CURRENT_CNT_11,
+      CURRENT_CNT_12, CURRENT_CNT_13, CURRENT_CNT_14, CURRENT_CNT_15]}"
+```
+
+단위는 absolute encoder count입니다. 모든 값은 finite이며 int32 범위 안이어야 합니다.
+
+### Actuator effort
+
+```bash
+ros2 control load_controller \
+  --set-state inactive left_actuator_effort_controller
+ros2 control switch_controllers --strict \
+  --deactivate left_actuator_position_controller \
+  --activate left_actuator_effort_controller
+
+ros2 topic pub --once \
+  /left_actuator_effort_controller/command \
+  aidin_hand2_msgs/msg/ActuatorEffortCommand \
+  "{target_effort_pct: [
+      0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0]}"
+```
+
+단위는 rated current percent이고 부호가 방향입니다. SDK가 per-actuator max effort로
+절댓값을 제한합니다.
 
 ## 4. Chainable reference interface
 
@@ -97,22 +182,20 @@ mode에서는 basic controller의 standalone topic이 reference source가 아닙
 skeleton 모두 전체 `HandState`를 realtime buffer에서 멤버로 복사하고, 기본 상태에서는
 아무 reference 값도 만들지 않습니다.
 
-## 5. Hardware command port
+## 5. Mode 전환
 
-Real과 mock은 손 하나당 같은 98개 command interface를 export합니다.
+Command controller는 한 순간 하나만 active여야 합니다. Hardware가 mode별로 서로 다른 command
+interface를 claim하기 때문입니다. 이전 controller deactivate와 새 controller activate를 같은
+strict transaction으로 수행합니다.
 
-| Port | 수 | Resource |
-|---|---:|---|
-| Claim-only lock | 1 | `{side}_hand_control/command_lock` |
-| JointPosition | 17 | `{side}_joint_position_command/target_position_rad.<joint>` ×16 + `/speed_rad_s` |
-| JointImpedance | 48 | `{side}_joint_impedance_command/target_position_rad.<joint>` ×16 + `/stiffness.<actuator>` ×16 + `/damping.<actuator>` ×16 |
-| ActuatorPosition | 16 | `{side}_actuator_position_command/target_position_cnt.<actuator>` ×16 |
-| ActuatorEffort | 16 | `{side}_actuator_effort_command/target_effort_pct.<actuator>` ×16 |
+```bash
+ros2 control switch_controllers --strict \
+  --deactivate left_actuator_effort_controller \
+  --activate left_joint_position_controller
+```
 
-Basic controller 하나가 `command_lock`과 자기 mode port 전체를 claim합니다.
-`command_lock`의 수치값은 사용하지 않으며 mode 상호 배제만 담당합니다. Hardware mode switch는
-빈 claim set(Idle) 또는 네 complete set 중 정확히 하나만 허용합니다. Partial·mixed set은
-real과 mock 모두 거부합니다.
+Partial claim, mixed claim, 두 mode 동시 활성화는 real과 mock 모두 거부합니다. 전환 후
+controller state를 확인하고 안전한 complete command를 보냅니다.
 
 ## 6. Joint·actuator 순서
 
@@ -151,12 +234,7 @@ baby_actuator1, baby_actuator2, baby_actuator3
 - 실제 hardware만 tactile 143개, diagnostics 39개, command state 132개와 timestamp
   2개를 추가합니다. 실제 hardware state interface 총수는 385개입니다.
 
-현재 xacro에는 physical·diagnostics 251개가 정적으로 선언되고 command state 132개와
-timestamp 2개는 실제 plugin이 동적으로 export합니다. Runtime schema는
-`ros2 control list_hardware_interfaces`로 확인하십시오.
-
-`HandStateBroadcaster`는 diagnostics 39개를 제외한 state 346개를 claim합니다.
-`DiagnosticsBroadcaster`는 diagnostics 39개를 별도로 claim합니다.
+Runtime schema는 `ros2 control list_hardware_interfaces`로 확인하십시오.
 
 ## 8. State·diagnostics topic
 
@@ -180,6 +258,24 @@ timestamp 2개는 실제 plugin이 동적으로 export합니다. Runtime schema�
 Controller output은 SDK 변환 결과이지 drive 수신·적용 확인이 아닙니다.
 `transmit_succeeded` field는 없습니다.
 
+### CommandState 읽기
+
+실물 `HandState`에는 SDK same-cycle command conversion record가 들어 있습니다.
+
+```bash
+ros2 topic echo \
+  /left_hand_state_broadcaster/hand_state \
+  --once --field command_state
+```
+
+- `controller_input_mode`가 유효한 nested input을 정합니다.
+- `controller_output_type`이 `target_position_cnt` 또는 `target_effort_pct`의 유효성을 정합니다.
+- `selected_source`가 `CONTROLLER`, `QUICK_STOP`, `HOMING`, `NONE` 중 실제 source를 나타냅니다.
+- `max_effort_pct`는 conversion에 사용한 actuator별 상한입니다.
+
+Joint input echo는 SDK 자동 workspace clamp 뒤 값입니다. Controller output은 변환 결과이지
+drive가 실제 수신·적용했다는 확인은 아닙니다. `transmit_succeeded` field는 없습니다.
+
 ## 9. Runtime service
 
 실제 hardware만 다음 `std_srvs/srv/Trigger` service를 제공합니다.
@@ -194,6 +290,32 @@ Controller output은 SDK 변환 결과이지 drive 수신·적용 확인이 아�
 Service node는 hardware component와 별도 single-thread executor를 사용합니다. `home` 성공은
 시작 접수만 뜻하며 완료는 `HandDiagnostics.homed`로 확인합니다.
 
+### 호출 예시
+
+실제 hardware:
+
+```bash
+ros2 service call /left_hand_control/run std_srvs/srv/Trigger "{}"
+ros2 service call /left_hand_control/stop std_srvs/srv/Trigger "{}"
+ros2 service call /left_hand_control/home std_srvs/srv/Trigger "{}"
+ros2 service call /left_hand_control/reconnect std_srvs/srv/Trigger "{}"
+```
+
+- `stop`은 blocking quick stop입니다.
+- `home`은 non-blocking trigger입니다. 완료는 diagnostics의 `homed=true`로 확인합니다.
+- `reconnect`는 통신만 복구합니다. 성공 뒤 `run`을 별도로 호출합니다.
+
+모든 actuator 공통 effort 상한:
+
+```bash
+ros2 topic pub --once \
+  /left_hand_control/set_max_effort \
+  std_msgs/msg/Float64 \
+  "{data: 300.0}"
+```
+
+단위는 rated current percent이며 SDK가 `[0, 2000]`으로 clamp합니다.
+
 ## 10. Mock 범위
 
 Mock은 real과 동일한 98개 command port, 같은 exact mode switch, actuator physical state
@@ -204,3 +326,24 @@ Mock은 real과 동일한 98개 command port, 같은 exact mode switch, actuator
 Mock은 CAN, drive, homing, tactile, hardware diagnostics, command echo와 runtime service를
 제공하지 않습니다. 따라서 default mock에서는 `HandStateBroadcaster`와
 `DiagnosticsBroadcaster`를 spawn하지 않습니다.
+
+이름이 같아도 값이 다르게 동작하는 state가 있습니다.
+
+| 항목 | Mock 동작 |
+|---|---|
+| `velocity_rpm`·`current_ma` | 항상 0 (actuator state 48개 중 32개) |
+| Joint position | clamp → slew → IK → FK. `speed_rad_s` 반영 |
+| Actuator position | count를 정수로 반올림한 뒤 FK |
+| Actuator effort | `max_effort`로 clamp. pose는 변하지 않음 |
+| `read()` | no-op. state는 `write()`에서만 갱신 — command controller가 없으면 `/joint_states`가 고정값 |
+| Max effort | 정적 `max_effort` 파라미터만. `~/set_max_effort` 없음 |
+
+## 11. NaN과 validity
+
+`CommandState`에서 현재 mode/type이 선택하지 않은 nested input·output field는 NaN일 수
+있습니다. `controller_input_mode`, `controller_output_type`, `selected_source`를 validity
+discriminator로 사용하십시오.
+
+> [!WARNING]
+> NaN을 0으로 바꾸면 "해당 없음"과 실제 target 0을 구분할 수 없습니다. Strict JSON, database,
+> ML pipeline은 nullable 또는 validity mask를 쓰십시오.

@@ -1,6 +1,6 @@
 # 운영과 복구
 
-이 문서는 실제 hardware의 startup, health monitoring, stop과 communication recovery를 다룹니다. SDK가 정의하는 command 지속성과 통신 두절 위험은 [SDK safety](https://github.com/JJhyeongg/aidin-hand2-sdk/blob/main/docs/ko/07_safety.md)를 함께 적용하십시오.
+이 문서는 실제 hardware의 startup, health monitoring, stop과 communication recovery를 다룹니다. SDK가 정의하는 command 지속성과 통신 두절 위험은 [SDK 안전과 fault 대응](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/12_safety.md)를 함께 적용하십시오.
 
 ## 1. Runtime architecture
 
@@ -35,6 +35,17 @@ ROS loop는 controller와 hardware interface를 갱신하고 SDK loop는 실제 
 ROS process가 뜬 사실과 operation-ready를 분리하십시오.
 
 ## 3. Lifecycle operation
+
+### ros2_control callback과 SDK operation
+
+| ros2_control callback | SDK operation | 의미 |
+|---|---|---|
+| `on_configure` | `create()` + `connect()` | Resource 생성, 첫 CAN frame 확인, listen-only |
+| `on_activate` | `run()` | Drive enable, 이후 read cycle에서 optional homing |
+| `on_deactivate` | `stop()` | Blocking quick stop |
+| `on_cleanup` | `disconnect()` + `destroy()` | 통신·resource 해제 |
+
+Wrapper는 SDK config의 blocking `auto_home`을 강제로 끕니다. ROS `auto_home`은 `start_homing()`을 한 번 trigger하므로 controller manager executor를 block하지 않습니다.
 
 ### Listen-only와 enable
 
@@ -134,7 +145,15 @@ ROS time이 simulation 또는 clock jump의 영향을 받을 수 있으면 node-
 
 ### Diagnostics level의 경계
 
-Standard `/diagnostics`는 lifecycle Faulted 계열과 actuator fault만 level에 반영합니다. 다음은 `OK`일 수 있습니다.
+`/diagnostics` level 규칙은 셋뿐입니다.
+
+| 조건 | Level |
+|---|---|
+| Lifecycle `Faulted` | `ERROR` |
+| Lifecycle `Running` + actuator fault 존재 | `WARN` (일부 mask 후 동작) |
+| 그 외 | `OK` |
+
+따라서 다음은 모두 `OK`로 나옵니다.
 
 - `homed=false`
 - Deadline miss 급증
@@ -142,7 +161,19 @@ Standard `/diagnostics`는 lifecycle Faulted 계열과 actuator fault만 level�
 - Actuator가 expected 상태와 다르게 disabled
 - Auto reconnect transition 전후
 
-Operation-ready 판정은 custom supervisor가 해야 합니다.
+`HandDiagnostics`에도 last exception text, reconnect attempt count, state freshness boolean,
+command age, composite operation-ready field가 없습니다. Operation-ready 판정은 supervisor가
+lifecycle·homed·actuator fault·stamp·control cycle을 합성해서 해야 합니다.
+
+### Command timeout이 없다
+
+ROS basic controller와 SDK 어디에도 application command age watchdog이 없습니다. Publisher가
+사라져도 마지막 reference·command가 유지되며, DDS graph disconnect나 topic silence가 자동
+`stop()`을 일으키지 않습니다.
+
+> [!WARNING]
+> 상위 controller 또는 supervisor에 monotonic command-age watchdog과 독립적인 stop 정책을
+> 두십시오. Wrapper는 이 보호를 제공하지 않습니다.
 
 ## 6. Realtime 운영
 
@@ -159,7 +190,7 @@ Controller manager의 Humble documentation은 update loop priority 기본 50과 
 | Controller manager | 별도 CPU | 50 또는 측정 기반 설정 |
 | DDS, logger, general work | 나머지 | non-RT |
 
-CPU 4·6은 제공 YAML의 가정일 뿐입니다. `lscpu --extended`로 topology를 확인합니다.
+Default는 `-1`(미설정)입니다. 코어를 지정하기 전에 `lscpu --extended`로 topology를 확인합니다.
 
 ```bash
 ps -Leo pid,tid,cls,rtprio,psr,comm |
@@ -170,15 +201,16 @@ ps -Leo pid,tid,cls,rtprio,psr,comm |
 
 ## 7. Communication loss
 
-SDK는 RX silence 약 100 ms를 감지하고 Running이면 quick stop을 시도한 뒤 `Faulted`로 수렴합니다. CAN이 끊겨 quick-stop frame이 도달하지 않으면 drive가 마지막 torque를 유지할 수 있습니다.
+SDK는 RX silence 약 100 ms를 감지하고 `Faulted`로 전이합니다. 제어 중이었으면 quick stop을
+보내며 도달을 판정합니다. CAN이 끊겨 quick-stop frame이 도달하지 않으면 drive가 마지막 torque를
+유지할 수 있습니다.
 
-### Auto reconnect off
+### Wrapper 동작
 
-Read/write exception이 ROS 2 `ERROR`로 전파되어 ros2_control이 component를 deactivate할 수 있습니다. 원인을 제거한 뒤 lifecycle과 controller state를 명시적으로 복구합니다.
-
-### Auto reconnect on
-
-Wrapper는 SDK 복구 loop가 유지되도록 read/write에서 `OK`를 반환합니다.
+Wrapper는 `auto_reconnect` 설정과 무관하게 lifecycle이 `Running`이 아니면 command를 보내지
+않고 `OK`를 반환합니다. Hardware component를 active로 유지해야 SDK의 복구 loop가 살아 있고,
+같은 controller manager의 다른 component와 그 interface를 claim한 controller(`joint_state_broadcaster`
+등)가 함께 내려가지 않습니다.
 
 ```text
 통신 두절

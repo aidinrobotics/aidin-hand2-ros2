@@ -1,6 +1,6 @@
-# Launch reference
+# Bringup 예제
 
-이 문서는 제공 launch file, config 우선순위와 실제 default를 정리합니다. Command와 service는 [사용법](03_usage.md), runtime recovery는 [운영과 복구](06_operations.md)를 참조하십시오.
+이 문서는 제공 launch file, config 우선순위와 실제 default를 정리합니다. Command와 service는 [Interface reference](04_interfaces.md), runtime recovery는 [운영과 복구](06_operations.md)를 참조하십시오.
 
 ## 1. 제공 launch
 
@@ -78,13 +78,13 @@ Repository를 인자 없이 실행하면 제공 `hand_bringup.yaml`이 hard-code
 | Argument | Default YAML | 의미 |
 |---|---:|---|
 | `use_left_hand` | `true` | 왼손 system 생성 |
-| `use_right_hand` | `false` | 오른손 system 생성 안 함 |
+| `use_right_hand` | `true` | 오른손 system 생성 |
 | `left_hand_interface` | `auto` | Side ID로 CAN interface scan |
 | `right_hand_interface` | `auto` | Side ID로 CAN interface scan |
 | `left_hand_disabled_actuators` | `""` | 전 actuator 사용 |
 | `right_hand_disabled_actuators` | `""` | 전 actuator 사용 |
-| `left_hand_cpu_affinity` | `4` | Left SDK RT thread CPU 4 |
-| `right_hand_cpu_affinity` | `6` | Right SDK RT thread CPU 6 |
+| `left_hand_cpu_affinity` | `-1` | RT thread CPU pin 미설정 |
+| `right_hand_cpu_affinity` | `-1` | RT thread CPU pin 미설정 |
 | `auto_home` | `true` | Activation 후 non-blocking homing |
 | `auto_reconnect` | `true` | 통신 두절 SDK 자동 복구 |
 | `auto_reconnect_timeout_ms` | `0` | 무제한 재시도 |
@@ -115,7 +115,7 @@ Config file이 없거나 key가 빠졌을 때 source fallback은 다음과 다�
 
 ```yaml
 use_left_hand: true
-use_right_hand: false
+use_right_hand: false   # commissioning 은 한 손만
 
 left_hand_interface: can0
 right_hand_interface: can1
