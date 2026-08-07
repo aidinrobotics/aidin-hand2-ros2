@@ -7,7 +7,7 @@
 #   ros2 launch aidin_hand2_bringup aidin_hand2.launch.py config:=<경로>
 
 # ── 어느 손을 기동하나 ──
-use_left_hand: false
+use_left_hand: true
 use_right_hand: true
 
 # ── 손별 CAN interface ──

@@ -27,7 +27,7 @@ def generate_launch_description():
             'xacro ', xacro_file,
             ' use_left_hand:=', use_left_hand,
             ' use_right_hand:=', use_right_hand,
-            ' use_mock_hardware:=true',
+            ' use_mock:=true',
         ]),
         value_type=str,
     )
