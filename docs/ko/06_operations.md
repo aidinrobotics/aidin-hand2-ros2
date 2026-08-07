@@ -91,6 +91,21 @@ ros2 service call \
 
 Wrapper가 SDK `start_homing()`만 trigger하므로 service는 즉시 반환합니다.
 
+Wrapper는 SDK `HandConfig::auto_home`을 항상 `false`로 두고, ROS `auto_home` argument는 이렇게
+동작합니다.
+
+```text
+on_activate → SDK run()
+             ↓
+다음 read/write cycle 에서 homed=false 확인
+             ↓
+SDK start_homing() 1회 trigger
+             ↓
+homing 중·homed=false 동안 command write 억제
+```
+
+SDK blocking `home()` 을 쓰지 않으므로 controller manager executor 가 멈추지 않습니다.
+
 ```bash
 ros2 topic echo \
   /left_diagnostics_broadcaster/hand_diagnostics

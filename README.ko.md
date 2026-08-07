@@ -130,6 +130,7 @@ chaining 시 reference interface로 보냅니다.
 - [ros2_control 설정](docs/ko/03_setup.md) — xacro 매크로 계약과 controller 선언
 - [Interface](docs/ko/04_interfaces.md) — Topic·service·reference interface와 명령 예시
 - [Bringup 예제](docs/ko/05_bringup_example.md) — 단독 실행 launch와 argument
+- [Chainable 예제](aidin_hand2_examples/EXAMPLE.md) — 상위 controller skeleton
 
 ### 운영
 

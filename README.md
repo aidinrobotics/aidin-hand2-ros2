@@ -134,6 +134,7 @@ Written in Korean; an English translation is planned.
 - [ros2_control setup](docs/ko/03_setup.md) — xacro macro contract and controller declaration
 - [Interfaces](docs/ko/04_interfaces.md) — topics, services, reference interfaces, and command examples
 - [Bringup example](docs/ko/05_bringup_example.md) — our standalone launch files and their arguments
+- [Chainable examples](aidin_hand2_examples/EXAMPLE.md) — upper-controller skeletons for chaining
 
 ### Operations
 
