@@ -12,7 +12,7 @@ AIDIN Hand Gen2 C++ SDK를 ROS 2 Humble과 `ros2_control`에 연결하는 thin w
 | OS | Ubuntu 22.04 |
 | ROS 2 | Humble |
 | Control framework | `ros2_control` |
-| SDK | `aidin_hand2` C++ SDK 0.1.x |
+| SDK | `aidin_hand2` C++ SDK 0.1.x ([`aidin_hand2.repos`](aidin_hand2.repos) 참조) |
 | Hardware transport | Linux SocketCAN, CAN-FD 1 Mbit/s / 5 Mbit/s |
 
 ## Package
@@ -52,9 +52,10 @@ stiffness·damping 각 16개가 한 message입니다. Partial update는 허용�
 
 ## 빠른 시작
 
-SDK를 먼저 build하고 install합니다. Build tree와 install prefix는 SDK 문서의 표준 절차와
-같습니다 — build는 SDK repository의 `cpp/build`, install은 system prefix `/usr/local`입니다.
-Web bridge는 wrapper가 쓰지 않으므로 꺼서 build 시간을 줄입니다.
+SDK를 먼저 build하고 install합니다. 검증된 SDK revision은 `aidin_hand2.repos`에 있으며
+`vcs import .. < aidin_hand2.repos`로 가져올 수 있습니다. Build tree와 install prefix는 SDK
+문서의 표준 절차와 같습니다 — build는 SDK repository의 `cpp/build`, install은 system prefix
+`/usr/local`입니다. Web bridge는 wrapper가 쓰지 않으므로 꺼서 build 시간을 줄입니다.
 
 ```bash
 cd <aidin-hand2-sdk clone 경로>
