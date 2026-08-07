@@ -4,9 +4,6 @@
 
 A thin `ros2_control` wrapper around the AIDIN Hand Gen2 C++ SDK. The SDK owns the CAN-FD protocol, drive state machine, kinematics, and the 500 Hz control loop; this repository provides the hardware plugin, controllers, messages, URDF, and launch files.
 
-> [!CAUTION]
-> The default launch enables one left hand with `auto_home=true`, so the hand moves right after launch. On a first run, use `auto_home:=false`, clear the workspace, confirm the E-stop and diagnostics, then call `/left_hand_control/home`.
-
 ## Architecture
 
 ```mermaid

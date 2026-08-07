@@ -2,10 +2,7 @@
 
 # AIDIN Hand Gen2 ROS 2 &nbsp;[![version](https://img.shields.io/badge/version-0.2.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.2.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#지원-범위)
 
-AIDIN Hand Gen2 C++ SDK를 ROS 2 Humble과 `ros2_control`에 연결하는 thin wrapper입니다. CAN-FD protocol, drive state machine, kinematics와 500 Hz hand control loop는 SDK가 소유하며 이 repository는 hardware plugin, controller, message, URDF와 launch를 제공합니다.
-
-> [!CAUTION]
-> 기본 launch는 양손을 활성화하고 `auto_home=true`로 시작합니다. Launch 직후 실제 hand가 움직입니다. 처음에는 반드시 `auto_home:=false`로 실행하고 작업 공간·E-stop·diagnostics를 확인한 뒤 `/left_hand_control/home`을 호출하십시오.
+AIDIN Hand Gen2 C++ SDK를 `ros2_control`에 연결하는 thin wrapper입니다. CAN-FD protocol, drive state machine, kinematics와 500 Hz hand control loop는 SDK가 소유하며 이 repository는 hardware plugin, controller, message, URDF와 launch를 제공합니다.
 
 ## 구조
 
