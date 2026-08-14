@@ -153,6 +153,6 @@ Host 준비, kinematics, 안전 계약은 SDK가 소유하며 이 wrapper는 반
 - [Real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/01_real_time_kernel_setup.md) — PREEMPT_RT, 실물 전 필수
 - [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/02_can_fd_setup.md) — Interface bring-up과 boot 자동화
 - [SDK build·install](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/03_sdk_build_and_install.md) — 이 wrapper가 소비하는 build
-- [Workspace clamp](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_kinematics.md) — 결합 workspace 경계와 명령 clamp
+- [Workspace clamp](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_workspace_clamp.md) — 결합 workspace 경계와 명령 clamp
 - [안전과 fault 대응](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/12_safety.md) — 명령 지속성과 통신 두절 동작
 - [문제 해결](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/13_troubleshooting.md) — 연결·RT·homing·CAN 오류

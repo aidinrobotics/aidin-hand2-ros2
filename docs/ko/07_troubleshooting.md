@@ -252,7 +252,7 @@ SDK `set_command()`는 joint position·impedance target을 자동 workspace clam
 `HandState.command_state`의 해당 controller input이 clamp 결과인지 확인하십시오.
 
 Clamp는 self-collision, 외부 장애물과 trajectory 속도 정책을 대신하지 않습니다. 기대한
-workspace 경계와 다르면 SDK [Workspace clamp](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_kinematics.md)
+workspace 경계와 다르면 SDK [Workspace clamp](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_workspace_clamp.md)
 문서와 사용 중인 SDK build를 확인하십시오.
 
 ## 15. Controller switch 실패

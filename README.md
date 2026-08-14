@@ -157,6 +157,6 @@ The SDK owns host setup, kinematics, and the safety contract — this wrapper do
 - [Real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/01_real_time_kernel_setup.md) — PREEMPT_RT, required before real hardware
 - [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/02_can_fd_setup.md) — interface bring-up and boot automation
 - [SDK build & install](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/03_sdk_build_and_install.md) — the build this wrapper consumes
-- [Kinematics](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/05_kinematics.md) — coupled workspace boundaries and command clamping
+- [Workspace clamp](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/05_workspace_clamp.md) — coupled workspace boundaries and command clamping
 - [Safety](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/12_safety.md) — command persistence and comms-loss behavior
 - [Troubleshooting](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/13_troubleshooting.md) — connection, RT, homing, and CAN errors
