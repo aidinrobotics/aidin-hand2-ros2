@@ -1,6 +1,6 @@
 # 운영과 복구
 
-이 문서는 실제 hardware의 startup, health monitoring, stop과 communication recovery를 다룹니다. SDK가 정의하는 command 지속성과 통신 두절 위험은 [SDK 안전과 fault 대응](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/12_safety.md)를 함께 적용하십시오.
+이 문서는 실제 hardware의 startup, health monitoring, stop과 communication recovery를 다룹니다. SDK가 정의하는 command 지속성과 통신 두절 위험은 [SDK 안전과 fault 대응](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/13_safety.md)를 함께 적용하십시오.
 
 ## 1. Runtime architecture
 

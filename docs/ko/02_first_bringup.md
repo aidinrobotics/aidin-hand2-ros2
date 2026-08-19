@@ -54,7 +54,7 @@ homing·reconnect service는 제공하지 않습니다. Default launch는 필요
 
 ## 2. 실물 host 준비
 
-실물 실행 전에 SDK의 [real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/01_real_time_kernel_setup.md)과 [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/02_can_fd_setup.md)을 완료합니다. 해당 문서가 다음 항목의 단일 기준입니다.
+실물 실행 전에 SDK의 [real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/04_real_time_kernel_setup.md)과 [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_can_fd_setup.md)을 완료합니다. 해당 문서가 다음 항목의 단일 기준입니다.
 
 - Ubuntu Pro PREEMPT_RT 설치와 재부팅 검증
 - realtime group, `rtprio 99`, memory lock

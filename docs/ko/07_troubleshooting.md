@@ -137,7 +137,7 @@ ip -details -statistics link show can0
 timeout 3 candump -L can0
 ```
 
-전체 host 절차는 [SDK 문제 해결](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/13_troubleshooting.md)을 따르십시오.
+전체 host 절차는 [SDK 문제 해결](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_troubleshooting.md)을 따르십시오.
 
 ## 7. Default인데 `can0`가 아니라 `auto`를 사용함
 
@@ -182,7 +182,7 @@ ros2 launch aidin_hand2_bringup aidin_hand2.launch.py \
   left_hand_cpu_affinity:=-1
 ```
 
-PREEMPT_RT와 permission은 [SDK real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/01_real_time_kernel_setup.md)을 완료합니다. SDK 실제 priority는 90입니다.
+PREEMPT_RT와 permission은 [SDK real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/04_real_time_kernel_setup.md)을 완료합니다. SDK 실제 priority는 90입니다.
 
 ## 10. `/left_hand_control/home` service가 없음
 
@@ -252,7 +252,7 @@ SDK `set_command()`는 joint position·impedance target을 자동 workspace clam
 `HandState.command_state`의 해당 controller input이 clamp 결과인지 확인하십시오.
 
 Clamp는 self-collision, 외부 장애물과 trajectory 속도 정책을 대신하지 않습니다. 기대한
-workspace 경계와 다르면 SDK [Workspace clamp](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_workspace_clamp.md)
+workspace 경계와 다르면 SDK [Workspace limits](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/14_workspace_limits.md)
 문서와 사용 중인 SDK build를 확인하십시오.
 
 ## 15. Controller switch 실패

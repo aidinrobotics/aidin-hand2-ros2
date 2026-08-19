@@ -30,7 +30,7 @@ Standalone, each controller's `~/command` carries one cycle's target and every a
 | SDK | `aidin_hand2` 0.2.x — see [`aidin_hand2.repos`](aidin_hand2.repos) |
 | CAN interface | USB CAN-FD adapter (SocketCAN), 1 Mbit/s nominal / 5 Mbit/s data phase |
 
-Prepare the host first: PREEMPT_RT and boot-time CAN-FD bring-up are covered by the SDK's [real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/01_real_time_kernel_setup.md) and [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/02_can_fd_setup.md).
+Prepare the host first: PREEMPT_RT and boot-time CAN-FD bring-up are covered by the SDK's [real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/04_real_time_kernel_setup.md) and [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/05_can_fd_setup.md).
 
 ## Packages
 
@@ -154,9 +154,9 @@ Written in Korean; an English translation is planned.
 
 The SDK owns host setup, kinematics, and the safety contract — this wrapper does not restate them.
 
-- [Real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/01_real_time_kernel_setup.md) — PREEMPT_RT, required before real hardware
-- [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/02_can_fd_setup.md) — interface bring-up and boot automation
-- [SDK build & install](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/03_sdk_build_and_install.md) — the build this wrapper consumes
-- [Workspace clamp](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/05_workspace_clamp.md) — coupled workspace boundaries and command clamping
-- [Safety](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/12_safety.md) — command persistence and comms-loss behavior
-- [Troubleshooting](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/13_troubleshooting.md) — connection, RT, homing, and CAN errors
+- [Real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/04_real_time_kernel_setup.md) — PREEMPT_RT, required before real hardware
+- [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/05_can_fd_setup.md) — interface bring-up and boot automation
+- [SDK build & install](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/06_sdk_build_and_install.md) — the build this wrapper consumes
+- [Workspace limits](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/14_workspace_limits.md) — coupled workspace boundaries and command clamping
+- [Safety](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/13_safety.md) — command persistence and comms-loss behavior
+- [Troubleshooting](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/15_troubleshooting.md) — connection, RT, homing, and CAN errors
