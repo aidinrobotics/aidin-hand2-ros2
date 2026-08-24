@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include <aidin_hand2/types/hand_lifecycle.hpp>
+#include <aidin_hand2/types/state.hpp>
 #include <aidin_hand2/types/state.hpp>
 
 #include "diagnostic_msgs/msg/diagnostic_status.hpp"

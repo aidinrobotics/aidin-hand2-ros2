@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include <aidin_hand2/types/hand_description.hpp>
+#include <aidin_hand2/types/description.hpp>
 #include <aidin_hand2/types/command.hpp>
 
 #include "hardware_interface/system_interface.hpp"
