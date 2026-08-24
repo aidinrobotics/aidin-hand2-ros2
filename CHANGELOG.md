@@ -9,8 +9,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- `HandDiagnostics.homed` → `homing_state`
-  (`NotRun`/`Succeeded`/`InProgress`/`Failed`). The diagnostics state interface
+- `HandDiagnostics.homed` → `homing_state`(`NotRun`/`Succeeded`/`InProgress`/`Failed`). 
+  The diagnostics state interface
   `homed` became `homing_state`.
 - `NaN` in a command interface means "no command": the hardware skips
   `set_command()` and the SDK holds its last command. A partial `NaN` is an axis
