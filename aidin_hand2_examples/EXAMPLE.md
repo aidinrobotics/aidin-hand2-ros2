@@ -52,8 +52,8 @@ skeleton은 알고리즘 예제가 아니라 안전한 구조 템플릿입니다
 - `update_reference_from_subscribers()`는 명령 입력을 만들지 않습니다.
 - `update_and_write_commands()`는 HandState 전체를 저장한 뒤 reference 전체가 유한할 때만
   한 묶음으로 하위 controller에 전달합니다. 일부만 유한한 입력은 오류로 거부합니다.
-- 아무 입력도 없으면 하위 basic controller가 activation 때 만든 현재 자세/0 effort seed를
-  덮지 않습니다.
+- 아무 입력도 없으면 하위 basic controller가 NaN(= 이번 cycle 명령 없음)을 그대로 내보내고
+  hardware는 SDK로 아무것도 보내지 않습니다. 손은 직전 명령 자세를 유지합니다.
 
 즉 파일을 그대로 활성화해도 새 target을 만들지 않습니다. 실제 상위 controller를 만들 때
 각 파일의 `TODO(user algorithm)` 위치에서 `hand_state_`를 읽고, 한 update에서 대응
@@ -122,6 +122,6 @@ ros2 control unload_controller left_joint_position_upper
 - subscriber callback은 realtime buffer에 완전한 command만 기록합니다.
 - `HandState` subscriber callback은 계산하지 않고 realtime buffer에 최신 message만 기록합니다.
 - update에서 NaN/Inf와 음수 speed/gain을 거부합니다.
-- activate 시 현재 관측값 또는 명시적인 무동작 값으로 seed합니다.
-- mode 전환은 basic controller 단위로 하고 hardware port를 직접 부분 claim하지 않습니다.
+- activate 시 reference를 NaN으로 두고 목표를 만들지 않습니다.
+- mode 전환은 basic controller 단위로 하고 hardware command interface를 직접 부분 claim하지 않습니다.
 - real과 mock에서 동일한 controller/config를 사용합니다.

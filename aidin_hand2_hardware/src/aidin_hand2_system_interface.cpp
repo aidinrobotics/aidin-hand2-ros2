@@ -1,6 +1,7 @@
 #include "aidin_hand2_hardware/aidin_hand2_system_interface.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 #include <mutex>
@@ -194,6 +195,26 @@ std::optional<ah2::CommandMode> exact_mode_for_interfaces(
     if (claimed == std::set<std::string>(names.begin(), names.end())) return mode;
   }
   return std::nullopt;
+}
+
+
+// command interface 의 NaN 은 "이번 cycle 명령 없음"(전체) 또는 "상위가 그 축을 점유하지 않음"
+// (일부)을 뜻한다. 전자면 set_command 를 부르지 않아 SDK 가 직전 명령을 유지하고, 후자면 빈 자리를
+// 채워 완전한 command 로 만든다.
+template <std::size_t N>
+bool all_nan(const std::array<double, N> & values)
+{
+  for (const double value : values) {
+    if (!std::isnan(value)) return false;
+  }
+  return true;
+}
+
+// 빈 자리는 직전 명령값으로만 채운다 — 그 축을 지금 그대로 두라는 뜻이다. 직전 명령도 없으면
+// 채울 값이 없다(NaN 유지). hardware 가 목표를 지어내지 않는다.
+double fill_gap(double value, double previous)
+{
+  return std::isnan(value) ? previous : value;
 }
 
 }  // namespace
@@ -604,27 +625,7 @@ hardware_interface::return_type AidinHand2SystemInterface::perform_command_mode_
   command_mode_ = pending_mode_;
   pending_mode_switch_valid_ = false;
 
-  // controller 첫 update 전에도 port 는 완전하고 finite 하다.
-  switch (command_mode_) {
-    case ah2::CommandMode::ActuatorPosition:
-      actuator_position_target_cnt_ = state_.actuators.position_count;
-      break;
-    case ah2::CommandMode::ActuatorEffort:
-      actuator_effort_target_pct_.fill(0.0);
-      break;
-    case ah2::CommandMode::JointPosition:
-      for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
-        joint_position_target_rad_[i] = state_.joints.position_rad[kActiveToJointIndex[i]];
-      }
-      break;
-    case ah2::CommandMode::JointImpedance:
-      for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
-        joint_impedance_target_rad_[i] = state_.joints.position_rad[kActiveToJointIndex[i]];
-      }
-      break;
-    case ah2::CommandMode::Idle:
-      break;
-  }
+  clear_mode_command();  // controller 가 처음 쓰기 전까지는 명령 없음
   return hardware_interface::return_type::OK;
 }
 
@@ -774,27 +775,67 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
         break;
 
       case ah2::CommandMode::ActuatorPosition: {
+        if (all_nan(actuator_position_target_cnt_)) break;
         ah2::ActuatorPositionCommand command;
-        command.target = actuator_position_target_cnt_;
+        bool complete = true;
+        for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+          command.target[i] = fill_gap(
+            actuator_position_target_cnt_[i], controller_input_target_position_cnt_[i]);
+          if (std::isnan(command.target[i])) complete = false;
+        }
+        if (!complete) {
+          warn_incomplete_command();
+          break;
+        }
         hand_->set_command(command);
         break;
       }
       case ah2::CommandMode::ActuatorEffort: {
+        if (all_nan(actuator_effort_target_pct_)) break;
         ah2::ActuatorEffortCommand command;
-        command.target = actuator_effort_target_pct_;
+        bool complete = true;
+        for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+          command.target[i] = fill_gap(
+            actuator_effort_target_pct_[i], controller_input_target_effort_pct_[i]);
+          if (std::isnan(command.target[i])) complete = false;
+        }
+        if (!complete) {
+          warn_incomplete_command();
+          break;
+        }
         hand_->set_command(command);
         break;
       }
       case ah2::CommandMode::JointPosition: {
+        if (all_nan(joint_position_target_rad_)) break;
         ah2::JointPositionCommand command;
-        command.target = joint_position_target_rad_;
+        bool complete = true;
+        for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+          command.target[i] = fill_gap(
+            joint_position_target_rad_[i], controller_input_target_rad_[i]);
+          if (std::isnan(command.target[i])) complete = false;
+        }
+        if (!complete) {
+          warn_incomplete_command();
+          break;
+        }
         command.speed_rad_s = joint_position_speed_rad_s_;
         hand_->set_command(command);
         break;
       }
       case ah2::CommandMode::JointImpedance: {
+        if (all_nan(joint_impedance_target_rad_)) break;
         ah2::JointImpedanceCommand command;
-        command.target = joint_impedance_target_rad_;
+        bool complete = true;
+        for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+          command.target[i] = fill_gap(
+            joint_impedance_target_rad_[i], controller_input_target_rad_[i]);
+          if (std::isnan(command.target[i])) complete = false;
+        }
+        if (!complete) {
+          warn_incomplete_command();
+          break;
+        }
         command.gains.stiffness = joint_impedance_stiffness_;
         command.gains.damping = joint_impedance_damping_;
         hand_->set_command(command);
@@ -809,36 +850,49 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
   return hardware_interface::return_type::OK;
 }
 
+// 현재 mode 의 command 저장소를 비운다(NaN = 명령 없음). mode 전환·재개 직후처럼 상위가 아직
+// 아무것도 쓰지 않은 구간에서 옛 값이 명령으로 나가지 않게 한다.
+// 일부 축이 NaN 인데 그 축에 직전 명령도 없어 명령을 완성할 수 없을 때. 상위가 그 축을 한 번도
+// 점유하지 않았다는 뜻이라, 채우지 않고 그 cycle 을 건너뛴다(hardware 가 목표를 지어내지 않는다).
+void AidinHand2SystemInterface::warn_incomplete_command()
+{
+  RCLCPP_WARN_THROTTLE(
+    logger(), throttle_clock_, 5000,
+    "command has axes that were never commanded — skipped. Send a complete command once.");
+}
+
+void AidinHand2SystemInterface::clear_mode_command()
+{
+  const double unset = std::numeric_limits<double>::quiet_NaN();
+  switch (command_mode_) {
+    case ah2::CommandMode::ActuatorPosition:
+      actuator_position_target_cnt_.fill(unset);
+      break;
+    case ah2::CommandMode::ActuatorEffort:
+      actuator_effort_target_pct_.fill(unset);
+      break;
+    case ah2::CommandMode::JointPosition:
+      joint_position_target_rad_.fill(unset);
+      joint_position_speed_rad_s_ = unset;
+      break;
+    case ah2::CommandMode::JointImpedance:
+      joint_impedance_target_rad_.fill(unset);
+      break;
+    case ah2::CommandMode::Idle:
+      break;
+  }
+}
+
 bool AidinHand2SystemInterface::exec_run(std::string & failure_message)
 {
   try {
     hand_->run();
     started_.store(true);
 
-    // 재개 안전 초기값 — 현재 mode 의 command 저장소를 현재 자세로(effort 는 0). stop 중 손이
-    // 옮겨졌거나 상위가 명령을 멈췄어도 재개 시 튀지 않게. controller 가 command 를 주면 덮인다.
-    // (perform 과 동일 로직 — mode 안 바뀌는 재개는 perform 이 안 불리므로 여기서도 채운다.)
+    // 재개 시점에는 명령이 없다 — SDK 도 run() 에서 직전 명령을 Idle 로 되돌린다. 상위가 다시
+    // 명령을 줄 때까지 아무것도 보내지 않는다.
     state_ = hand_->get_state();
-    switch (command_mode_) {
-      case ah2::CommandMode::ActuatorPosition:
-        actuator_position_target_cnt_ = state_.actuators.position_count;
-        break;
-      case ah2::CommandMode::ActuatorEffort:
-        actuator_effort_target_pct_.fill(0.0);
-        break;
-      case ah2::CommandMode::JointPosition:
-        for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
-          joint_position_target_rad_[i] = state_.joints.position_rad[kActiveToJointIndex[i]];
-        }
-        break;
-      case ah2::CommandMode::JointImpedance:
-        for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
-          joint_impedance_target_rad_[i] = state_.joints.position_rad[kActiveToJointIndex[i]];
-        }
-        break;
-      case ah2::CommandMode::Idle:
-        break;
-    }
+    clear_mode_command();
     return true;
   } catch (const ah2::Exception & exception) {
     failure_message = exception.what();

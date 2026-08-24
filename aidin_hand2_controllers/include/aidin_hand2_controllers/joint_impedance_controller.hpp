@@ -13,7 +13,7 @@
 namespace aidin_hand2_controllers
 {
 
-// JointImpedance typed command를 hardware command port로 옮기는 chainable adapter.
+// JointImpedance typed command를 hardware command interface 로 옮기는 chainable controller.
 class JointImpedanceController : public controller_interface::ChainableControllerInterface
 {
 public:
@@ -32,14 +32,19 @@ protected:
     const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
 private:
+  void subscribe();    // chained 진입 시 내렸다가 이탈 시 다시 만든다
+  void unsubscribe();
+  void drop_buffered_command();
+
   std::string hand_side_;
   std::vector<std::string> active_joint_names_;
   std::vector<std::string> actuator_names_;
   std::vector<std::string> command_interface_names_;
-  std::vector<std::string> state_interface_names_;
 
   std::array<double, 16> default_stiffness_{};  // 파라미터 초기값 (on_activate 시 reference 주입)
   std::array<double, 16> default_damping_{};
+
+  const void * consumed_command_{nullptr};  // 이미 반영한 message — 재적용 방지
 
   realtime_tools::RealtimeBuffer<
     std::shared_ptr<aidin_hand2_msgs::msg::JointImpedanceCommand>> command_buffer_;

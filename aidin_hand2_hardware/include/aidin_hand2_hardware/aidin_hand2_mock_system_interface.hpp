@@ -49,6 +49,10 @@ private:
   std::array<double, aidin_hand2::kActuatorCount> actuator_position_target_cnt_{};
   std::array<double, aidin_hand2::kActuatorCount> actuator_effort_target_pct_{};
 
+  // 직전까지 받은 목표 — command interface 의 NaN(명령 없음·미점유)을 메워 완전한 목표로 유지한다.
+  std::array<double, aidin_hand2::kActiveJointCount> held_joint_target_rad_{};
+  std::array<double, aidin_hand2::kActuatorCount> held_actuator_target_cnt_{};
+
   std::array<double, aidin_hand2::kActuatorCount> actuator_position_cnt_{};
   std::array<double, aidin_hand2::kActuatorCount> actuator_velocity_rpm_{};
   std::array<double, aidin_hand2::kActuatorCount> actuator_current_ma_{};

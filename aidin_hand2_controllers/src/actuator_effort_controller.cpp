@@ -1,6 +1,7 @@
 #include "aidin_hand2_controllers/actuator_effort_controller.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 
@@ -90,27 +91,22 @@ controller_interface::CallbackReturn ActuatorEffortController::on_configure(
   // command interface: [0] command_lock + [1..16] target_effort_pct.
   command_interface_names_ = hardware_command_interfaces(hand_side_);
 
-  command_buffer_.writeFromNonRT(
-    std::shared_ptr<aidin_hand2_msgs::msg::ActuatorEffortCommand>());
-  command_subscriber_ =
-    get_node()->create_subscription<aidin_hand2_msgs::msg::ActuatorEffortCommand>(
-      "~/command", rclcpp::SystemDefaultsQoS(),
-      [this](const std::shared_ptr<aidin_hand2_msgs::msg::ActuatorEffortCommand> message) {
-        command_buffer_.writeFromNonRT(message);
-      });
+  drop_buffered_command();
+  subscribe();
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-// 안전한 무동작값 0%로 16개 reference 전체를 seed.
+// 활성화 시점에는 목표가 없다 — reference 를 비우고 활성화 이전 message 는 버린다.
 controller_interface::CallbackReturn ActuatorEffortController::on_activate(
   const rclcpp_lifecycle::State &)
 {
-  command_buffer_.writeFromNonRT(
-    std::shared_ptr<aidin_hand2_msgs::msg::ActuatorEffortCommand>());
+  drop_buffered_command();
   if (reference_interfaces_.size() != kActuatorCount) {
     return controller_interface::CallbackReturn::ERROR;
   }
-  std::fill(reference_interfaces_.begin(), reference_interfaces_.end(), 0.0);
+  std::fill(
+    reference_interfaces_.begin(), reference_interfaces_.end(),
+    std::numeric_limits<double>::quiet_NaN());
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -119,6 +115,30 @@ controller_interface::CallbackReturn ActuatorEffortController::on_deactivate(
   const rclcpp_lifecycle::State &)
 {
   return controller_interface::CallbackReturn::SUCCESS;
+}
+
+void ActuatorEffortController::subscribe()
+{
+  if (command_subscriber_) {
+    return;
+  }
+  command_subscriber_ =
+    get_node()->create_subscription<aidin_hand2_msgs::msg::ActuatorEffortCommand>(
+      "~/command", rclcpp::SystemDefaultsQoS(),
+      [this](const std::shared_ptr<aidin_hand2_msgs::msg::ActuatorEffortCommand> message) {
+        command_buffer_.writeFromNonRT(message);
+      });
+}
+
+void ActuatorEffortController::unsubscribe()
+{
+  command_subscriber_.reset();
+}
+
+void ActuatorEffortController::drop_buffered_command()
+{
+  command_buffer_.writeFromNonRT(std::shared_ptr<aidin_hand2_msgs::msg::ActuatorEffortCommand>());
+  consumed_command_ = nullptr;
 }
 
 // ── interface configuration ─────────────────────────────────────────────────
@@ -154,38 +174,66 @@ ActuatorEffortController::on_export_reference_interfaces()
   return references;
 }
 
-bool ActuatorEffortController::on_set_chained_mode(bool)
+// chained 에서는 상위가 reference 를 쓰므로 topic 입력을 내린다(입력 경로 이중화 방지).
+bool ActuatorEffortController::on_set_chained_mode(bool chained_mode)
 {
+  if (chained_mode) {
+    unsubscribe();
+  } else {
+    subscribe();
+  }
+  drop_buffered_command();
   return true;
 }
 
 // ── update ──────────────────────────────────────────────────────────────────
-// standalone: typed command 하나를 reference 전체([0..15] target_effort_pct)에 반영.
+// standalone: 새로 도착한 typed command 한 건만 reference 로 옮긴다.
 controller_interface::return_type
 ActuatorEffortController::update_reference_from_subscribers()
 {
   const auto message = *command_buffer_.readFromRT();
-  if (message) {
-    for (std::size_t i = 0; i < kActuatorCount; ++i) {
-      reference_interfaces_[i] = message->target_effort_pct[i];
-    }
+  if (!message || message.get() == consumed_command_) {
+    return controller_interface::return_type::OK;
+  }
+  consumed_command_ = message.get();
+  for (std::size_t i = 0; i < kActuatorCount; ++i) {
+    reference_interfaces_[i] = message->target_effort_pct[i];
   }
   return controller_interface::return_type::OK;
 }
 
-// reference_interfaces_의 완전한 16개 입력을 actuator-effort hardware port에 기록.
+// reference 를 command interface 로 옮긴다. 입력이 없으면 전부 NaN(= 이번 cycle 명령 없음).
 controller_interface::return_type ActuatorEffortController::update_and_write_commands(
   const rclcpp::Time &, const rclcpp::Duration &)
 {
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  std::array<double, kActuatorCount> target{};
+  bool has_target = false;
+  bool invalid = false;
+
   for (std::size_t i = 0; i < kActuatorCount; ++i) {
-    if (!std::isfinite(reference_interfaces_[i])) {
-      RCLCPP_ERROR_THROTTLE(
-        get_node()->get_logger(), *get_node()->get_clock(), 5000,
-        "ActuatorEffort reference contains NaN/Inf");
-      return controller_interface::return_type::ERROR;
+    const double value = reference_interfaces_[i];
+    if (std::isnan(value)) {
+      target[i] = nan;  // 상위가 점유하지 않은 actuator — hardware 가 채운다
+    } else if (!std::isfinite(value)) {
+      target[i] = nan;
+      invalid = true;
+    } else {
+      target[i] = value;
+      has_target = true;
     }
-    (void)command_interfaces_[kHardwareTargetOffset + i].set_value(reference_interfaces_[i]);
   }
+  if (invalid) {
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 5000,
+      "ActuatorEffort reference has an Inf value — ignored");
+  }
+
+  for (std::size_t i = 0; i < kActuatorCount; ++i) {
+    (void)command_interfaces_[kHardwareTargetOffset + i].set_value(
+      has_target ? target[i] : nan);
+  }
+  std::fill(reference_interfaces_.begin(), reference_interfaces_.end(), nan);
   return controller_interface::return_type::OK;
 }
 

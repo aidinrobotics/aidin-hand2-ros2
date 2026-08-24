@@ -38,6 +38,19 @@ Real(`AidinHand2SystemInterface`) 과 mock(`AidinHand2MockSystemInterface`) 이 
 export 합니다. mode switch 는 빈 집합(Idle) 또는 아래 네 controller 중 하나가 claim 하는 완전한 집합
 + `command_lock` 만 허용합니다. 부분·혼합 claim 은 거부됩니다.
 
+**값 계약** — command interface 의 `NaN` 은 명령이 아니라 "없음" 을 뜻합니다.
+
+| target 값 | 의미 | hardware 동작 |
+|---|---|---|
+| 전부 `NaN` | 이번 cycle 명령 없음 | `set_command` 를 부르지 않는다 — SDK 가 직전 명령을 유지 |
+| 일부 `NaN` | 그 축을 상위가 점유하지 않음 | 그 축의 직전 명령값으로 메워 전송 |
+| 일부 `NaN` + 직전 명령도 없음 | 완성 불가 | 전송하지 않고 경고 (완전한 command 를 한 번 보내야 한다) |
+| 전부 유한 | 명령 | 그대로 전송 |
+
+controller 는 입력이 있는 cycle 에만 값을 싣고 소비한 뒤 `NaN` 으로 되돌립니다. 같은 값이 다음
+cycle 에 다시 명령으로 나가지 않으므로, homing·stop 처럼 명령의 전제가 바뀌는 구간을 지나도 옛
+목표가 되살아나지 않습니다.
+
 ### 2.1 Claim-only lock — 1 개
 
 | # | Command interface | 의미 |

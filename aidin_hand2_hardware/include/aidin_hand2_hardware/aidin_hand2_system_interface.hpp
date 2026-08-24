@@ -68,12 +68,16 @@ private:
   rclcpp::Logger logger() const;
 
   // ---- run/stop/home/reconnect (service 콜백 스레드에서 동기 실행 — read/write 루프와 별개) ----
+  void warn_incomplete_command();
+  void clear_mode_command();  // 현재 mode 의 command 저장소를 비운다 (NaN = 명령 없음)
   bool exec_run(std::string & failure_message);
   bool exec_stop(std::string & failure_message);
   bool exec_home(std::string & failure_message);
   bool exec_reconnect(std::string & failure_message);
   void start_service_node();
   void stop_service_node();
+
+  rclcpp::Clock throttle_clock_{RCL_STEADY_TIME};  // write 경로 throttled 로그용
 
   // ---- SDK 세션 ----
   ah2::HandManager manager_;
