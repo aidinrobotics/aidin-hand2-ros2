@@ -68,12 +68,16 @@ private:
   rclcpp::Logger logger() const;
 
   // ---- run/stop/home/reconnect (service 콜백 스레드에서 동기 실행 — read/write 루프와 별개) ----
+  void warn_incomplete_command();
+  void clear_mode_command();  // 현재 mode 의 command 저장소를 비운다 (NaN = 명령 없음)
   bool exec_run(std::string & failure_message);
   bool exec_stop(std::string & failure_message);
   bool exec_home(std::string & failure_message);
   bool exec_reconnect(std::string & failure_message);
   void start_service_node();
   void stop_service_node();
+
+  rclcpp::Clock throttle_clock_{RCL_STEADY_TIME};  // write 경로 throttled 로그용
 
   // ---- SDK 세션 ----
   ah2::HandManager manager_;
@@ -139,9 +143,9 @@ private:
 
   // ---- 제어 상태 ----
   std::atomic<bool> started_{false};       // SDK start 상태 — false 면 write 가 command 미전송
-  // 원점 확정 여부는 wrapper 가 추적하지 않는다 — SDK diagnostics.homed 가 단일 출처(read 가 관측).
-  // auto-home 1회 트리거 래치 — read 가 활성화 후 원점 미확정이면 start_homing() 을 한 번만 걸도록.
-  // on_activate·exec_reconnect 가 리셋해 재무장한다. homing 자체의 진행/완료는 SDK is_homing()/homed 소관.
+  // 원점 상태는 wrapper 가 추적하지 않는다 — SDK diagnostics.homing_state 가 단일 출처(read 가 관측).
+  // auto-home 1회 트리거 래치 — 원점 미확정이면 start_homing() 을 한 번만 걸도록. on_activate·
+  // exec_reconnect 가 리셋해 다시 세운다.
   std::atomic<bool> auto_home_triggered_{false};
 
   // ---- service node (hardware 자체 노드 — ~/run·~/stop·~/home·~/reconnect 노출, 전용 spin 스레드) ----

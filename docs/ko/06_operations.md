@@ -1,6 +1,6 @@
 # 운영과 복구
 
-이 문서는 실제 hardware의 startup, health monitoring, stop과 communication recovery를 다룹니다. SDK가 정의하는 command 지속성과 통신 두절 위험은 [SDK 안전과 fault 대응](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/12_safety.md)를 함께 적용하십시오.
+이 문서는 실제 hardware의 startup, health monitoring, stop과 communication recovery를 다룹니다. SDK가 정의하는 command 지속성과 통신 두절 위험은 [SDK 안전과 fault 대응](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/13_safety.md)를 함께 적용하십시오.
 
 ## 1. Runtime architecture
 
@@ -29,7 +29,7 @@ ROS loop는 controller와 hardware interface를 갱신하고 SDK loop는 실제 
 6. Diagnostics lifecycle `Running`, actuator fault와 freshness를 확인합니다.
 7. Max effort를 낮추고 joint target과 commissioning speed를 담은 complete command를 준비합니다.
 8. Operator 또는 supervisor가 homing을 승인합니다.
-9. `homed=true`를 확인합니다.
+9. `homing_state=Succeeded`를 확인합니다.
 10. Command producer를 activate합니다.
 
 ROS process가 뜬 사실과 operation-ready를 분리하십시오.
@@ -97,11 +97,11 @@ Wrapper는 SDK `HandConfig::auto_home`을 항상 `false`로 두고, ROS `auto_ho
 ```text
 on_activate → SDK run()
              ↓
-다음 read/write cycle 에서 homed=false 확인
+다음 read/write cycle 에서 homing_state != Succeeded 확인
              ↓
 SDK start_homing() 1회 trigger
              ↓
-homing 중·homed=false 동안 command write 억제
+homing 중·homing_state != Succeeded 동안 command write 억제
 ```
 
 SDK blocking `home()` 을 쓰지 않으므로 controller manager executor 가 멈추지 않습니다.
@@ -113,12 +113,12 @@ ros2 topic echo \
 
 Completion 조건:
 
-- `homed=true`
+- `homing_state=Succeeded`
 - Lifecycle `Running`
 - Actuator fault empty
 - Header와 control cycle freshness 정상
 
-Homing 중 또는 homed false일 때 hardware plugin은 command write를 조용히 skip합니다. Publisher는 성공적으로 publish할 수 있지만 hand에는 command가 전달되지 않습니다.
+Homing 중 또는 homing_state != Succeeded 일 때 hardware plugin은 command write를 조용히 skip합니다. Publisher는 성공적으로 publish할 수 있지만 hand에는 command가 전달되지 않습니다.
 
 Homing 후 command producer가 최근 target을 다시 보낼지, operator가 새 target을 승인할지 정책을 명시하십시오. Latched application target이 자동으로 재개되는 설계는 위험할 수 있습니다.
 
@@ -134,7 +134,7 @@ Homing 후 command producer가 최근 target을 다시 보낼지, operator가 �
 | `HandState.header.stamp` | RX observation freshness |
 | `control_cycles` | SDK loop liveness |
 | `deadline_misses` | Timing health |
-| `homed` | Motion command gate |
+| `homing_state` | Motion command gate |
 | `actuator_enabled/fault` | Drive health |
 | ROS·SDK log | 사건 원인 |
 | SocketCAN statistics | Bus health |
@@ -152,7 +152,7 @@ if control_cycles did not increase over threshold:
     mark SDK_LOOP_STALLED
 if lifecycle != Running:
     inhibit command
-if homed == false:
+if homing_state != Succeeded:
     inhibit motion command
 ```
 
@@ -170,7 +170,7 @@ ROS time이 simulation 또는 clock jump의 영향을 받을 수 있으면 node-
 
 따라서 다음은 모두 `OK`로 나옵니다.
 
-- `homed=false`
+- `homing_state != Succeeded`
 - Deadline miss 급증
 - Timestamp stale
 - Actuator가 expected 상태와 다르게 disabled
@@ -178,7 +178,7 @@ ROS time이 simulation 또는 clock jump의 영향을 받을 수 있으면 node-
 
 `HandDiagnostics`에도 last exception text, reconnect attempt count, state freshness boolean,
 command age, composite operation-ready field가 없습니다. Operation-ready 판정은 supervisor가
-lifecycle·homed·actuator fault·stamp·control cycle을 합성해서 해야 합니다.
+lifecycle·homing_state·actuator fault·stamp·control cycle을 합성해서 해야 합니다.
 
 ### Command timeout이 없다
 
@@ -237,7 +237,7 @@ SDK Faulted → reconnect retry
   ↓
 auto_reconnect_home 정책
   ↓
-Running·homed 후 write 재개
+Running·homing_state=Succeeded 후 write 재개
 ```
 
 Default YAML은 timeout 0, 즉 무제한이고 reconnect home true입니다. 통신이 예상치 못한 시점에 돌아오면 homing motion이 시작될 수 있습니다.
@@ -263,7 +263,7 @@ ros2 service call \
   std_srvs/srv/Trigger
 ```
 
-Reconnect는 SDK homed를 false로 reset합니다. Auto-home policy를 확인하거나 수동 home을 수행합니다.
+Reconnect는 SDK homing_state를 NotRun으로 reset합니다. Auto-home policy를 확인하거나 수동 home을 수행합니다.
 
 ```bash
 ros2 service call \
@@ -271,7 +271,7 @@ ros2 service call \
   std_srvs/srv/Trigger
 ```
 
-`homed=true` 후 command controller와 target을 재승인합니다.
+`homing_state=Succeeded` 후 command controller와 target을 재승인합니다.
 
 ## 9. Controller failure와 mode recovery
 
@@ -284,7 +284,7 @@ Mode switch가 실패하면:
 
 1. 두 command controller가 동시에 activate되지 않았는지 확인합니다.
 2. 이전 controller를 deactivate합니다.
-3. Hardware가 Running·homed인지 확인합니다.
+3. Hardware가 Running·homing_state=Succeeded인지 확인합니다.
 4. 새 controller를 activate합니다.
 5. Safe initial command를 보냅니다.
 

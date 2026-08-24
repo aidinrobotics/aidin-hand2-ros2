@@ -137,7 +137,7 @@ ip -details -statistics link show can0
 timeout 3 candump -L can0
 ```
 
-전체 host 절차는 [SDK 문제 해결](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/13_troubleshooting.md)을 따르십시오.
+전체 host 절차는 [SDK 문제 해결](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_troubleshooting.md)을 따르십시오.
 
 ## 7. Default인데 `can0`가 아니라 `auto`를 사용함
 
@@ -182,7 +182,7 @@ ros2 launch aidin_hand2_bringup aidin_hand2.launch.py \
   left_hand_cpu_affinity:=-1
 ```
 
-PREEMPT_RT와 permission은 [SDK real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/01_real_time_kernel_setup.md)을 완료합니다. SDK 실제 priority는 90입니다.
+PREEMPT_RT와 permission은 [SDK real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/04_real_time_kernel_setup.md)을 완료합니다. SDK 실제 priority는 90입니다.
 
 ## 10. `/left_hand_control/home` service가 없음
 
@@ -202,7 +202,7 @@ printenv ROS_DOMAIN_ID
 
 Default 실제 hardware system name에서만 `/left_hand_control/...`가 됩니다.
 
-## 11. Home service success인데 `homed=false`
+## 11. Home service success인데 `homing_state != Succeeded`
 
 Service는 non-blocking trigger입니다.
 
@@ -211,7 +211,7 @@ ros2 topic echo \
   /left_diagnostics_broadcaster/hand_diagnostics
 ```
 
-Lifecycle, actuator fault, `control_cycles`와 SDK log를 확인합니다. Reconnect 직후에는 homed가 false로 reset됩니다.
+Lifecycle, actuator fault, `control_cycles`와 SDK log를 확인합니다. Reconnect 직후에는 homing_state가 NotRun으로 reset됩니다.
 
 ## 12. Topic publish는 성공하지만 움직이지 않음
 
@@ -230,13 +230,13 @@ ros2 topic echo \
 
 - Hardware component active
 - SDK lifecycle `Running`
-- `homed=true`
+- `homing_state=Succeeded`
 - 원하는 command controller active
 - Joint·actuator name 정확
 - Message field 정확
 - Auto reconnect 또는 homing 진행 중 아님
 
-Wrapper는 homing 중 또는 homed false일 때 command를 error 없이 skip합니다.
+Wrapper는 homing 중 또는 homing_state != Succeeded 일 때 command를 error 없이 skip합니다.
 
 ## 13. Joint가 너무 빠르게 움직임
 
@@ -252,7 +252,7 @@ SDK `set_command()`는 joint position·impedance target을 자동 workspace clam
 `HandState.command_state`의 해당 controller input이 clamp 결과인지 확인하십시오.
 
 Clamp는 self-collision, 외부 장애물과 trajectory 속도 정책을 대신하지 않습니다. 기대한
-workspace 경계와 다르면 SDK [Workspace clamp](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_kinematics.md)
+workspace 경계와 다르면 SDK [Workspace limits](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/14_workspace_limits.md)
 문서와 사용 중인 SDK build를 확인하십시오.
 
 ## 15. Controller switch 실패
@@ -318,14 +318,14 @@ Broadcaster 수신 여부가 아니라 underlying 값 변화로 health를 판정
 
 ## 19. `/diagnostics`가 OK인데 motion-ready가 아님
 
-Standard level은 homed false, stale state와 deadline miss rate를 반영하지 않습니다. Custom supervisor가 별도 gate를 적용해야 합니다.
+Standard level은 homing_state != Succeeded, stale state와 deadline miss rate를 반영하지 않습니다. Custom supervisor가 별도 gate를 적용해야 합니다.
 
 ```bash
 ros2 topic echo \
   /left_diagnostics_broadcaster/hand_diagnostics --once
 ```
 
-Lifecycle, homed, cycle, timing과 actuator array를 직접 확인합니다.
+Lifecycle, homing_state, cycle, timing과 actuator array를 직접 확인합니다.
 
 ## 20. Rosbridge GUI 연결 실패
 

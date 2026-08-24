@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <optional>
 #include <set>
 
@@ -122,6 +123,32 @@ std::optional<ah2::CommandMode> exact_mode_for_interfaces(
   }
   return std::nullopt;
 }
+
+// command interface 의 NaN 은 "이번 cycle 명령 없음"(전체) 또는 "상위 미점유"(일부)를 뜻한다.
+// 실제 hardware 와 같은 규칙 — 전자면 직전 목표를 유지하고, 후자면 빈 자리를 채운다.
+template <std::size_t N>
+bool all_nan(const std::array<double, N> & values)
+{
+  for (const double value : values) {
+    if (!std::isnan(value)) return false;
+  }
+  return true;
+}
+
+template <std::size_t N>
+bool any_nan(const std::array<double, N> & values)
+{
+  for (const double value : values) {
+    if (std::isnan(value)) return true;
+  }
+  return false;
+}
+
+double fill_gap(double value, double previous)
+{
+  return std::isnan(value) ? previous : value;
+}
+
 }  // namespace
 
 hardware_interface::CallbackReturn AidinHand2MockSystemInterface::on_init(
@@ -264,26 +291,30 @@ hardware_interface::return_type AidinHand2MockSystemInterface::perform_command_m
   command_mode_ = pending_mode_;
   pending_mode_switch_valid_ = false;
 
+  // controller 가 처음 쓰기 전까지는 명령이 없다(NaN). 램프 기준만 현재 자세로 잡아 둔다.
+  const double unset = std::numeric_limits<double>::quiet_NaN();
+  held_joint_target_rad_.fill(unset);
+  held_actuator_target_cnt_.fill(unset);
   switch (command_mode_) {
     case ah2::CommandMode::JointPosition:
+      joint_position_target_rad_.fill(unset);
+      joint_position_speed_rad_s_ = unset;
       for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
-        joint_position_target_rad_[i] =
-          joint_position_rad_[kActiveToJointIndex[i]];
+        slew_position_rad_[i] = joint_position_rad_[kActiveToJointIndex[i]];
       }
-      slew_position_rad_ = joint_position_target_rad_;
       slew_seeded_ = true;
       break;
     case ah2::CommandMode::JointImpedance:
+      joint_impedance_target_rad_.fill(unset);
       for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
-        joint_impedance_target_rad_[i] =
-          joint_position_rad_[kActiveToJointIndex[i]];
+        slew_position_rad_[i] = joint_position_rad_[kActiveToJointIndex[i]];
       }
       break;
     case ah2::CommandMode::ActuatorPosition:
-      actuator_position_target_cnt_ = actuator_position_cnt_;
+      actuator_position_target_cnt_.fill(unset);
       break;
     case ah2::CommandMode::ActuatorEffort:
-      actuator_effort_target_pct_.fill(0.0);
+      actuator_effort_target_pct_.fill(unset);
       break;
     case ah2::CommandMode::Idle:
       slew_seeded_ = false;
@@ -303,8 +334,17 @@ hardware_interface::return_type AidinHand2MockSystemInterface::write(
 {
   std::array<int, ah2::kActuatorCount> encoder{};
   if (command_mode_ == ah2::CommandMode::JointPosition) {
+    if (!all_nan(joint_position_target_rad_)) {
+      for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+        held_joint_target_rad_[i] = fill_gap(
+          joint_position_target_rad_[i], held_joint_target_rad_[i]);
+      }
+    }
+    if (any_nan(held_joint_target_rad_)) {
+      return hardware_interface::return_type::OK;  // 목표가 아직 완전하지 않다 — 자세 유지
+    }
     ah2::JointPositionCommand command;
-    command.target = joint_position_target_rad_;
+    command.target = held_joint_target_rad_;
     command.clamp();
     if (!slew_seeded_) {
       slew_position_rad_ = command.target;
@@ -320,18 +360,37 @@ hardware_interface::return_type AidinHand2MockSystemInterface::write(
     }
     encoder = ah2::ik_joint_to_actuator(slew_position_rad_);
   } else if (command_mode_ == ah2::CommandMode::JointImpedance) {
+    if (!all_nan(joint_impedance_target_rad_)) {
+      for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+        held_joint_target_rad_[i] = fill_gap(
+          joint_impedance_target_rad_[i], held_joint_target_rad_[i]);
+      }
+    }
+    if (any_nan(held_joint_target_rad_)) {
+      return hardware_interface::return_type::OK;
+    }
     ah2::JointImpedanceCommand command;
-    command.target = joint_impedance_target_rad_;
+    command.target = held_joint_target_rad_;
     command.clamp();
     encoder = ah2::ik_joint_to_actuator(command.target);
   } else if (command_mode_ == ah2::CommandMode::ActuatorPosition) {
+    if (!all_nan(actuator_position_target_cnt_)) {
+      for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+        held_actuator_target_cnt_[i] = fill_gap(
+          actuator_position_target_cnt_[i], held_actuator_target_cnt_[i]);
+      }
+    }
+    if (any_nan(held_actuator_target_cnt_)) {
+      return hardware_interface::return_type::OK;
+    }
     for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
-      encoder[i] = static_cast<int>(std::lround(actuator_position_target_cnt_[i]));
+      encoder[i] = static_cast<int>(std::lround(held_actuator_target_cnt_[i]));
     }
   } else {
     // Idle은 pose hold, ActuatorEffort는 토크 동역학을 모델링하지 않아 pose를 움직이지 않는다.
     if (command_mode_ == ah2::CommandMode::ActuatorEffort) {
       for (double & effort : actuator_effort_target_pct_) {
+        if (std::isnan(effort)) continue;  // 미점유·명령 없음
         effort = std::clamp(effort, -max_effort_pct_, max_effort_pct_);
       }
     }

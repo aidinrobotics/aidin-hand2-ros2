@@ -47,7 +47,6 @@ constexpr const char * kActuatorBaseNames[kActuatorCount] = {
 };
 constexpr const char * kCommandLockInterfaceName = "command_lock";
 constexpr const char * kPositionInterfaceName = "target_position_cnt";
-constexpr const char * kStatePositionInterfaceName = "position_cnt";
 constexpr const char * kReferencePositionInterfaceName = "position_cnt";
 
 namespace
@@ -85,24 +84,14 @@ controller_interface::CallbackReturn ActuatorPositionController::on_configure(
     return controller_interface::CallbackReturn::ERROR;
   }
   actuator_names_.clear();
-  state_interface_names_.clear();
-  // state interface: actuator position_cnt 16개.
   for (const char * base : kActuatorBaseNames) {
     actuator_names_.push_back(hand_side_ + "_" + base);
-    state_interface_names_.push_back(
-      actuator_names_.back() + "/" + kStatePositionInterfaceName);
   }
   // command interface: [0] command_lock + [1..16] target_position_cnt.
   command_interface_names_ = hardware_command_interfaces(hand_side_);
 
-  command_buffer_.writeFromNonRT(
-    std::shared_ptr<aidin_hand2_msgs::msg::ActuatorPositionCommand>());
-  command_subscriber_ =
-    get_node()->create_subscription<aidin_hand2_msgs::msg::ActuatorPositionCommand>(
-      "~/command", rclcpp::SystemDefaultsQoS(),
-      [this](const std::shared_ptr<aidin_hand2_msgs::msg::ActuatorPositionCommand> message) {
-        command_buffer_.writeFromNonRT(message);
-      });
+  drop_buffered_command();
+  subscribe();
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -110,16 +99,13 @@ controller_interface::CallbackReturn ActuatorPositionController::on_configure(
 controller_interface::CallbackReturn ActuatorPositionController::on_activate(
   const rclcpp_lifecycle::State &)
 {
-  command_buffer_.writeFromNonRT(
-    std::shared_ptr<aidin_hand2_msgs::msg::ActuatorPositionCommand>());
-  if (reference_interfaces_.size() != kActuatorCount ||
-      state_interfaces_.size() != kActuatorCount)
-  {
+  drop_buffered_command();
+  if (reference_interfaces_.size() != kActuatorCount) {
     return controller_interface::CallbackReturn::ERROR;
   }
-  for (std::size_t i = 0; i < kActuatorCount; ++i) {
-    reference_interfaces_[i] = state_interfaces_[i].get_value();
-  }
+  std::fill(
+    reference_interfaces_.begin(), reference_interfaces_.end(),
+    std::numeric_limits<double>::quiet_NaN());
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -128,6 +114,30 @@ controller_interface::CallbackReturn ActuatorPositionController::on_deactivate(
   const rclcpp_lifecycle::State &)
 {
   return controller_interface::CallbackReturn::SUCCESS;
+}
+
+void ActuatorPositionController::subscribe()
+{
+  if (command_subscriber_) {
+    return;
+  }
+  command_subscriber_ =
+    get_node()->create_subscription<aidin_hand2_msgs::msg::ActuatorPositionCommand>(
+      "~/command", rclcpp::SystemDefaultsQoS(),
+      [this](const std::shared_ptr<aidin_hand2_msgs::msg::ActuatorPositionCommand> message) {
+        command_buffer_.writeFromNonRT(message);
+      });
+}
+
+void ActuatorPositionController::unsubscribe()
+{
+  command_subscriber_.reset();
+}
+
+void ActuatorPositionController::drop_buffered_command()
+{
+  command_buffer_.writeFromNonRT(std::shared_ptr<aidin_hand2_msgs::msg::ActuatorPositionCommand>());
+  consumed_command_ = nullptr;
 }
 
 // ── interface configuration ─────────────────────────────────────────────────
@@ -139,12 +149,11 @@ ActuatorPositionController::command_interface_configuration() const
           command_interface_names_};
 }
 
-// activation seed용 actuator position_cnt state 16개.
+// 입력을 옮기기만 하므로 state 는 claim 하지 않는다.
 controller_interface::InterfaceConfiguration
 ActuatorPositionController::state_interface_configuration() const
 {
-  return {controller_interface::interface_configuration_type::INDIVIDUAL,
-          state_interface_names_};
+  return {controller_interface::interface_configuration_type::NONE, {}};
 }
 
 // actuator position_cnt 16개를 reference로 노출.
@@ -164,8 +173,15 @@ ActuatorPositionController::on_export_reference_interfaces()
   return references;
 }
 
-bool ActuatorPositionController::on_set_chained_mode(bool)
+// chained 에서는 상위가 reference 를 쓰므로 topic 입력을 내린다(입력 경로 이중화 방지).
+bool ActuatorPositionController::on_set_chained_mode(bool chained_mode)
 {
+  if (chained_mode) {
+    unsubscribe();
+  } else {
+    subscribe();
+  }
+  drop_buffered_command();
   return true;
 }
 
@@ -175,10 +191,12 @@ controller_interface::return_type
 ActuatorPositionController::update_reference_from_subscribers()
 {
   const auto message = *command_buffer_.readFromRT();
-  if (message) {
-    for (std::size_t i = 0; i < kActuatorCount; ++i) {
-      reference_interfaces_[i] = message->target_position_cnt[i];
-    }
+  if (!message || message.get() == consumed_command_) {
+    return controller_interface::return_type::OK;
+  }
+  consumed_command_ = message.get();
+  for (std::size_t i = 0; i < kActuatorCount; ++i) {
+    reference_interfaces_[i] = message->target_position_cnt[i];
   }
   return controller_interface::return_type::OK;
 }
@@ -187,15 +205,34 @@ ActuatorPositionController::update_reference_from_subscribers()
 controller_interface::return_type ActuatorPositionController::update_and_write_commands(
   const rclcpp::Time &, const rclcpp::Duration &)
 {
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  std::array<double, kActuatorCount> target{};
+  bool has_target = false;
+  bool invalid = false;
+
   for (std::size_t i = 0; i < kActuatorCount; ++i) {
-    if (!std::isfinite(reference_interfaces_[i])) {
-      RCLCPP_ERROR_THROTTLE(
-        get_node()->get_logger(), *get_node()->get_clock(), 5000,
-        "ActuatorPosition reference contains NaN/Inf");
-      return controller_interface::return_type::ERROR;
+    const double value = reference_interfaces_[i];
+    if (std::isnan(value)) {
+      target[i] = nan;  // 상위가 점유하지 않은 actuator — hardware 가 채운다
+    } else if (!std::isfinite(value)) {
+      target[i] = nan;
+      invalid = true;
+    } else {
+      target[i] = value;
+      has_target = true;
     }
-    (void)command_interfaces_[kHardwareTargetOffset + i].set_value(reference_interfaces_[i]);
   }
+  if (invalid) {
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 5000,
+      "ActuatorPosition reference has an Inf value — ignored");
+  }
+
+  for (std::size_t i = 0; i < kActuatorCount; ++i) {
+    (void)command_interfaces_[kHardwareTargetOffset + i].set_value(
+      has_target ? target[i] : nan);
+  }
+  std::fill(reference_interfaces_.begin(), reference_interfaces_.end(), nan);
   return controller_interface::return_type::OK;
 }
 

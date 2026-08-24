@@ -1,6 +1,7 @@
 #include "aidin_hand2_controllers/joint_position_controller.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 
@@ -22,8 +23,12 @@
 //   command topic      : /{side}_joint_position_controller/command
 //                        (aidin_hand2_msgs/JointPositionCommand)
 //
-//   target 16 + speed 1을 항상 완전한 한 묶음으로 command port에 기록한다. command_lock은
-//   값으로 쓰지 않고 mode 상호 배제를 위한 resource claim으로만 사용한다.
+//   입력을 그대로 command interface 로 옮기기만 한다 — 자체 목표를 만들지 않고 state 도 읽지
+//   않는다. 입력이 있는 cycle 에만 값이 실리고 그 외에는 NaN(= 이번 cycle 명령 없음)이다. 소비한
+//   입력은 즉시 NaN 으로 되돌려 같은 값이 다음 cycle 에 다시 명령으로 나가지 않게 한다. target 의
+//   NaN 은 "그 joint 를 상위가 점유하지 않음"이라 hardware 가 채우고, speed 는 상위가 모를 수 있어
+//   NaN 이면 speed_rad_s 파라미터로 대체한다. command_lock 은 값으로 쓰지 않고 mode 상호 배제를
+//   위한 resource claim 으로만 쓴다.
 // ─────────────────────────────────────────────────────────────────────────────
 
 namespace aidin_hand2_controllers
@@ -85,7 +90,7 @@ controller_interface::CallbackReturn JointPositionController::on_init()
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-// Side·speed를 검증하고 state/command interface와 typed command subscriber를 구성.
+// Side·speed를 검증하고 command interface와 typed command subscriber를 구성.
 controller_interface::CallbackReturn JointPositionController::on_configure(
   const rclcpp_lifecycle::State &)
 {
@@ -100,42 +105,28 @@ controller_interface::CallbackReturn JointPositionController::on_configure(
   }
 
   active_joint_names_.clear();
-  state_interface_names_.clear();
-  // state interface: active joint position 16개.
   for (const char * base : kActiveJointBaseNames) {
     active_joint_names_.push_back(hand_side_ + "_" + base);
-    state_interface_names_.push_back(
-      active_joint_names_.back() + "/" + kReferencePositionInterfaceName);
   }
   // command interface: [0] command_lock + [1..16] target_position_rad + [17] speed_rad_s.
   command_interface_names_ = hardware_command_interfaces(hand_side_);
 
-  command_buffer_.writeFromNonRT(
-    std::shared_ptr<aidin_hand2_msgs::msg::JointPositionCommand>());
-  command_subscriber_ =
-    get_node()->create_subscription<aidin_hand2_msgs::msg::JointPositionCommand>(
-      "~/command", rclcpp::SystemDefaultsQoS(),
-      [this](const std::shared_ptr<aidin_hand2_msgs::msg::JointPositionCommand> message) {
-        command_buffer_.writeFromNonRT(message);
-      });
+  drop_buffered_command();
+  subscribe();
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-// 현재 joint 자세와 기본 speed로 reference 전체를 안전하게 seed.
+// 활성화 시점에는 목표가 없다 — reference 를 비우고 활성화 이전 message 는 버린다.
 controller_interface::CallbackReturn JointPositionController::on_activate(
   const rclcpp_lifecycle::State &)
 {
-  command_buffer_.writeFromNonRT(
-    std::shared_ptr<aidin_hand2_msgs::msg::JointPositionCommand>());
-  if (reference_interfaces_.size() != kReferenceCount ||
-      state_interfaces_.size() != kTargetCount)
-  {
+  drop_buffered_command();
+  if (reference_interfaces_.size() != kReferenceCount) {
     return controller_interface::CallbackReturn::ERROR;
   }
-  for (std::size_t i = 0; i < kTargetCount; ++i) {
-    reference_interfaces_[i] = state_interfaces_[i].get_value();
-  }
-  reference_interfaces_[kSpeedIndex] = default_speed_;
+  std::fill(
+    reference_interfaces_.begin(), reference_interfaces_.end(),
+    std::numeric_limits<double>::quiet_NaN());
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -146,8 +137,33 @@ controller_interface::CallbackReturn JointPositionController::on_deactivate(
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
+void JointPositionController::subscribe()
+{
+  if (command_subscriber_) {
+    return;
+  }
+  command_subscriber_ =
+    get_node()->create_subscription<aidin_hand2_msgs::msg::JointPositionCommand>(
+      "~/command", rclcpp::SystemDefaultsQoS(),
+      [this](const std::shared_ptr<aidin_hand2_msgs::msg::JointPositionCommand> message) {
+        command_buffer_.writeFromNonRT(message);
+      });
+}
+
+void JointPositionController::unsubscribe()
+{
+  command_subscriber_.reset();
+}
+
+void JointPositionController::drop_buffered_command()
+{
+  command_buffer_.writeFromNonRT(
+    std::shared_ptr<aidin_hand2_msgs::msg::JointPositionCommand>());
+  consumed_command_ = nullptr;
+}
+
 // ── interface configuration ─────────────────────────────────────────────────
-// claim: command_lock + JointPosition hardware command port 17개.
+// claim: command_lock + JointPosition hardware command interface 17개.
 controller_interface::InterfaceConfiguration
 JointPositionController::command_interface_configuration() const
 {
@@ -155,12 +171,11 @@ JointPositionController::command_interface_configuration() const
           command_interface_names_};
 }
 
-// activation seed용 active joint position state 16개.
+// 입력을 옮기기만 하므로 state 는 claim 하지 않는다.
 controller_interface::InterfaceConfiguration
 JointPositionController::state_interface_configuration() const
 {
-  return {controller_interface::interface_configuration_type::INDIVIDUAL,
-          state_interface_names_};
+  return {controller_interface::interface_configuration_type::NONE, {}};
 }
 
 // 자세 16 + 공통 speed 1 = 17개를 reference로 노출.
@@ -183,50 +198,80 @@ JointPositionController::on_export_reference_interfaces()
   return references;
 }
 
-bool JointPositionController::on_set_chained_mode(bool)
+// chained 에서는 상위가 reference 를 쓰므로 topic 입력을 내린다(입력 경로 이중화 방지).
+bool JointPositionController::on_set_chained_mode(bool chained_mode)
 {
+  if (chained_mode) {
+    unsubscribe();
+  } else {
+    subscribe();
+  }
+  drop_buffered_command();
   return true;
 }
 
 // ── update ──────────────────────────────────────────────────────────────────
-// standalone: typed command 하나를 reference 전체([0..15] 자세, [16] speed)에 반영.
+// standalone: 새로 도착한 typed command 한 건만 reference 로 옮긴다. 같은 message 를 다시 반영하면
+// 이미 소비한 명령이 매 cycle 되살아난다.
 controller_interface::return_type
 JointPositionController::update_reference_from_subscribers()
 {
   const auto message = *command_buffer_.readFromRT();
-  if (message) {
-    for (std::size_t i = 0; i < kTargetCount; ++i) {
-      reference_interfaces_[i] = message->target_position_rad[i];
-    }
-    reference_interfaces_[kSpeedIndex] = message->speed_rad_s;
+  if (!message || message.get() == consumed_command_) {
+    return controller_interface::return_type::OK;
   }
+  consumed_command_ = message.get();
+  for (std::size_t i = 0; i < kTargetCount; ++i) {
+    reference_interfaces_[i] = message->target_position_rad[i];
+  }
+  reference_interfaces_[kSpeedIndex] = message->speed_rad_s;
   return controller_interface::return_type::OK;
 }
 
-// reference_interfaces_의 완전한 17개 입력을 mode 전용 hardware command port에 기록.
+// reference 를 command interface 로 옮긴다. 입력이 없으면 전부 NaN(= 이번 cycle 명령 없음).
 controller_interface::return_type JointPositionController::update_and_write_commands(
   const rclcpp::Time &, const rclcpp::Duration &)
 {
-  for (std::size_t i = 0; i < kReferenceCount; ++i) {
-    if (!std::isfinite(reference_interfaces_[i])) {
-      RCLCPP_ERROR_THROTTLE(
-        get_node()->get_logger(), *get_node()->get_clock(), 5000,
-        "JointPosition reference contains NaN/Inf");
-      return controller_interface::return_type::ERROR;
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  std::array<double, kTargetCount> target{};
+  bool has_target = false;
+  bool invalid = false;
+
+  for (std::size_t i = 0; i < kTargetCount; ++i) {
+    const double value = reference_interfaces_[i];
+    if (std::isnan(value)) {
+      target[i] = nan;  // 상위가 점유하지 않은 joint — hardware 가 채운다
+    } else if (!std::isfinite(value)) {
+      target[i] = nan;
+      invalid = true;
+    } else {
+      target[i] = value;
+      has_target = true;
     }
   }
-  if (reference_interfaces_[kSpeedIndex] < 0.0) {
-    RCLCPP_ERROR_THROTTLE(
+
+  double speed = reference_interfaces_[kSpeedIndex];
+  if (std::isfinite(speed) && speed < 0.0) {
+    invalid = true;
+  }
+  if (!std::isfinite(speed) || speed < 0.0) {
+    speed = default_speed_;  // 상위가 speed 를 모를 수 있다 — 파라미터로 대체
+  }
+
+  if (invalid) {
+    RCLCPP_WARN_THROTTLE(
       get_node()->get_logger(), *get_node()->get_clock(), 5000,
-      "JointPosition speed_rad_s must be non-negative");
-    return controller_interface::return_type::ERROR;
+      "JointPosition reference has an invalid value (Inf or negative speed) — ignored");
   }
 
   for (std::size_t i = 0; i < kTargetCount; ++i) {
-    (void)command_interfaces_[kHardwareTargetOffset + i].set_value(reference_interfaces_[i]);
+    (void)command_interfaces_[kHardwareTargetOffset + i].set_value(
+      has_target ? target[i] : nan);
   }
-  (void)command_interfaces_[kHardwareSpeedIndex].set_value(
-    reference_interfaces_[kSpeedIndex]);
+  (void)command_interfaces_[kHardwareSpeedIndex].set_value(has_target ? speed : nan);
+
+  // 소비 표시 — 다음 cycle 에 상위가 다시 쓰지 않으면 명령 없음이 된다.
+  std::fill(reference_interfaces_.begin(), reference_interfaces_.end(), nan);
   return controller_interface::return_type::OK;
 }
 

@@ -139,12 +139,8 @@ controller_interface::CallbackReturn JointImpedanceController::on_configure(
   }
 
   active_joint_names_.clear();
-  state_interface_names_.clear();
-  // state interface: active joint position 16개.
   for (const char * base : kActiveJointBaseNames) {
     active_joint_names_.push_back(hand_side_ + "_" + base);
-    state_interface_names_.push_back(
-      active_joint_names_.back() + "/" + kReferencePositionInterfaceName);
   }
   actuator_names_.clear();
   for (const char * base : kActuatorBaseNames) {
@@ -164,35 +160,22 @@ controller_interface::CallbackReturn JointImpedanceController::on_configure(
   // command interface: [0] command_lock + [1..16] target_position_rad
   // + [17..32] stiffness + [33..48] damping.
   command_interface_names_ = hardware_command_interfaces(hand_side_);
-  command_buffer_.writeFromNonRT(
-    std::shared_ptr<aidin_hand2_msgs::msg::JointImpedanceCommand>());
-  command_subscriber_ =
-    get_node()->create_subscription<aidin_hand2_msgs::msg::JointImpedanceCommand>(
-      "~/command", rclcpp::SystemDefaultsQoS(),
-      [this](const std::shared_ptr<aidin_hand2_msgs::msg::JointImpedanceCommand> message) {
-        command_buffer_.writeFromNonRT(message);
-      });
+  drop_buffered_command();
+  subscribe();
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-// 현재 joint 자세와 parameter gain으로 48개 reference 전체를 seed.
+// 활성화 시점에는 목표가 없다 — reference 를 비우고 활성화 이전 message 는 버린다.
 controller_interface::CallbackReturn JointImpedanceController::on_activate(
   const rclcpp_lifecycle::State &)
 {
-  command_buffer_.writeFromNonRT(
-    std::shared_ptr<aidin_hand2_msgs::msg::JointImpedanceCommand>());
-  if (reference_interfaces_.size() != kReferenceCount ||
-      state_interfaces_.size() != kActiveJointCount)
-  {
+  drop_buffered_command();
+  if (reference_interfaces_.size() != kReferenceCount) {
     return controller_interface::CallbackReturn::ERROR;
   }
-  for (std::size_t i = 0; i < kActiveJointCount; ++i) {
-    reference_interfaces_[kTargetOffset + i] = state_interfaces_[i].get_value();
-  }
-  for (std::size_t i = 0; i < kActuatorCount; ++i) {
-    reference_interfaces_[kStiffnessOffset + i] = default_stiffness_[i];
-    reference_interfaces_[kDampingOffset + i] = default_damping_[i];
-  }
+  std::fill(
+    reference_interfaces_.begin(), reference_interfaces_.end(),
+    std::numeric_limits<double>::quiet_NaN());
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -201,6 +184,30 @@ controller_interface::CallbackReturn JointImpedanceController::on_deactivate(
   const rclcpp_lifecycle::State &)
 {
   return controller_interface::CallbackReturn::SUCCESS;
+}
+
+void JointImpedanceController::subscribe()
+{
+  if (command_subscriber_) {
+    return;
+  }
+  command_subscriber_ =
+    get_node()->create_subscription<aidin_hand2_msgs::msg::JointImpedanceCommand>(
+      "~/command", rclcpp::SystemDefaultsQoS(),
+      [this](const std::shared_ptr<aidin_hand2_msgs::msg::JointImpedanceCommand> message) {
+        command_buffer_.writeFromNonRT(message);
+      });
+}
+
+void JointImpedanceController::unsubscribe()
+{
+  command_subscriber_.reset();
+}
+
+void JointImpedanceController::drop_buffered_command()
+{
+  command_buffer_.writeFromNonRT(std::shared_ptr<aidin_hand2_msgs::msg::JointImpedanceCommand>());
+  consumed_command_ = nullptr;
 }
 
 // ── interface configuration ─────────────────────────────────────────────────
@@ -212,12 +219,11 @@ JointImpedanceController::command_interface_configuration() const
           command_interface_names_};
 }
 
-// activation seed용 active joint position state 16개.
+// 입력을 옮기기만 하므로 state 는 claim 하지 않는다.
 controller_interface::InterfaceConfiguration
 JointImpedanceController::state_interface_configuration() const
 {
-  return {controller_interface::interface_configuration_type::INDIVIDUAL,
-          state_interface_names_};
+  return {controller_interface::interface_configuration_type::NONE, {}};
 }
 
 // 평형 자세 16 + stiffness 16 + damping 16 = 48개를 reference로 노출.
@@ -248,8 +254,15 @@ JointImpedanceController::on_export_reference_interfaces()
   return references;
 }
 
-bool JointImpedanceController::on_set_chained_mode(bool)
+// chained 에서는 상위가 reference 를 쓰므로 topic 입력을 내린다(입력 경로 이중화 방지).
+bool JointImpedanceController::on_set_chained_mode(bool chained_mode)
 {
+  if (chained_mode) {
+    unsubscribe();
+  } else {
+    subscribe();
+  }
+  drop_buffered_command();
   return true;
 }
 
@@ -259,43 +272,71 @@ controller_interface::return_type
 JointImpedanceController::update_reference_from_subscribers()
 {
   const auto message = *command_buffer_.readFromRT();
-  if (message) {
-    for (std::size_t i = 0; i < kActiveJointCount; ++i) {
-      reference_interfaces_[kTargetOffset + i] = message->target_position_rad[i];
-    }
-    for (std::size_t i = 0; i < kActuatorCount; ++i) {
-      reference_interfaces_[kStiffnessOffset + i] = message->stiffness[i];
-      reference_interfaces_[kDampingOffset + i] = message->damping[i];
-    }
+  if (!message || message.get() == consumed_command_) {
+    return controller_interface::return_type::OK;
+  }
+  consumed_command_ = message.get();
+  for (std::size_t i = 0; i < kActiveJointCount; ++i) {
+    reference_interfaces_[kTargetOffset + i] = message->target_position_rad[i];
+  }
+  for (std::size_t i = 0; i < kActuatorCount; ++i) {
+    reference_interfaces_[kStiffnessOffset + i] = message->stiffness[i];
+    reference_interfaces_[kDampingOffset + i] = message->damping[i];
   }
   return controller_interface::return_type::OK;
 }
 
-// reference_interfaces_의 완전한 48개 입력을 mode 전용 hardware command port에 기록.
+// reference 를 command interface 로 옮긴다. 입력이 없으면 전부 NaN(= 이번 cycle 명령 없음).
+// gain 은 상위가 모를 수 있어 NaN 이면 파라미터 기본값으로 대체한다.
 controller_interface::return_type JointImpedanceController::update_and_write_commands(
   const rclcpp::Time &, const rclcpp::Duration &)
 {
-  for (std::size_t i = 0; i < kReferenceCount; ++i) {
-    if (!std::isfinite(reference_interfaces_[i])) {
-      RCLCPP_ERROR_THROTTLE(
-        get_node()->get_logger(), *get_node()->get_clock(), 5000,
-        "JointImpedance reference contains NaN/Inf");
-      return controller_interface::return_type::ERROR;
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  std::array<double, kActiveJointCount> target{};
+  bool has_target = false;
+  bool invalid = false;
+
+  for (std::size_t i = 0; i < kActiveJointCount; ++i) {
+    const double value = reference_interfaces_[kTargetOffset + i];
+    if (std::isnan(value)) {
+      target[i] = nan;  // 상위가 점유하지 않은 joint — hardware 가 채운다
+    } else if (!std::isfinite(value)) {
+      target[i] = nan;
+      invalid = true;
+    } else {
+      target[i] = value;
+      has_target = true;
     }
+  }
+
+  std::array<double, kActuatorCount> stiffness{};
+  std::array<double, kActuatorCount> damping{};
+  for (std::size_t i = 0; i < kActuatorCount; ++i) {
+    const double k = reference_interfaces_[kStiffnessOffset + i];
+    const double d = reference_interfaces_[kDampingOffset + i];
+    if (std::isfinite(k) && k < 0.0) invalid = true;
+    if (std::isfinite(d) && d < 0.0) invalid = true;
+    stiffness[i] = (std::isfinite(k) && k >= 0.0) ? k : default_stiffness_[i];
+    damping[i] = (std::isfinite(d) && d >= 0.0) ? d : default_damping_[i];
+  }
+
+  if (invalid) {
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(), *get_node()->get_clock(), 5000,
+      "JointImpedance reference has an invalid value (Inf or negative gain) — ignored");
+  }
+
+  for (std::size_t i = 0; i < kActiveJointCount; ++i) {
+    (void)command_interfaces_[kHardwareOffset + kTargetOffset + i].set_value(
+      has_target ? target[i] : nan);
   }
   for (std::size_t i = 0; i < kActuatorCount; ++i) {
-    if (reference_interfaces_[kStiffnessOffset + i] < 0.0 ||
-        reference_interfaces_[kDampingOffset + i] < 0.0)
-    {
-      RCLCPP_ERROR_THROTTLE(
-        get_node()->get_logger(), *get_node()->get_clock(), 5000,
-        "JointImpedance gains must be non-negative");
-      return controller_interface::return_type::ERROR;
-    }
+    (void)command_interfaces_[kHardwareOffset + kStiffnessOffset + i].set_value(
+      has_target ? stiffness[i] : nan);
+    (void)command_interfaces_[kHardwareOffset + kDampingOffset + i].set_value(
+      has_target ? damping[i] : nan);
   }
-  for (std::size_t i = 0; i < kReferenceCount; ++i) {
-    (void)command_interfaces_[kHardwareOffset + i].set_value(reference_interfaces_[i]);
-  }
+  std::fill(reference_interfaces_.begin(), reference_interfaces_.end(), nan);
   return controller_interface::return_type::OK;
 }
 

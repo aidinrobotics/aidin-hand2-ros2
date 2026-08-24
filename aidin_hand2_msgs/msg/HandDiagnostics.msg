@@ -11,7 +11,7 @@ uint64 control_cycles
 uint64 deadline_misses
 float64 last_period_ms    # 직전 cycle 실측 주기 (목표 주기와의 편차 = jitter)
 float64 last_compute_ms   # 직전 cycle 처리 시간
-bool homed                # 원점 확정 여부 (false = 미확정/진행중/실패)
+string homing_state       # 원점 상태 (NotRun/Succeeded/InProgress/Failed)
 
 # ── per-actuator 운영 상태 (순서 = thumb_actuator0..3, index/middle/ring/baby 각 1..3) ──
 bool[16] actuator_enabled

@@ -1,6 +1,6 @@
 <div align="right"><sub><a href="README.md">English</a></sub></div>
 
-# AIDIN Hand Gen2 ROS 2 &nbsp;[![version](https://img.shields.io/badge/version-0.2.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.2.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble%20%7C%20Jazzy-brightgreen)](#지원-범위)
+# AIDIN Hand Gen2 ROS 2 &nbsp;[![version](https://img.shields.io/badge/version-0.3.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.2.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble%20%7C%20Jazzy-brightgreen)](#지원-범위)
 
 AIDIN Hand Gen2 C++ SDK를 `ros2_control`에 연결하는 thin wrapper입니다. CAN-FD protocol, drive state machine, kinematics와 500 Hz hand control loop는 SDK가 소유하며 이 repository는 hardware plugin, controller, message, URDF와 launch를 제공합니다.
 
@@ -27,10 +27,10 @@ Standalone에서는 각 controller의 `~/command`에 한 cycle의 target과 부�
 | OS | Ubuntu 22.04 |
 | ROS 2 | Humble (이 브랜치) · Jazzy (`jazzy` 브랜치) |
 | Control framework | `ros2_control` |
-| SDK | `aidin_hand2` 0.2.x — [`aidin_hand2.repos`](aidin_hand2.repos) 참조 |
+| SDK | `aidin_hand2` 0.3.x — [`aidin_hand2.repos`](aidin_hand2.repos) 참조 |
 | CAN interface | USB CAN-FD adapter (SocketCAN), nominal 1 Mbit/s / data phase 5 Mbit/s |
 
-실물 host의 PREEMPT_RT와 boot-time CAN-FD 설정은 SDK의 [real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/01_real_time_kernel_setup.md)과 [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/02_can_fd_setup.md)을 먼저 완료하십시오.
+실물 host의 PREEMPT_RT와 boot-time CAN-FD 설정은 SDK의 [real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/04_real_time_kernel_setup.md)과 [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_can_fd_setup.md)을 먼저 완료하십시오.
 
 ## Package
 
@@ -150,9 +150,9 @@ chaining 시 reference interface로 보냅니다.
 
 Host 준비, kinematics, 안전 계약은 SDK가 소유하며 이 wrapper는 반복하지 않습니다.
 
-- [Real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/01_real_time_kernel_setup.md) — PREEMPT_RT, 실물 전 필수
-- [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/02_can_fd_setup.md) — Interface bring-up과 boot 자동화
-- [SDK build·install](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/03_sdk_build_and_install.md) — 이 wrapper가 소비하는 build
-- [Workspace clamp](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_kinematics.md) — 결합 workspace 경계와 명령 clamp
-- [안전과 fault 대응](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/12_safety.md) — 명령 지속성과 통신 두절 동작
-- [문제 해결](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/13_troubleshooting.md) — 연결·RT·homing·CAN 오류
+- [Real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/04_real_time_kernel_setup.md) — PREEMPT_RT, 실물 전 필수
+- [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_can_fd_setup.md) — Interface bring-up과 boot 자동화
+- [SDK build·install](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/06_sdk_build_and_install.md) — 이 wrapper가 소비하는 build
+- [Workspace limits](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/14_workspace_limits.md) — 결합 workspace 경계와 명령 clamp
+- [안전과 fault 대응](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/13_safety.md) — 명령 지속성과 통신 두절 동작
+- [문제 해결](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_troubleshooting.md) — 연결·RT·homing·CAN 오류

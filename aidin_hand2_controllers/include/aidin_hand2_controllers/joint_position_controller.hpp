@@ -12,7 +12,7 @@
 namespace aidin_hand2_controllers
 {
 
-// JointPosition typed command를 hardware command port로 옮기는 chainable adapter.
+// JointPosition typed command를 hardware command interface 로 옮기는 chainable controller.
 class JointPositionController : public controller_interface::ChainableControllerInterface
 {
 public:
@@ -31,12 +31,16 @@ protected:
     const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
 private:
+  void subscribe();    // chained 진입 시 내렸다가 이탈 시 다시 만든다
+  void unsubscribe();
+  void drop_buffered_command();
+
   std::string hand_side_;
   std::vector<std::string> active_joint_names_;
   std::vector<std::string> command_interface_names_;  // lock + target 16 + speed
-  std::vector<std::string> state_interface_names_;
 
   double default_speed_{0.0};
+  const void * consumed_command_{nullptr};  // 이미 반영한 message — 같은 message 재적용 방지
 
   realtime_tools::RealtimeBuffer<
     std::shared_ptr<aidin_hand2_msgs::msg::JointPositionCommand>> command_buffer_;

@@ -54,7 +54,7 @@ homing·reconnect service는 제공하지 않습니다. Default launch는 필요
 
 ## 2. 실물 host 준비
 
-실물 실행 전에 SDK의 [real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/01_real_time_kernel_setup.md)과 [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/02_can_fd_setup.md)을 완료합니다. 해당 문서가 다음 항목의 단일 기준입니다.
+실물 실행 전에 SDK의 [real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/04_real_time_kernel_setup.md)과 [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_can_fd_setup.md)을 완료합니다. 해당 문서가 다음 항목의 단일 기준입니다.
 
 - Ubuntu Pro PREEMPT_RT 설치와 재부팅 검증
 - realtime group, `rtprio 99`, memory lock
@@ -137,7 +137,7 @@ ros2 topic echo \
 - `left_joint_position_controller` active
 - 나머지 command controller 3개 inactive
 - Diagnostics lifecycle `Running`
-- Diagnostics homed `false`
+- Diagnostics `homing_state != Succeeded`
 
 ## 5. Homing
 
@@ -153,7 +153,7 @@ ros2 service call \
 
 ```text
 success: true
-message: homing started — poll diagnostics 'homed'
+message: homing started — poll diagnostics 'homing_state'
 ```
 
 이는 완료 응답이 아닙니다. Polling합니다.
@@ -163,7 +163,7 @@ ros2 topic echo \
   /left_diagnostics_broadcaster/hand_diagnostics
 ```
 
-`homed: true`와 empty actuator fault를 확인합니다.
+`homing_state: Succeeded`와 empty actuator fault를 확인합니다.
 
 ## 6. 첫 command
 

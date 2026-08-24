@@ -7,6 +7,25 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-24
+
+### Changed
+
+- Requires SDK 0.3.x.
+- `HandDiagnostics.homed` replaced by `homing_state`.
+- Diagnostics state interface `homed` renamed to `homing_state`.
+- `NaN` in a command interface means "no command"; the hardware then holds the
+  last command.
+- A partial `NaN` is an axis the upstream does not own, filled from its last
+  commanded value.
+- Controllers write a command only on the cycle they receive one.
+- Controllers claim no state interfaces and seed no target on activation.
+- Controllers drop their command subscription while in chained mode.
+
+### Fixed
+
+- The hand no longer returns to its pre-homing pose after homing.
+
 ## [0.2.0]
 
 ### Changed
