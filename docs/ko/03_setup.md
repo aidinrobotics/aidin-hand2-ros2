@@ -145,5 +145,5 @@ ros2 control list_controllers             # command controller 가 하나만 act
 ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once
 ```
 
-`hand_diagnostics`의 `lifecycle`이 `Running`이고 `homed: true`면 명령을 받을 준비가 된
+`hand_diagnostics`의 `lifecycle`이 `Running`이고 `homing_state: Succeeded`면 명령을 받을 준비가 된
 상태입니다. 그 밖의 값은 [운영과 복구](06_operations.md)를 참조하십시오.

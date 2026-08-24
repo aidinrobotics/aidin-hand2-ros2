@@ -420,7 +420,7 @@ claim 합니다. `claim #` 는 `DiagnosticsBroadcaster` 의 `state_interfaces_` 
 | 3 | `{side}_diagnostics/deadline_misses` | 누적 개수 | `HandDiagnostics.deadline_misses` | 3 |
 | 4 | `{side}_diagnostics/last_period_ms` | ms | `HandDiagnostics.last_period_ms` | 4 |
 | 5 | `{side}_diagnostics/last_compute_ms` | ms | `HandDiagnostics.last_compute_ms` | 5 |
-| 6 | `{side}_diagnostics/homed` | 1 = homed, 0 = 미확정 | `HandDiagnostics.homed` | 6 |
+| 6 | `{side}_diagnostics/homing_state` | HomingState ordinal (1 = Succeeded) | `HandDiagnostics.homing_state` | 6 |
 
 ### 5.2 Actuator enabled 16 개
 

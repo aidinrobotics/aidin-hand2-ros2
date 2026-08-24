@@ -69,7 +69,7 @@ constexpr std::array<const char *, 7> kDiagnosticsInterfaceNames = {
   "deadline_misses",
   "last_period_ms",
   "last_compute_ms",
-  "homed"};
+  "homing_state"};
 
 // tactile finger 순서 (SDK flat array 블록 순서). thumb 뒤 long finger 4개.
 constexpr std::array<const char *, 5> kFingerNames = {
@@ -519,8 +519,8 @@ CallbackReturn AidinHand2SystemInterface::on_activate(const rclcpp_lifecycle::St
     return CallbackReturn::ERROR;
   }
   // auto-home 은 스레드 없이 RT read 에서 non-blocking 으로 건다(start_homing). 여기선 이번 활성화
-  // 구간의 1회 트리거 래치만 재무장한다 — read 가 원점 미확정(diagnostics.homed=false)을 보면 한 번
-  // start_homing() 을 걸고, 완료는 is_homing()/homed 로 관측한다. homing 중 write 는 command 를 억제한다.
+  // 구간의 1회 트리거 래치만 다시 세운다 — 원점 미확정(homing_state != Succeeded)을 보면 한 번
+  // start_homing() 을 걸고, 완료는 homing_state 로 관측한다. homing 중 write 는 command 를 억제한다.
   auto_home_triggered_.store(false);
   return CallbackReturn::SUCCESS;
 }
@@ -704,7 +704,7 @@ hardware_interface::return_type AidinHand2SystemInterface::read(
       static_cast<double>(diagnostics.deadline_misses),
       diagnostics.last_period_ms,
       diagnostics.last_compute_ms,
-      diagnostics.homed ? 1.0 : 0.0};
+      static_cast<double>(static_cast<int>(diagnostics.homing_state))};
 
     // per-actuator enable·fault
     for (std::size_t actuator = 0; actuator < ah2::kActuatorCount; ++actuator) {
@@ -745,17 +745,18 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
     // start_homing() 을 1회만(래치). start_homing() 은 request_homing_ 을 동기적으로 세우고 즉시 반환하므로,
     // 바로 아래 억제 체크의 is_homing() 이 이 cycle 부터 true → command 유출 없음. 실제 homing 명령은
     // SDK RT loop 가 보낸다(여기 write 아님). start_homing()/get_diagnostics() 예외는 아래 catch 가 받는다.
-    if (auto_home_ && !hand_->is_homing() && !hand_->get_diagnostics().homed &&
+    if (auto_home_ && !hand_->is_homing() &&
+        hand_->get_diagnostics().homing_state != ah2::HomingState::Succeeded &&
         !auto_home_triggered_.exchange(true)) {
       hand_->start_homing();
     }
 
-    // homing 중이거나 원점 미확정(!homed)이면 command 미전송. homing 중: FSM 간섭 방지. !homed: SDK 가
-    // set_command 를 거부(WrongCallOrder)하므로 매 cycle 그 예외를 내는 대신 조용히 넘긴다. is_homing() 만으로는
-    // "homing 도 아니면서 아직 not-homed" 구간(예: auto_reconnect_home=false 로 재연결돼 SDK homed 가 내려간 뒤,
-    // 또는 auto_home 실패)이 빠져 set_command 가 500Hz 로 throw 된다. homed 복귀(~/home·재homing·~/reconnect)
-    // 후 자연히 재개된다. homing 상태·homed 는 SDK 소관이라 그대로 관측한다(SDK 는 직전 명령/자체 구동 유지).
-    if (hand_->is_homing() || !hand_->get_diagnostics().homed) {
+    // homing 중이거나 원점 미확정이면 command 미전송. homing 중: FSM 간섭 방지. 미확정: SDK 가 set_command
+    // 를 거부(WrongCallOrder)하므로 매 cycle 그 예외를 내는 대신 조용히 넘긴다. is_homing() 만으로는
+    // "homing 도 아닌데 아직 미확정" 구간(재연결 직후, auto_home 실패)이 빠진다. homing_state 가 Succeeded 로
+    // 돌아오면(~/home·재homing·~/reconnect) 자연히 재개된다.
+    if (hand_->is_homing() ||
+        hand_->get_diagnostics().homing_state != ah2::HomingState::Succeeded) {
       return hardware_interface::return_type::OK;
     }
 
@@ -859,9 +860,9 @@ bool AidinHand2SystemInterface::exec_stop(std::string & failure_message)
 
 bool AidinHand2SystemInterface::exec_home(std::string & failure_message)
 {
-  // homing 트리거만 하고 즉시 반환(non-blocking) — CM executor 를 막지 않는다. 원점 확정·Idle 리셋은
-  // SDK RT 완료 지점이 수행하고, 완료 관측은 diagnostics.homed 로 한다(wrapper 는 homed_ 를 세우지 않음).
-  // 재진입(이미 homing 중 재호출)은 SDK 가 처리한다(request 재무장). check_allowed(Home) 게이트가 상태 검증.
+  // homing 트리거만 하고 즉시 반환(non-blocking) — CM executor 를 막지 않는다. 직전 명령 Idle 리셋은 SDK 가
+  // 트리거 시점에 하고, 완료 관측은 diagnostics.homing_state 로 한다(wrapper 는 상태를 세우지 않음).
+  // 재진입(이미 homing 중 재호출)은 SDK 가 처리한다(request 재설정). check_allowed(Home) 게이트가 상태 검증.
   try {
     hand_->start_homing();
     return true;
@@ -879,7 +880,7 @@ bool AidinHand2SystemInterface::exec_reconnect(std::string & failure_message)
   try {
     hand_->reconnect();
     started_.store(false);
-    // 재수립 후 원점을 다시 잡아야 하므로(reconnect 가 SDK homed 를 내린다) auto-home 트리거를 재무장한다.
+    // 재수립 후 원점을 다시 잡아야 하므로(reconnect 가 homing_state 를 NotRun 으로 내린다) 트리거를 다시 세운다.
     // 이게 없으면 다음 ~/run 후 read 가 이미 소진된 래치 탓에 start_homing 을 다시 걸지 않는다.
     auto_home_triggered_.store(false);
     return true;
@@ -920,8 +921,8 @@ void AidinHand2SystemInterface::start_service_node()
            const std::shared_ptr<std_srvs::srv::Trigger::Response> & response) {
       std::string failure_message;
       response->success = exec_home(failure_message);
-      // start_homing 은 트리거만 — 완료를 기다리지 않는다. 완료는 diagnostics 의 homed 로 관측한다.
-      response->message = response->success ? "homing started — poll diagnostics 'homed'" : failure_message;
+      // start_homing 은 트리거만 — 완료를 기다리지 않는다. 완료는 diagnostics 의 homing_state 로 관측한다.
+      response->message = response->success ? "homing started — poll diagnostics 'homing_state'" : failure_message;
     });
   reconnect_service_ = service_node_->create_service<std_srvs::srv::Trigger>(
     "~/reconnect",

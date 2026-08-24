@@ -26,7 +26,7 @@ const std::array<const char *, 7> kDiagnosticsFields = {
   "deadline_misses",
   "last_period_ms",
   "last_compute_ms",
-  "homed"};
+  "homing_state"};
 
 // actuator 이름 (prefix 없음) — DiagnosticStatus key 로도 사용.
 const std::array<const char *, 16> kActuatorBaseNames = {
@@ -57,6 +57,12 @@ std::string bool_string(double value) { return value != 0.0 ? "true" : "false"; 
 std::string lifecycle_string(double value)
 {
   return aidin_hand2::to_string(static_cast<aidin_hand2::HandLifecycle>(static_cast<int>(value)));
+}
+
+// homing_state 값(double = HomingState ordinal) → 이름.
+std::string homing_state_string(double value)
+{
+  return aidin_hand2::to_string(static_cast<aidin_hand2::HomingState>(static_cast<int>(value)));
 }
 }  // namespace
 
@@ -147,7 +153,7 @@ controller_interface::return_type DiagnosticsBroadcaster::update(
       status.values.push_back(pair);
     };
 
-    // SDK Diagnostics 7 필드 — lifecycle(이름) · count 3 · ms 2 · homed(bool).
+    // SDK Diagnostics 7 필드 — lifecycle(이름) · count 3 · ms 2 · homing_state(이름).
     add(kDiagnosticsFields[0], lifecycle_string(state_interfaces_[0].get_value()));
     for (std::size_t i = 1; i < 4; ++i) {
       add(kDiagnosticsFields[i],
@@ -156,7 +162,7 @@ controller_interface::return_type DiagnosticsBroadcaster::update(
     for (std::size_t i = 4; i < 6; ++i) {
       add(kDiagnosticsFields[i], std::to_string(state_interfaces_[i].get_value()));
     }
-    add(kDiagnosticsFields[6], bool_string(state_interfaces_[6].get_value()));
+    add(kDiagnosticsFields[6], homing_state_string(state_interfaces_[6].get_value()));
 
     // per-actuator: enabled 는 항상, fault 는 fault 상태일 때만 (이름).
     bool any_fault = false;
@@ -203,7 +209,7 @@ controller_interface::return_type DiagnosticsBroadcaster::update(
     message.deadline_misses = static_cast<std::uint64_t>(state_interfaces_[3].get_value());
     message.last_period_ms = state_interfaces_[4].get_value();
     message.last_compute_ms = state_interfaces_[5].get_value();
-    message.homed = state_interfaces_[6].get_value() != 0.0;
+    message.homing_state = homing_state_string(state_interfaces_[6].get_value());
     for (std::size_t i = 0; i < 16; ++i) {
       message.actuator_enabled[i] = state_interfaces_[kEnabledOffset + i].get_value() != 0.0;
       const auto fault = static_cast<aidin_hand2::ActuatorFault>(

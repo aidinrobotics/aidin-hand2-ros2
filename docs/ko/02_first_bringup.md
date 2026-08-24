@@ -137,7 +137,7 @@ ros2 topic echo \
 - `left_joint_position_controller` active
 - 나머지 command controller 3개 inactive
 - Diagnostics lifecycle `Running`
-- Diagnostics homed `false`
+- Diagnostics `homing_state != Succeeded`
 
 ## 5. Homing
 
@@ -153,7 +153,7 @@ ros2 service call \
 
 ```text
 success: true
-message: homing started — poll diagnostics 'homed'
+message: homing started — poll diagnostics 'homing_state'
 ```
 
 이는 완료 응답이 아닙니다. Polling합니다.
@@ -163,7 +163,7 @@ ros2 topic echo \
   /left_diagnostics_broadcaster/hand_diagnostics
 ```
 
-`homed: true`와 empty actuator fault를 확인합니다.
+`homing_state: Succeeded`와 empty actuator fault를 확인합니다.
 
 ## 6. 첫 command
 

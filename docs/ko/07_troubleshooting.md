@@ -202,7 +202,7 @@ printenv ROS_DOMAIN_ID
 
 Default 실제 hardware system name에서만 `/left_hand_control/...`가 됩니다.
 
-## 11. Home service success인데 `homed=false`
+## 11. Home service success인데 `homing_state != Succeeded`
 
 Service는 non-blocking trigger입니다.
 
@@ -211,7 +211,7 @@ ros2 topic echo \
   /left_diagnostics_broadcaster/hand_diagnostics
 ```
 
-Lifecycle, actuator fault, `control_cycles`와 SDK log를 확인합니다. Reconnect 직후에는 homed가 false로 reset됩니다.
+Lifecycle, actuator fault, `control_cycles`와 SDK log를 확인합니다. Reconnect 직후에는 homing_state가 NotRun으로 reset됩니다.
 
 ## 12. Topic publish는 성공하지만 움직이지 않음
 
@@ -230,13 +230,13 @@ ros2 topic echo \
 
 - Hardware component active
 - SDK lifecycle `Running`
-- `homed=true`
+- `homing_state=Succeeded`
 - 원하는 command controller active
 - Joint·actuator name 정확
 - Message field 정확
 - Auto reconnect 또는 homing 진행 중 아님
 
-Wrapper는 homing 중 또는 homed false일 때 command를 error 없이 skip합니다.
+Wrapper는 homing 중 또는 homing_state != Succeeded 일 때 command를 error 없이 skip합니다.
 
 ## 13. Joint가 너무 빠르게 움직임
 
@@ -318,14 +318,14 @@ Broadcaster 수신 여부가 아니라 underlying 값 변화로 health를 판정
 
 ## 19. `/diagnostics`가 OK인데 motion-ready가 아님
 
-Standard level은 homed false, stale state와 deadline miss rate를 반영하지 않습니다. Custom supervisor가 별도 gate를 적용해야 합니다.
+Standard level은 homing_state != Succeeded, stale state와 deadline miss rate를 반영하지 않습니다. Custom supervisor가 별도 gate를 적용해야 합니다.
 
 ```bash
 ros2 topic echo \
   /left_diagnostics_broadcaster/hand_diagnostics --once
 ```
 
-Lifecycle, homed, cycle, timing과 actuator array를 직접 확인합니다.
+Lifecycle, homing_state, cycle, timing과 actuator array를 직접 확인합니다.
 
 ## 20. Rosbridge GUI 연결 실패
 

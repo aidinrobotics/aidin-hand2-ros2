@@ -297,8 +297,8 @@
         <state_interface name="deadline_misses"/>
         <state_interface name="last_period_ms"/>
         <state_interface name="last_compute_ms"/>
-        <!-- 원점 확정 여부 (1=homed, 0=미확정/진행중/실패) -->
-        <state_interface name="homed"/>
+        <!-- 원점 상태 (HomingState ordinal: 0=NotRun, 1=Succeeded, 2=InProgress, 3=Failed) -->
+        <state_interface name="homing_state"/>
 
         <!-- per-actuator enabled·fault (actuator 16, hand_actuator 호출과 같은 순서) -->
         <xacro:diagnostics_actuator_health actuator_base="thumb_actuator0"/>
