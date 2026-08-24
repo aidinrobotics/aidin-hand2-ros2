@@ -7,22 +7,24 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-24
+
 ### Changed
 
-- `HandDiagnostics.homed` → `homing_state`(`NotRun`/`Succeeded`/`InProgress`/`Failed`). 
-  The diagnostics state interface
-  `homed` became `homing_state`.
-- `NaN` in a command interface means "no command": the hardware skips
-  `set_command()` and the SDK holds its last command. A partial `NaN` is an axis
-  the upstream does not own, filled from what was last commanded for it.
-- Controllers write a command only on the cycle they receive one. They claim no
-  state interfaces and seed no target on activation.
+- Requires SDK 0.3.x.
+- `HandDiagnostics.homed` replaced by `homing_state`.
+- Diagnostics state interface `homed` renamed to `homing_state`.
+- `NaN` in a command interface means "no command"; the hardware then holds the
+  last command.
+- A partial `NaN` is an axis the upstream does not own, filled from its last
+  commanded value.
+- Controllers write a command only on the cycle they receive one.
+- Controllers claim no state interfaces and seed no target on activation.
 - Controllers drop their command subscription while in chained mode.
 
 ### Fixed
 
-- The hand returned to its pre-homing pose once homing finished. `~/home` and
-  `~/stop` followed by `~/run` had the same problem.
+- The hand no longer returns to its pre-homing pose after homing.
 
 ## [0.2.0]
 
