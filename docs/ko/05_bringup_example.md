@@ -9,6 +9,7 @@ Launch마다 받는 인자가 다릅니다.
 |---|---|
 | `aidin_hand2.launch.py` | 실물 — hardware + controller 전체 |
 | `aidin_hand2_mock.launch.py` | mock — CAN·drive 없이 |
+| `aidin_hand2_isaac.launch.py` | Isaac Sim — ROS 2 토픽 브리지 (촉각·diagnostics 포함) |
 | `aidin_hand2_controllers.launch.py` | 이미 뜬 controller_manager에 controller만 |
 | `gui_bridge.launch.py` | GUI용 rosbridge WebSocket |
 

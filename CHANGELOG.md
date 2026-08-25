@@ -7,6 +7,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `AidinHand2IsaacSystemInterface` — an Isaac Sim bridge hardware that talks to the
+  simulator over ROS 2 topics only. Its command contract (98) and state contract
+  (tactile and diagnostics included) match the real hardware, so
+  `HandStateBroadcaster` and `DiagnosticsBroadcaster` attach unchanged.
+- `use_isaac` (plus `isaac_topic_prefix`, `isaac_joint_state_topic`,
+  `isaac_joint_command_topic`, `isaac_tactile_prefix`, `isaac_state_timeout`) on the
+  `aidin_hand2_ros2_control` xacro macro. The backend resolves as
+  `use_isaac` > `use_mock` > real CAN.
+- `aidin_hand2_bringup`: `aidin_hand2_isaac.launch.py` and `config/controllers_isaac.yaml`.
+
 ## [0.3.0] - 2026-08-24
 
 ### Changed

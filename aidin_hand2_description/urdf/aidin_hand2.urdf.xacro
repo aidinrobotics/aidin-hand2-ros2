@@ -60,6 +60,14 @@
   <xacro:arg name="auto_reconnect_home"       default="false"/>
   <!-- true 면 실 CAN 대신 kinematics mock(clamp→IK→FK) hardware 사용 -->
   <xacro:arg name="use_mock" default="false"/>
+  <!-- true 면 Isaac Sim 브리지 hardware 사용 (use_mock 보다 우선). 토픽은 topic_prefix 기준
+       기본 이름(joint_states / hand_command / tactile)을 쓰고, 아래 인자로 개별 지정한다. -->
+  <xacro:arg name="use_isaac" default="false"/>
+  <xacro:arg name="isaac_topic_prefix"       default="/isaac"/>
+  <xacro:arg name="isaac_joint_state_topic"  default=""/>
+  <xacro:arg name="isaac_joint_command_topic" default=""/>
+  <xacro:arg name="isaac_tactile_prefix"     default=""/>
+  <xacro:arg name="isaac_state_timeout"      default="0.1"/>
 
   <xacro:if value="$(arg use_left_hand)">
     <xacro:aidin_hand2_ros2_control
@@ -75,7 +83,13 @@
       auto_reconnect="$(arg auto_reconnect)"
       auto_reconnect_timeout_ms="$(arg auto_reconnect_timeout_ms)"
       auto_reconnect_home="$(arg auto_reconnect_home)"
-      use_mock="$(arg use_mock)"/>
+      use_mock="$(arg use_mock)"
+      use_isaac="$(arg use_isaac)"
+      isaac_topic_prefix="$(arg isaac_topic_prefix)"
+      isaac_joint_state_topic="$(arg isaac_joint_state_topic)"
+      isaac_joint_command_topic="$(arg isaac_joint_command_topic)"
+      isaac_tactile_prefix="$(arg isaac_tactile_prefix)"
+      isaac_state_timeout="$(arg isaac_state_timeout)"/>
   </xacro:if>
   <xacro:if value="$(arg use_right_hand)">
     <xacro:aidin_hand2_ros2_control
@@ -91,6 +105,12 @@
       auto_reconnect="$(arg auto_reconnect)"
       auto_reconnect_timeout_ms="$(arg auto_reconnect_timeout_ms)"
       auto_reconnect_home="$(arg auto_reconnect_home)"
-      use_mock="$(arg use_mock)"/>
+      use_mock="$(arg use_mock)"
+      use_isaac="$(arg use_isaac)"
+      isaac_topic_prefix="$(arg isaac_topic_prefix)"
+      isaac_joint_state_topic="$(arg isaac_joint_state_topic)"
+      isaac_joint_command_topic="$(arg isaac_joint_command_topic)"
+      isaac_tactile_prefix="$(arg isaac_tactile_prefix)"
+      isaac_state_timeout="$(arg isaac_state_timeout)"/>
   </xacro:if>
 </robot>
