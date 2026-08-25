@@ -39,6 +39,8 @@ xacro 매크로를 자기 URDF에 직접 호출합니다. 예제 launch의 argum
 ## 2. 매크로 파라미터
 
 `can_interface`까지가 필수이고 나머지는 SDK 기본값을 따릅니다. 값은 SDK `HandConfig`와 1:1입니다.
+Backend 는 `use_isaac` > `use_mock` > 실 CAN 순으로 정해지고, `isaac_*` 인자는 `use_isaac` 일 때만
+쓰입니다.
 
 | 파라미터 | 기본값 | 설명 |
 |---|---|---|
@@ -55,6 +57,12 @@ xacro 매크로를 자기 URDF에 직접 호출합니다. 예제 launch의 argum
 | `auto_reconnect_timeout_ms` | `0` | 재수립 포기 상한 [ms]. `0` = 무제한 |
 | `auto_reconnect_home` | `false` | 재수립 복귀 후 run 전에 homing |
 | `use_mock` | `false` | 실 CAN 대신 kinematics mock. interface 이름은 동일 |
+| `use_isaac` | `false` | 실 CAN 대신 Isaac Sim 토픽 브리지. `use_mock` 보다 우선하고, state·command 계약은 real 과 동일 |
+| `isaac_topic_prefix` | `/isaac` | Isaac 토픽 prefix. 아래 세 인자가 비면 `<prefix>/joint_states` · `<prefix>/hand_command` · `<prefix>/tactile` |
+| `isaac_joint_state_topic` | `''` | Isaac → hardware 상태 토픽 override (`sensor_msgs/JointState`, 이름 매칭) |
+| `isaac_joint_command_topic` | `''` | hardware → Isaac 명령 토픽 override (`sensor_msgs/JointState`, joint 21) |
+| `isaac_tactile_prefix` | `''` | 촉각 토픽 prefix override. `<prefix>/<side>_<finger>_sensor` · `<prefix>/<side>_palm_sensor` (`std_msgs/Float64MultiArray`) |
+| `isaac_state_timeout` | `0.1` | Isaac 상태가 이 시간[s]을 넘겨 끊기면 lifecycle 이 `Disconnected`. `0` 이하면 검사 안 함 |
 
 > [!CAUTION]
 > `auto_home=true`는 activation 직후 손을 움직입니다. 첫 통합에서는 `false`로 두고 작업 공간을
