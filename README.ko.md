@@ -1,6 +1,6 @@
 <div align="right"><sub><a href="README.md">English</a></sub></div>
 
-# AIDIN Hand Gen2 ROS 2 &nbsp;[![version](https://img.shields.io/badge/version-0.3.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.2.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble%20%7C%20Jazzy-brightgreen)](#지원-범위)
+# AIDIN Hand Gen2 ROS 2 &nbsp;[![version](https://img.shields.io/badge/version-0.3.1-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.3.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#지원-범위)
 
 AIDIN Hand Gen2 C++ SDK를 `ros2_control`에 연결하는 thin wrapper입니다. CAN-FD protocol, drive state machine, kinematics와 500 Hz hand control loop는 SDK가 소유하며 이 repository는 hardware plugin, controller, message, URDF와 launch를 제공합니다.
 
@@ -25,7 +25,7 @@ Standalone에서는 각 controller의 `~/command`에 한 cycle의 target과 부�
 | 항목 | 대상 |
 |---|---|
 | OS | Ubuntu 22.04 |
-| ROS 2 | Humble (이 브랜치) · Jazzy (`jazzy` 브랜치) |
+| ROS 2 | Humble |
 | Control framework | `ros2_control` |
 | SDK | `aidin_hand2` 0.3.x — [`aidin_hand2.repos`](aidin_hand2.repos) 참조 |
 | CAN interface | USB CAN-FD adapter (SocketCAN), nominal 1 Mbit/s / data phase 5 Mbit/s |
