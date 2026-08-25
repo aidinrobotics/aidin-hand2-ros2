@@ -1,6 +1,6 @@
 <div align="right"><sub><a href="README.ko.md">한국어</a></sub></div>
 
-# AIDIN Hand Gen2 ROS 2 &nbsp;[![version](https://img.shields.io/badge/version-0.3.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.3.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble%20%7C%20Jazzy-brightgreen)](#system-requirements)
+# AIDIN Hand Gen2 ROS 2 &nbsp;[![version](https://img.shields.io/badge/version-0.3.1-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.3.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
 
 A thin `ros2_control` wrapper around the AIDIN Hand Gen2 C++ SDK. The SDK owns the CAN-FD protocol, drive state machine, kinematics, and the 500 Hz control loop; this repository provides the hardware plugin, controllers, messages, URDF, and launch files.
 
@@ -11,7 +11,7 @@ A thin `ros2_control` wrapper around the AIDIN Hand Gen2 C++ SDK. The SDK owns t
 flowchart LR
     Upper["<b>Upper controller</b><br/>chainable (optional)"]
     Basic["<b>Basic controller</b><br/>4 command &nbsp;·&nbsp; 2 broadcaster"]
-    HW["<b>SystemInterface</b><br/>real &nbsp;·&nbsp; mock"]
+    HW["<b>SystemInterface</b><br/>real &nbsp;·&nbsp; isaac &nbsp;·&nbsp; mock"]
     SDK["<b>SDK</b><br/>Control loop &nbsp;·&nbsp; CAN-FD"]
     Upper --> Basic --> HW --> SDK
 ```
@@ -25,7 +25,7 @@ Standalone, each controller's `~/command` carries one cycle's target and every a
 | Component | Requirement |
 |---|---|
 | Operating System | Ubuntu 22.04 |
-| ROS 2 | Humble (this branch) · Jazzy (`jazzy` branch) |
+| ROS 2 | Humble |
 | Control framework | `ros2_control` |
 | SDK | `aidin_hand2` 0.3.x — see [`aidin_hand2.repos`](aidin_hand2.repos) |
 | CAN interface | USB CAN-FD adapter (SocketCAN), 1 Mbit/s nominal / 5 Mbit/s data phase |
@@ -36,11 +36,11 @@ Prepare the host first: PREEMPT_RT and boot-time CAN-FD bring-up are covered by 
 
 | Package | Role |
 |---|---|
-| `aidin_hand2_hardware` | Real and mock `SystemInterface`, SDK lifecycle mapping |
+| `aidin_hand2_hardware` | Real, Isaac Sim and mock `SystemInterface`, SDK lifecycle mapping |
 | `aidin_hand2_controllers` | 4 command controllers, 2 broadcasters |
 | `aidin_hand2_msgs` | 4 typed commands, `CommandState`, `HandState`, `HandDiagnostics` |
 | `aidin_hand2_description` | URDF, xacro, meshes, ros2_control description |
-| `aidin_hand2_bringup` | Real and mock launch files with controller config |
+| `aidin_hand2_bringup` | Real, Isaac Sim and mock launch files with controller config |
 | `aidin_hand2_examples` | 4 chainable upper-controller skeletons, optional MANUS glove teleop |
 
 ## Build from source

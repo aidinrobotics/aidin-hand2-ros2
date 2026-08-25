@@ -954,26 +954,56 @@ Chain 최상위입니다. 하위 자세 controller 의 reference 16 개를 comma
 얻습니다. `command_lock` 때문에 서로 다른 mode 의 basic controller 를 동시에 활성화할 수
 없으므로 한 쌍만 선택해 활성화합니다.
 
-## 9. Mock 하드웨어 차이
+## 9. Backend 별 차이 (Real / Isaac / Mock)
 
-`AidinHand2MockSystemInterface` 는 command 98 개를 real 과 **완전히 동일하게** export 하고
-mode switch 검증도 같습니다. State 는 physical 69 개만 노출합니다.
+Backend 는 세 가지입니다 — 실 CAN(`AidinHand2SystemInterface`), Isaac Sim 브리지
+(`AidinHand2IsaacSystemInterface`), kinematics mock(`AidinHand2MockSystemInterface`).
+셋 다 command 98 개를 **완전히 동일하게** export 하고 mode switch 검증도 같습니다.
+State 는 Isaac 이 real 과 같은 전량을 내보내고, mock 만 physical 69 개로 줄어듭니다.
 
-| 그룹 | Real | Mock | 비고 |
-|---|---|---|---|
-| Command interface 98 | O | O | 이름·개수·mode 검증 동일 |
-| Joint position 21 | O | O | mock 은 FK 결과 |
-| Actuator physical 48 | O | O | mock 은 IK/FK 로 합성 (velocity·current 는 0 고정) |
-| Finger tactile 85 | O | X | xacro 에서 `use_mock` 시 제외 |
-| Palm tactile 58 | O | X | xacro 에서 `use_mock` 시 제외 |
-| Diagnostics 39 | O | X | xacro 에서 `use_mock` 시 제외 |
-| Command echo 132 | O | X | real plugin 만 동적 export |
-| Timestamp 2 | O | X | real plugin 만 동적 export |
-| Runtime service (`run`/`stop`/`home`/`reconnect`) | O | X | mock 은 서비스 노드 없음 |
-| `~/set_max_effort` topic | O | X | mock 은 `max_effort` 파라미터로 clamp 만 |
+| 그룹 | Real | Isaac | Mock | 비고 |
+|---|---|---|---|---|
+| Command interface 98 | O | O | O | 이름·개수·mode 검증 동일 |
+| Joint position 21 | O | O | O | Isaac 은 수신한 자세, mock 은 FK 결과 |
+| Actuator physical 48 | O | O | O | Isaac·mock 모두 IK/FK 로 합성 (velocity·current 는 0 고정) |
+| Finger tactile 85 | O | O | X | Isaac 은 토픽 수신값, 미수신이면 0. xacro 에서 `use_mock` 시 제외 |
+| Palm tactile 58 | O | O | X | 위와 동일 |
+| Diagnostics 39 | O | O | X | Isaac 은 브리지가 직접 집계 (§9.1). xacro 에서 `use_mock` 시 제외 |
+| Command echo 132 | O | O | X | mock 만 미노출 |
+| Timestamp 2 | O | O | X | Isaac 은 수신 메시지의 `header.stamp` |
+| Runtime service (`run`/`stop`/`home`/`reconnect`) | O | X | X | 시뮬레이션에는 대응 동작이 없음 |
+| `~/set_max_effort` topic | O | X | X | Isaac·mock 은 `max_effort` 파라미터로 clamp 만 |
 
-따라서 mock 에서는 `HandStateBroadcaster` 와 `DiagnosticsBroadcaster` 를 spawn 할 수
-없습니다(claim 대상 state 부재). 네 basic controller 는 모두 load 가능합니다.
+따라서 mock 에서만 `HandStateBroadcaster` 와 `DiagnosticsBroadcaster` 를 spawn 할 수
+없습니다(claim 대상 state 부재). Isaac 은 real 과 같은 state 계약이라 그대로 붙습니다.
+네 basic controller 는 세 backend 모두 load 가능합니다.
+
+### 9.1 Isaac diagnostics 의 출처
+
+SDK 가 없으므로 브리지가 직접 채웁니다. 값의 의미가 real 과 다른 항목만 적습니다.
+
+| 필드 | Isaac 에서의 의미 |
+|---|---|
+| `lifecycle` | 상태 미수신이거나 `state_timeout` 초과로 끊기면 `Disconnected`, 그 외 active 면 `Running` / 아니면 `Connected` |
+| `nan_command_count` | 목표가 불완전(NaN)해 명령을 내지 못한 `write()` 횟수 |
+| `control_cycles` | `read()` 호출 수 |
+| `deadline_misses` | 마지막 수신이 `state_timeout` 보다 오래된 채 돈 `read()` 수. 시뮬레이터는 제어 루프보다 느리게 발행하는 것이 정상이라 cycle 수가 아니라 **경과 시간**으로 판정합니다 |
+| `last_compute_ms` | `write()` 의 명령 조립 소요 시간 |
+| `homing_state` | 항상 `Succeeded` — 시뮬레이션은 원점 탐색이 없습니다 |
+| `enabled_*` / `fault_*` | 항상 `true` / `None` — 시뮬레이터에 드라이브 헬스가 없습니다 |
+
+### 9.2 Isaac 토픽
+
+| 방향 | 토픽 (기본값) | 타입 |
+|---|---|---|
+| Isaac → hardware | `<topic_prefix>/joint_states` | `sensor_msgs/JointState` (이름 매칭, 관계없는 joint 는 무시) |
+| hardware → Isaac | `<topic_prefix>/hand_command` | `sensor_msgs/JointState` (joint 21 전량, FK 결과) |
+| Isaac → hardware | `<tactile_prefix>/<side>_<finger>_sensor` | `std_msgs/Float64MultiArray` (17) |
+| Isaac → hardware | `<tactile_prefix>/<side>_palm_sensor` | `std_msgs/Float64MultiArray` (58) |
+
+명령은 `<digit>_joint4` 5 개를 포함한 21 개를 모두 발행합니다. Isaac 이 4절 링크를 구속으로
+모델링했다면 그 5 개는 무시하면 되고, 독립 조인트로 실었다면 그대로 구동됩니다.
+`ActuatorEffort` mode 는 시뮬레이터에 토크 동역학이 없어 자세를 움직이지 않고 명령만 echo 합니다.
 
 ## 10. 개수 요약
 

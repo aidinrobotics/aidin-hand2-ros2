@@ -67,6 +67,14 @@
       reconnect: auto_reconnect (통신 두절 시 자동 재수립),
                  auto_reconnect_timeout_ms (재수립 포기 상한, 0=무제한),
                  auto_reconnect_home (재수립 복귀 시 run 전 homing)
+
+    backend 는 use_isaac > use_mock > 실 CAN 순으로 정해진다 (셋 다 같은 interface 이름 규약이라
+    controller 는 동일하게 붙는다):
+      use_isaac : Isaac Sim 과 ROS 2 토픽으로 주고받는 브리지. 실 hardware 와 같은 state 계약이라
+                  촉각·diagnostics 도 그대로 나온다.
+      use_mock  : SDK kinematics(clamp→IK→FK) mock. 촉각·diagnostics 는 내보내지 않는다.
+    isaac_* 파라미터는 use_isaac 일 때만 쓰인다. 토픽 인자가 빈 값이면 하드웨어가 topic_prefix
+    기준 기본 이름(joint_states / hand_command / tactile)을 쓴다.
   -->
   <xacro:macro name="aidin_hand2_ros2_control"
                params="name prefix hand_side
@@ -79,18 +87,46 @@
                        auto_reconnect:=^|false
                        auto_reconnect_timeout_ms:=^|0
                        auto_reconnect_home:=^|false
-                       use_mock:=^|false">
+                       use_mock:=^|false
+                       use_isaac:=^|false
+                       isaac_topic_prefix:=^|'/isaac'
+                       isaac_joint_state_topic:=^|''
+                       isaac_joint_command_topic:=^|''
+                       isaac_tactile_prefix:=^|''
+                       isaac_state_timeout:=^|0.1">
+
+    <!-- launch 에서 온 값은 'true'/'false' 문자열, dispatcher 에서 온 값은 파이썬 bool 이라
+         둘 다 받도록 정규화한다. 문자열 'false' 는 그냥 두면 참이 되어 조건이 뒤집힌다. -->
+    <xacro:property name="hand2_isaac" value="${str(use_isaac).lower() in ['true', '1']}"/>
+    <xacro:property name="hand2_mock"
+                    value="${str(use_mock).lower() in ['true', '1'] and not hand2_isaac}"/>
 
     <ros2_control name="${name}" type="system">
       <hardware>
-        <!-- use_mock 이면 실 CAN 대신 kinematics(clamp→IK→FK) mock. 나머지 actuator/joint
-             선언은 실·mock 공통(같은 이름 규약이라 controller 가 동일하게 붙는다). -->
-        <xacro:if value="${use_mock}">
+        <xacro:if value="${hand2_isaac}">
+          <plugin>aidin_hand2_hardware/AidinHand2IsaacSystemInterface</plugin>
+          <param name="hand_side">${hand_side}</param>
+          <param name="max_effort">${max_effort}</param>
+          <param name="topic_prefix">${isaac_topic_prefix}</param>
+          <!-- Isaac 상태가 이 시간[s]을 넘겨 끊기면 lifecycle 이 Disconnected 로 떨어지고
+               diagnostics 의 deadline_misses 가 오른다. 0 이하면 검사하지 않는다. -->
+          <param name="state_timeout">${isaac_state_timeout}</param>
+          <xacro:if value="${isaac_joint_state_topic != ''}">
+            <param name="joint_state_topic">${isaac_joint_state_topic}</param>
+          </xacro:if>
+          <xacro:if value="${isaac_joint_command_topic != ''}">
+            <param name="joint_command_topic">${isaac_joint_command_topic}</param>
+          </xacro:if>
+          <xacro:if value="${isaac_tactile_prefix != ''}">
+            <param name="tactile_prefix">${isaac_tactile_prefix}</param>
+          </xacro:if>
+        </xacro:if>
+        <xacro:if value="${hand2_mock}">
           <plugin>aidin_hand2_hardware/AidinHand2MockSystemInterface</plugin>
           <param name="hand_side">${hand_side}</param>
           <param name="max_effort">${max_effort}</param>
         </xacro:if>
-        <xacro:unless value="${use_mock}">
+        <xacro:unless value="${hand2_isaac or hand2_mock}">
           <plugin>aidin_hand2_hardware/AidinHand2SystemInterface</plugin>
 
           <param name="hand_side">${hand_side}</param>
@@ -156,8 +192,8 @@
       <xacro:hand_joint joint_name="${prefix}baby_joint3"/>
       <xacro:hand_joint joint_name="${prefix}baby_joint4"/>
 
-      <!-- Finger/Palm tactile — mock 은 촉각 미노출(제외) -->
-      <xacro:unless value="${use_mock}">
+      <!-- Finger/Palm tactile — mock 은 촉각 미노출(제외). Isaac 브리지는 토픽으로 받아 내보낸다. -->
+      <xacro:unless value="${hand2_mock}">
         <!-- Finger tactile — 5 × 17 cell -->
         <xacro:finger_tactile_sensor sensor_name="${prefix}thumb_sensor"/>
         <xacro:finger_tactile_sensor sensor_name="${prefix}index_sensor"/>
@@ -288,8 +324,9 @@
 
       <!-- SDK Diagnostics 노출 — broadcaster 가 /diagnostics 로 변환 (Stage 2).
            hand 전역 7 필드 + actuator 16 각각의 enabled·fault. mock 은 미노출(제외).
+           Isaac 브리지는 브리지 자신이 채운 값(lifecycle·control_cycles·deadline_misses 등)을 낸다.
            lifecycle 은 double(HandLifecycle ordinal) — broadcaster 가 이름화. -->
-      <xacro:unless value="${use_mock}">
+      <xacro:unless value="${hand2_mock}">
       <gpio name="${prefix}diagnostics">
         <state_interface name="lifecycle"/>
         <state_interface name="nan_command_count"/>
