@@ -18,7 +18,7 @@ flowchart LR
 
 새 controller 계층을 추가하지 않습니다. 기존 네 basic controller가 ROS topic 또는 상위 controller reference를 SDK의 완전한 typed command로 바꾸는 command-port adapter입니다.
 
-Standalone에서는 각 controller의 `~/command`에 한 cycle의 target과 부속값을 모두 담아 보냅니다. Joint position은 target 16개와 speed, joint impedance는 target 16개와 stiffness·damping 각 16개가 한 message입니다. Partial update는 허용하지 않습니다.
+Standalone에서는 각 controller의 `~/command`에 한 cycle의 target을 모두 담아 보냅니다. 네 mode 모두 16개 배열 하나가 한 message이고 partial update는 허용하지 않습니다. Effort 상한과 controller tuning(JointPosition filter·JointImpedance gain)은 command가 아니라 hardware node parameter입니다.
 
 ## 지원 범위
 

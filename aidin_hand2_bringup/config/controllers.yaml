@@ -58,7 +58,7 @@ left_hand_control:
   ros__parameters:
     max_effort: [1000.0]              # rated current %, 0~2000
     joint_position_controller:
-      filter_enabled: true            # false = 평활화 없이 목표 즉시 반영
+      filter_enabled: true            # false = filter 없이 목표 즉시 반영
       cutoff_freq: 60.0               # Hz — 상위 발행 rate 의 절반 이하로 둔다
       deadband: 0.000873              # rad (0.05°)
     joint_impedance_controller:

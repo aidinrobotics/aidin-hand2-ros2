@@ -24,7 +24,7 @@
 //   않는다. 입력이 있는 cycle 에만 값이 실리고 그 외에는 NaN(= 이번 cycle 명령 없음)이다. 소비한
 //   입력은 즉시 NaN 으로 되돌려 같은 값이 다음 cycle 에 다시 명령으로 나가지 않게 한다. target 의
 //   NaN 은 "그 joint 를 상위가 점유하지 않음"이라 hardware 가 채운다. command_lock 은 값으로 쓰지
-//   않고 mode 상호 배제를 위한 resource claim 으로만 쓴다. 목표 평활화는 SDK ControllerConfig
+//   않고 mode 상호 배제를 위한 resource claim 으로만 쓴다. 목표 filter 는 SDK ControllerConfig
 //   소관이라 hardware node parameter 로 조절한다.
 // ─────────────────────────────────────────────────────────────────────────────
 

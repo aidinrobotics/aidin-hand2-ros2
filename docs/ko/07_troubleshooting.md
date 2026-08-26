@@ -240,11 +240,15 @@ Wrapper는 homing 중 또는 homing_state != Succeeded 일 때 command를 error 
 
 ## 13. Joint가 너무 빠르게 움직임
 
-Speed 0은 정지가 아니라 무제한입니다.
+목표 filter 는 command가 아니라 hardware node parameter가 정합니다.
 
-Speed는 별도 topic이 아니라 `JointPositionCommand.speed_rad_s`에 target 16개와 함께
-들어갑니다. [Joint position command 예제](04_interfaces.md#joint-position)처럼 complete message를
-다시 보내십시오. Target 단위는 rad, speed는 rad/s입니다.
+```bash
+ros2 param set /left_hand_control joint_position_controller.cutoff_freq 20.0
+```
+
+`cutoff_freq`를 상위 command 발행 rate의 절반 이하로 두십시오 — 그보다 높으면 command 계단이
+그대로 전선에 나갑니다. `filter_enabled: false`면 filter 가 없어 target이 즉시 반영됩니다.
+전체 parameter는 [Tuning parameter](04_interfaces.md#tuning-parameter)를 보십시오.
 
 ## 14. Out-of-range target이 clamp되지 않음
 
@@ -284,9 +288,10 @@ ros2 topic info \
   /left_joint_impedance_controller/command --verbose
 ```
 
-`JointImpedanceCommand` 하나에 target, stiffness, damping 각 16개를 모두 넣어야 합니다.
-값은 finite이고 gain은 0 이상이어야 합니다. Controller가 active인지, chained mode에서
-upstream이 reference를 덮는지도 확인합니다.
+`JointImpedanceCommand` 하나에 target 16개를 모두 넣어야 하고 값은 finite여야 합니다. Gain은
+command가 아니라 `joint_impedance_controller.stiffness`·`damping` parameter이므로
+`ros2 param get /left_hand_control joint_impedance_controller.stiffness`로 확인합니다.
+Controller가 active인지, chained mode에서 upstream이 reference를 덮는지도 확인합니다.
 
 ## 17. Actuator command 일부가 반영되지 않음
 

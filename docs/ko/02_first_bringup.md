@@ -43,8 +43,7 @@ ros2 topic pub --once \
       0.10, 0.20, 0.0,
       0.0, 0.20, 0.0,
       0.0, 0.0, 0.0,
-      0.0, 0.0, 0.0],
-    speed_rad_s: 0.5}"
+      0.0, 0.0, 0.0]}"
 ```
 
 Mock도 mode 진입 때 position mode를 현재 pose로, effort mode를 0%로 seed합니다. Real과 같은
@@ -167,13 +166,12 @@ ros2 topic echo \
 
 ## 6. 첫 command
 
-먼저 max effort를 낮추고 target과 speed를 하나의 typed command로 보냅니다.
+먼저 max effort를 설정하고 target을 typed command로 보냅니다.
 
 ```bash
-ros2 topic pub --once \
-  /left_hand_control/set_max_effort \
-  std_msgs/msg/Float64 \
-  "{data: 300.0}"
+ros2 param set /left_hand_control max_effort \
+  "[1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0,
+    1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0]"
 
 ros2 topic pub --once \
   /left_joint_position_controller/command \
@@ -183,12 +181,13 @@ ros2 topic pub --once \
       0.0, 0.10, 0.0,
       0.0, 0.0, 0.0,
       0.0, 0.0, 0.0,
-      0.0, 0.0, 0.0],
-    speed_rad_s: 0.25}"
+      0.0, 0.0, 0.0]}"
 ```
 
-단위는 rad와 rad/s입니다. Speed 0은 정지가 아니라 즉시 추종입니다. SDK
-`set_command()`가 joint target을 workspace 안으로 자동 clamp하지만, collision·trajectory
+단위는 rad입니다. `max_effort`는 rated current %(1000 = 100%)이고 actuator 16개 순서대로
+지정합니다. 전 actuator를 같은 값으로 둘 때는 `"[1000.0]"` 처럼 길이 1로 줄여도 됩니다.
+값에 소수점을 붙여야 `double_array`로 파싱됩니다 — `1000` 은 integer array 라 거부됩니다.
+SDK `set_command()`가 joint target을 workspace 안으로 자동 clamp하지만, collision·trajectory
 limit와 주변 환경 안전은 상위 application의 책임입니다.
 
 ## 7. 정상 종료

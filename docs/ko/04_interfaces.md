@@ -37,19 +37,18 @@ Partial update는 없습니다.
 
 | Controller | Topic | Message와 field |
 |---|---|---|
-| `left_joint_position_controller` | `/left_joint_position_controller/command` | `JointPositionCommand`: `target_position_rad[16]`, `speed_rad_s` |
-| `left_joint_impedance_controller` | `/left_joint_impedance_controller/command` | `JointImpedanceCommand`: `target_position_rad[16]`, `stiffness[16]`, `damping[16]` |
+| `left_joint_position_controller` | `/left_joint_position_controller/command` | `JointPositionCommand`: `target_position_rad[16]` |
+| `left_joint_impedance_controller` | `/left_joint_impedance_controller/command` | `JointImpedanceCommand`: `target_position_rad[16]` |
 | `left_actuator_position_controller` | `/left_actuator_position_controller/command` | `ActuatorPositionCommand`: `target_position_cnt[16]` |
 | `left_actuator_effort_controller` | `/left_actuator_effort_controller/command` | `ActuatorEffortCommand`: `target_effort_pct[16]` |
-| Hardware system | `/left_hand_control/set_max_effort` | `std_msgs/Float64`: 모든 actuator 공통 상한 |
 
-모든 subscription은 `SystemDefaultsQoS`입니다. Basic controller는 NaN/Inf, 음수 speed,
-음수 gain을 거부합니다. SDK는 actuator position의 int32 범위를 검증하고 joint target을
-workspace 안으로 자동 clamp합니다.
+모든 subscription은 `SystemDefaultsQoS`입니다. Basic controller는 NaN/Inf를 거부하고,
+SDK는 actuator position의 int32 범위를 검증하고 joint target을 workspace 안으로 자동
+clamp합니다. Effort 상한과 controller tuning(filter·impedance gain)은 command가 아니라
+hardware node parameter입니다 — 아래 [Tuning parameter](#tuning-parameter) 참조.
 
-
-네 basic controller는 각각 `~/command` 하나를 받습니다. 한 message가 target과 speed/gain을
-포함한 완전한 한-cycle 입력이며 partial update는 허용하지 않습니다.
+네 basic controller는 각각 `~/command` 하나를 받습니다. 한 message가 완전한 한-cycle 입력이며
+partial update는 허용하지 않습니다.
 
 ### Joint position
 
@@ -64,13 +63,12 @@ ros2 topic pub --once \
       0.10, 0.20, 0.0,
       0.0, 0.20, 0.0,
       0.0, 0.0, 0.0,
-      0.0, 0.0, 0.0],
-    speed_rad_s: 0.25}"
+      0.0, 0.0, 0.0]}"
 ```
 
-Target 단위는 rad, speed는 rad/s입니다. `speed_rad_s: 0`은 정지가 아니라 slew 제한 없는
-즉시 추종입니다. SDK `set_command()`가 joint target을 reachable workspace 안으로 자동
-clamp합니다.
+Target 단위는 rad입니다. 목표 filter 는 hardware node parameter
+(`joint_position_controller.cutoff_freq`·`deadband`)가 정하고 command에는 들어가지 않습니다.
+SDK `set_command()`가 joint target을 reachable workspace 안으로 자동 clamp합니다.
 
 ### Joint impedance
 
@@ -95,23 +93,12 @@ ros2 topic pub --once \
       0.10, 0.20, 0.0,
       0.0, 0.20, 0.0,
       0.0, 0.0, 0.0,
-      0.0, 0.0, 0.0],
-    stiffness: [
-      0.02, 0.02, 0.02, 0.02,
-      0.01, 0.01, 0.02,
-      0.01, 0.01, 0.02,
-      0.01, 0.01, 0.02,
-      0.01, 0.01, 0.02],
-    damping: [
-      0.00001, 0.00001, 0.00001, 0.00001,
-      0.00001, 0.00001, 0.00001,
-      0.00001, 0.00001, 0.00001,
-      0.00001, 0.00001, 0.00001,
-      0.00001, 0.00001, 0.00001]}"
+      0.0, 0.0, 0.0]}"
 ```
 
-Stiffness와 damping은 actuator encoder-space PD gain이며 모두 유한하고 0 이상이어야 합니다.
-Joint target은 SDK에서 joint-position과 같은 방식으로 자동 clamp됩니다.
+Gain은 command가 아니라 `joint_impedance_controller.stiffness`·`damping` parameter입니다
+(actuator encoder-space PD gain, 유한·0 이상). Joint target은 SDK에서 joint-position과 같은
+방식으로 자동 clamp됩니다.
 
 ### Actuator position
 
@@ -168,14 +155,14 @@ resource 전체 이름은
 
 | Basic controller | Exported reference |
 |---|---|
-| JointPosition | `{side}_{active_joint}/position` ×16 + `{side}_joint_position/speed_rad_s` ×1 |
-| JointImpedance | `{side}_{active_joint}/position` ×16 + `{side}_{actuator}/stiffness` ×16 + `{side}_{actuator}/damping` ×16 |
+| JointPosition | `{side}_{active_joint}/position` ×16 |
+| JointImpedance | `{side}_{active_joint}/position` ×16 |
 | ActuatorPosition | `{side}_{actuator}/position_cnt` ×16 |
 | ActuatorEffort | `{side}_{actuator}/effort_pct` ×16 |
 
 상위 controller가 reference 중 하나라도 만들면 해당 mode의 reference 전체를 같은 update에서
-유한한 값으로 써야 합니다. Joint speed와 impedance gain은 0 이상이어야 합니다. Chained
-mode에서는 basic controller의 standalone topic이 reference source가 아닙니다.
+유한한 값으로 써야 합니다. Chained mode에서는 basic controller의 standalone topic이
+reference source가 아닙니다.
 
 네 상위 controller skeleton과 controller별 YAML은
 [aidin_hand2_examples/EXAMPLE.md](../../aidin_hand2_examples/EXAMPLE.md)에 있습니다. 네
@@ -305,16 +292,46 @@ ros2 service call /left_hand_control/reconnect std_srvs/srv/Trigger "{}"
 - `home`은 non-blocking trigger입니다. 완료는 diagnostics의 `homing_state=Succeeded`로 확인합니다.
 - `reconnect`는 통신만 복구합니다. 성공 뒤 `run`을 별도로 호출합니다.
 
-모든 actuator 공통 effort 상한:
+### Tuning parameter
+
+Effort 상한과 controller tuning은 hardware component가 자체 node로 노출하는 parameter입니다
+(node 이름 = xacro의 `<ros2_control name>`). 초기값은 `controllers.yaml`에 두고, 런타임에는
+`ros2 param set`으로 바꿉니다 — 다음 cycle부터 적용됩니다.
+
+| Parameter | 타입 | 기본값 | 뜻 |
+|---|---|---|---|
+| `max_effort` | `double[]` | `1000.0` ×16 | rated current %(1000 = 100%). SDK가 `[0, 2000]`으로 clamp |
+| `joint_position_controller.filter_enabled` | `bool` | `true` | `false`면 filter 없이 target 즉시 반영 |
+| `joint_position_controller.cutoff_freq` | `double` | `60.0` | 저역통과 cutoff [Hz]. 상위 발행 rate의 절반 이하 |
+| `joint_position_controller.deadband` | `double` | `0.000873` | Trailing deadband [rad] (0.05°) |
+| `joint_impedance_controller.stiffness` | `double[]` | thumb `0.02`, long finger a1·a2 `0.01`, a3 `0.02` | 강성 K (actuator별) |
+| `joint_impedance_controller.damping` | `double[]` | `0.00001` ×16 | 감쇠 D (actuator별) |
+
+배열은 actuator 16개를 순서대로 채우고, 전 actuator를 같은 값으로 둘 때만 길이 1로 줄일 수
+있습니다. 그 외 길이거나 non-finite·음수면 `ros2 param set`이 실패하고 값이 반영되지 않습니다.
+
+아래는 여섯 parameter를 모두 기본값으로 다시 쓰는 예입니다.
 
 ```bash
-ros2 topic pub --once \
-  /left_hand_control/set_max_effort \
-  std_msgs/msg/Float64 \
-  "{data: 300.0}"
+ros2 param list /left_hand_control
+
+ros2 param set /left_hand_control max_effort \
+  "[1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0,
+    1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0]"
+
+ros2 param set /left_hand_control joint_position_controller.filter_enabled true
+ros2 param set /left_hand_control joint_position_controller.cutoff_freq 60.0
+ros2 param set /left_hand_control joint_position_controller.deadband 0.000873
+
+ros2 param set /left_hand_control joint_impedance_controller.stiffness \
+  "[0.02, 0.02, 0.02, 0.02, 0.01, 0.01, 0.02, 0.01,
+    0.01, 0.02, 0.01, 0.01, 0.02, 0.01, 0.01, 0.02]"
+ros2 param set /left_hand_control joint_impedance_controller.damping \
+  "[0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001,
+    0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001]"
 ```
 
-단위는 rated current percent이며 SDK가 `[0, 2000]`으로 clamp합니다.
+값에 소수점을 붙여야 `double_array`로 파싱됩니다 — `[300]`은 integer array라 거부됩니다.
 
 ## 10. Mock 범위
 
@@ -332,11 +349,11 @@ Mock은 CAN, drive, homing, tactile, hardware diagnostics, command echo와 runti
 | 항목 | Mock 동작 |
 |---|---|
 | `velocity_rpm`·`current_ma` | 항상 0 (actuator state 48개 중 32개) |
-| Joint position | clamp → slew → IK → FK. `speed_rad_s` 반영 |
+| Joint position | clamp → IK → FK. filter 없이 target 즉시 반영 |
 | Actuator position | count를 정수로 반올림한 뒤 FK |
 | Actuator effort | `max_effort`로 clamp. pose는 변하지 않음 |
 | `read()` | no-op. state는 `write()`에서만 갱신 — command controller가 없으면 `/joint_states`가 고정값 |
-| Max effort | 정적 `max_effort` 파라미터만. `~/set_max_effort` 없음 |
+| Max effort | 정적 xacro `max_effort`로 clamp만. tuning parameter 없음 |
 
 ## 11. NaN과 validity
 

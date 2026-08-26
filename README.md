@@ -18,7 +18,7 @@ flowchart LR
 
 No new controller layer is added. The four basic controllers act as command-port adapters that turn a ROS topic or an upper-controller reference into one complete typed SDK command.
 
-Standalone, each controller's `~/command` carries one cycle's target and every accompanying value: joint position takes 16 targets plus a speed, joint impedance takes 16 targets plus 16 stiffness and 16 damping values. Partial updates are not accepted.
+Standalone, each controller's `~/command` carries one cycle's target: all four modes take a single array of 16, and partial updates are not accepted. The effort ceiling and controller tuning (the JointPosition filter, JointImpedance gains) are not commands — they are parameters on the hardware component's own node.
 
 ## System Requirements
 

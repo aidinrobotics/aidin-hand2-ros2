@@ -59,10 +59,12 @@ YAML이 기준입니다.**
 
 `control_rate`(500)와 `max_effort`(1000)는 xacro 인자이지만 이 launch가 선언하지 않으므로
 `key:=value`로 바꿀 수 없습니다. 바꾸려면 자기 xacro를 쓰고([ros2_control 설정](03_setup.md)),
-runtime max effort만 topic으로 조정합니다.
+runtime max effort는 hardware node parameter로 조정합니다.
 
 ```bash
-ros2 topic pub --once /left_hand_control/set_max_effort std_msgs/msg/Float64 "{data: 300.0}"
+ros2 param set /left_hand_control max_effort \
+  "[1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0,
+    1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0]"
 ```
 
 이 launch는 인자를 `OpaqueFunction` 안에서 선언하므로 `--show-args`가 `config`만 표시할 수
