@@ -7,6 +7,19 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-08-26
+
+### Changed
+
+- Requires SDK 0.3.1. `find_package(aidin_hand2 0.3.1 REQUIRED)` fails at configure
+  time against 0.3.0, which lacks the hold below.
+- `~/run` after `~/stop` no longer leaves the hand torque-free. The hold is the SDK's:
+  `run()` commands the observed pose, and the hardware sends nothing until a
+  controller does.
+- With `auto_home` true and homing incomplete, a run triggers homing again. The
+  trigger was armed only on activation and after `~/reconnect`, so a `~/stop` during
+  homing needed `~/home` or `~/reconnect` to recover.
+
 ## [0.3.1] - 2026-08-25
 
 ### Added

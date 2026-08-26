@@ -533,16 +533,13 @@ CallbackReturn AidinHand2SystemInterface::on_configure(const rclcpp_lifecycle::S
 
 CallbackReturn AidinHand2SystemInterface::on_activate(const rclcpp_lifecycle::State &)
 {
-  // activate = run (기본). 이후 ~/stop 으로 멈추고 ~/run 으로 재개할 수 있다.
+  // activate = run (기본). 이후 ~/stop 으로 멈추고 ~/run 으로 다시 시작할 수 있다.
   // 실패 메시지는 SDK 가 [exception] 로그로 이미 남긴다(한 실패 한 화자) — 여기선 lifecycle 실패 반환만.
+  // auto-home 트리거 래치는 exec_run 이 세운다(모든 run 경로 공용).
   std::string failure_message;
-  if (!exec_run(failure_message)) {  // exec_run 이 state_ 갱신 + mode 별 command seed 수행
+  if (!exec_run(failure_message)) {
     return CallbackReturn::ERROR;
   }
-  // auto-home 은 스레드 없이 RT read 에서 non-blocking 으로 건다(start_homing). 여기선 이번 활성화
-  // 구간의 1회 트리거 래치만 다시 세운다 — 원점 미확정(homing_state != Succeeded)을 보면 한 번
-  // start_homing() 을 걸고, 완료는 homing_state 로 관측한다. homing 중 write 는 command 를 억제한다.
-  auto_home_triggered_.store(false);
   return CallbackReturn::SUCCESS;
 }
 
@@ -733,11 +730,6 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
   }
 
   try {
-    // 비-Running 게이트 — 이때 start_homing()/set_command() 를 부르면 예외가 나고, 그 예외로 ERROR 를
-    // 올리면 ros2_control 이 하드웨어 컴포넌트를 내린다(unconfigured). 그러면 같은 CM 의 다른 컴포넌트·
-    // joint_state_broadcaster 까지 함께 죽고 SDK 의 auto_reconnect 도 무력화되므로, 조용히 넘겨(OK)
-    // 컴포넌트를 active 로 유지한다. Running 복귀 시 다음 cycle 부터 제어가 자연히 재개된다.
-    // Faulted 로 굳은 경우도 명령 미전송(fail-safe)과 같은 의미이고 복구는 ~/reconnect 로 한다.
     if (hand_->get_diagnostics().lifecycle != ah2::HandLifecycle::Running) {
       return hardware_interface::return_type::OK;
     }
@@ -889,10 +881,12 @@ bool AidinHand2SystemInterface::exec_run(std::string & failure_message)
     hand_->run();
     started_.store(true);
 
-    // 재개 시점에는 명령이 없다 — SDK 도 run() 에서 직전 명령을 Idle 로 되돌린다. 상위가 다시
-    // 명령을 줄 때까지 아무것도 보내지 않는다.
-    state_ = hand_->get_state();
+    // run 시점에 상위 명령은 없다 — 저장소를 비워 옛 목표가 다시 나가지 않게 한다. 상위가 첫 명령을
+    // 줄 때까지의 자세 유지는 SDK 몫이다(stop→run 이면 run() 이 현재 자세 hold 를 세운다).
     clear_mode_command();
+    // auto-home 1회 트리거 래치를 세운다 — homing 이 완료되지 않은 채 run 하면(첫 run·reconnect 후
+    // run·homing 중 stop 후 run) write 가 start_homing() 을 다시 건다. 완료돼 있으면 아무 일도 없다.
+    auto_home_triggered_.store(false);
     return true;
   } catch (const ah2::Exception & exception) {
     failure_message = exception.what();
@@ -929,14 +923,12 @@ bool AidinHand2SystemInterface::exec_home(std::string & failure_message)
 
 bool AidinHand2SystemInterface::exec_reconnect(std::string & failure_message)
 {
-  // 통신 두절·실패 복구 — 통신만 재수립하고 제어(run)는 재개하지 않는다(started_=false). 원점은
-  // 재수립 중 소실됐을 수 있어 재확인 대상이 된다. 복귀 후 제어는 ~/run(auto_home 시 homing 포함).
+  // 통신 두절·실패 복구 — 통신만 재수립하고 제어는 시작하지 않는다(started_=false). reconnect 가
+  // homing_state 를 NotRun 으로 내리므로 homing 도 다시 해야 한다. 제어 시작은 ~/run 이 맡는다
+  // (auto_home 트리거 래치도 exec_run 이 세운다).
   try {
     hand_->reconnect();
     started_.store(false);
-    // 재수립 후 원점을 다시 잡아야 하므로(reconnect 가 homing_state 를 NotRun 으로 내린다) 트리거를 다시 세운다.
-    // 이게 없으면 다음 ~/run 후 read 가 이미 소진된 래치 탓에 start_homing 을 다시 걸지 않는다.
-    auto_home_triggered_.store(false);
     return true;
   } catch (const ah2::Exception & exception) {
     failure_message = exception.what();
