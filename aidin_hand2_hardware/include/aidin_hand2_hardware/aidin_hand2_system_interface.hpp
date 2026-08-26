@@ -144,8 +144,8 @@ private:
   // ---- 제어 상태 ----
   std::atomic<bool> started_{false};       // SDK start 상태 — false 면 write 가 command 미전송
   // 원점 상태는 wrapper 가 추적하지 않는다 — SDK diagnostics.homing_state 가 단일 출처(read 가 관측).
-  // auto-home 1회 트리거 래치 — 원점 미확정이면 start_homing() 을 한 번만 걸도록. on_activate·
-  // exec_reconnect 가 리셋해 다시 세운다.
+  // auto-home 1회 트리거 래치 — homing 미완료면 start_homing() 을 한 번만 걸도록. exec_run 이
+  // 세우므로 유효 범위는 run 한 번이다.
   std::atomic<bool> auto_home_triggered_{false};
 
   // ---- service node (hardware 자체 노드 — ~/run·~/stop·~/home·~/reconnect 노출, 전용 spin 스레드) ----
