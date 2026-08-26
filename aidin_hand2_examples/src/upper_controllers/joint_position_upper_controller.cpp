@@ -15,7 +15,6 @@
 // Chain interface
 //   claims:
 //     <target_controller>/<side>_<active_joint>/position ×16
-//     <target_controller>/<side>_joint_position/speed_rad_s
 //   exports the same suffixes under this controller name.
 // State input
 //   subscribes to HandState and copies the complete message into hand_state_ every update.
@@ -62,7 +61,6 @@ public:
     for (const char * joint : kActiveJointBaseNames) {
       reference_suffixes_.push_back(side + "_" + joint + "/position");
     }
-    reference_suffixes_.push_back(side + "_joint_position/speed_rad_s");
     lower_reference_names_.clear();
     for (const auto & suffix : reference_suffixes_) {
       lower_reference_names_.push_back(target_controller_ + "/" + suffix);
@@ -142,8 +140,7 @@ protected:
 
     // TODO(user algorithm):
     //   hand_state_와 has_hand_state_를 읽고 reference_interfaces_[0..15]에
-    //   target_position_rad, reference_interfaces_[16]에 speed_rad_s를 완전한 한 묶음으로
-    //   기록한다.
+    //   target_position_rad 를 완전한 한 묶음으로 기록한다.
 
     const bool has_any_reference = std::any_of(
       reference_interfaces_.begin(), reference_interfaces_.end(),
@@ -154,10 +151,10 @@ protected:
     const bool has_complete_reference = std::all_of(
       reference_interfaces_.begin(), reference_interfaces_.end(),
       [](double value) {return std::isfinite(value);});
-    if (!has_complete_reference || reference_interfaces_.back() < 0.0) {
+    if (!has_complete_reference) {
       RCLCPP_ERROR_THROTTLE(
         get_node()->get_logger(), *get_node()->get_clock(), 5000,
-        "JointPosition upper reference must be complete, finite, and use non-negative speed");
+        "JointPosition upper reference must be complete and finite");
       return controller_interface::return_type::ERROR;
     }
     for (std::size_t i = 0; i < reference_interfaces_.size(); ++i) {

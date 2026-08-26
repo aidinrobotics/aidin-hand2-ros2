@@ -1,4 +1,2 @@
-# JointImpedanceController의 완전한 한-cycle 입력.
+# JointImpedanceController의 완전한 한-cycle 입력. gain 은 hardware node parameter 소관.
 float64[16] target_position_rad
-float64[16] stiffness
-float64[16] damping

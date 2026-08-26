@@ -11,16 +11,16 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-// Hardware command interface contract (one hand, 98 resources)
+// Hardware command interface contract (one hand, 65 resources)
 //   <side>_hand_control/command_lock                                      ×1
 //   <side>_joint_position_command/target_position_rad.<active_joint>     ×16
-//   <side>_joint_position_command/speed_rad_s                             ×1
 //   <side>_joint_impedance_command/target_position_rad.<active_joint>    ×16
-//   <side>_joint_impedance_command/{stiffness,damping}.<actuator>        ×32
 //   <side>_actuator_position_command/target_position_cnt.<actuator>      ×16
 //   <side>_actuator_effort_command/target_effort_pct.<actuator>          ×16
 // command_lock is claim-only. A mode switch accepts only an empty set (Idle)
 // or exactly one complete mode set including the lock.
+// Tuning (max_effort, JointPosition filter, JointImpedance gains) is not a command — it lives on
+// this component's own node as parameters and reaches the SDK through set_controller_config().
 namespace aidin_hand2_hardware
 {
 
@@ -44,7 +44,6 @@ constexpr char kTimestampComponent[] = "timestamp";
 constexpr char kControllerInputModeInterface[] = "controller_input_mode";
 constexpr char kControllerOutputTypeInterface[] = "controller_output_type";
 constexpr char kSelectedSourceInterface[] = "selected_source";
-constexpr char kControllerInputSpeedInterface[] = "controller_input_speed_rad_s";
 constexpr char kControllerInputTargetInterface[] = "controller_input_target_position_rad";
 constexpr char kControllerInputActuatorPositionInterface[] =
   "controller_input_target_position_cnt";
@@ -52,8 +51,6 @@ constexpr char kControllerInputActuatorEffortInterface[] =
   "controller_input_target_effort_pct";
 constexpr char kControllerOutputPositionInterface[] = "controller_output_target_position_cnt";
 constexpr char kControllerOutputEffortInterface[] = "controller_output_target_effort_pct";
-constexpr char kCommandedStiffnessInterface[] = "stiffness";           // actuator
-constexpr char kCommandedDampingInterface[] = "damping";               // actuator
 constexpr char kCommandedMaxEffortInterface[] = "max_effort_pct";      // actuator
 
 // timestamp 인터페이스 (component = <prefix>timestamp) — 관측 시점 wall-clock, header.stamp 용
@@ -149,16 +146,7 @@ std::vector<std::string> mode_command_interfaces(
       names.push_back(component + "target_position_rad." + joint);
     }
   }
-  if (mode == ah2::CommandMode::JointPosition) {
-    names.push_back(component + "speed_rad_s");
-  } else if (mode == ah2::CommandMode::JointImpedance) {
-    for (const char * actuator : kActuatorBaseNames) {
-      names.push_back(component + "stiffness." + actuator);
-    }
-    for (const char * actuator : kActuatorBaseNames) {
-      names.push_back(component + "damping." + actuator);
-    }
-  } else if (mode == ah2::CommandMode::ActuatorPosition) {
+  if (mode == ah2::CommandMode::ActuatorPosition) {
     for (const char * actuator : kActuatorBaseNames) {
       names.push_back(component + "target_position_cnt." + actuator);
     }
@@ -298,8 +286,6 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
   }
   hand_side_name_ = hand_side_text;
   prefix_ = hand_side_name_ + "_";
-  joint_impedance_stiffness_ = ah2::kDefaultStiffness;
-  joint_impedance_damping_ = ah2::kDefaultDamping;
 
   // xacro 는 bool 을 "True"/"False" 로 방출한다. 그 두 값만 받는다.
   const std::string auto_home_text = parameter("auto_home");
@@ -314,7 +300,7 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
   auto_reconnect_home_ = parameter("auto_reconnect_home") == "True";
 
   try {
-    max_effort_.store(as_double("max_effort", max_effort_.load()));
+    max_effort_ = as_double("max_effort", max_effort_);
     control_rate_ = as_int("control_rate", control_rate_);
     rt_cpu_affinity_ = as_int("rt_cpu_affinity", rt_cpu_affinity_);
     auto_reconnect_timeout_ms_ = as_int("auto_reconnect_timeout_ms", auto_reconnect_timeout_ms_);
@@ -404,7 +390,6 @@ AidinHand2SystemInterface::export_state_interfaces()
   interfaces.emplace_back(commanded, kControllerInputModeInterface, &controller_input_mode_);
   interfaces.emplace_back(commanded, kControllerOutputTypeInterface, &controller_output_type_);
   interfaces.emplace_back(commanded, kSelectedSourceInterface, &selected_source_);
-  interfaces.emplace_back(commanded, kControllerInputSpeedInterface, &controller_input_speed_rad_s_);
   for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
     interfaces.emplace_back(
       commanded, std::string(kControllerInputTargetInterface) + "." + kActiveJointBaseNames[i],
@@ -420,10 +405,6 @@ AidinHand2SystemInterface::export_state_interfaces()
                             &controller_output_target_position_cnt_[i]);
     interfaces.emplace_back(commanded, kControllerOutputEffortInterface + suffix,
                             &controller_output_target_effort_pct_[i]);
-    interfaces.emplace_back(commanded, kCommandedStiffnessInterface + suffix,
-                            &controller_input_stiffness_[i]);
-    interfaces.emplace_back(commanded, kCommandedDampingInterface + suffix,
-                            &controller_input_damping_[i]);
     interfaces.emplace_back(commanded, kCommandedMaxEffortInterface + suffix,
                             &commanded_max_effort_pct_[i]);
   }
@@ -453,8 +434,6 @@ AidinHand2SystemInterface::export_command_interfaces()
       std::string("target_position_rad.") + kActiveJointBaseNames[i],
       &joint_position_target_rad_[i]);
   }
-  interfaces.emplace_back(
-    joint_position_component, "speed_rad_s", &joint_position_speed_rad_s_);
 
   const std::string joint_impedance_component =
     command_component(hand_side_name_, ah2::CommandMode::JointImpedance);
@@ -463,18 +442,6 @@ AidinHand2SystemInterface::export_command_interfaces()
       joint_impedance_component,
       std::string("target_position_rad.") + kActiveJointBaseNames[i],
       &joint_impedance_target_rad_[i]);
-  }
-  for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
-    interfaces.emplace_back(
-      joint_impedance_component,
-      std::string("stiffness.") + kActuatorBaseNames[i],
-      &joint_impedance_stiffness_[i]);
-  }
-  for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
-    interfaces.emplace_back(
-      joint_impedance_component,
-      std::string("damping.") + kActuatorBaseNames[i],
-      &joint_impedance_damping_[i]);
   }
 
   const std::string actuator_position_component =
@@ -515,8 +482,6 @@ CallbackReturn AidinHand2SystemInterface::on_configure(const rclcpp_lifecycle::S
 
     hand_ = manager_.create(config);
     hand_->connect();
-    hand_->set_max_effort(max_effort_.load());
-    last_applied_max_effort_ = max_effort_.load();  // write 재적용 게이트 기준 초기화
     state_ = hand_->get_state();
   } catch (const ah2::Exception &) {
     // 실패 로그는 SDK 가 이미 [exception] <ErrorCode>: <msg> 로 남긴다(한 실패 한 화자). 여기선
@@ -641,9 +606,6 @@ hardware_interface::return_type AidinHand2SystemInterface::read(
     // 유효하지 않은 필드임을 뜻하며 broadcaster 가 mode/type 로 다시 구조화한다.
     const double unused = std::numeric_limits<double>::quiet_NaN();
     controller_input_target_rad_.fill(unused);
-    controller_input_speed_rad_s_ = unused;
-    controller_input_stiffness_.fill(unused);
-    controller_input_damping_.fill(unused);
     controller_input_target_position_cnt_.fill(unused);
     controller_input_target_effort_pct_.fill(unused);
     controller_output_target_position_cnt_.fill(unused);
@@ -655,13 +617,10 @@ hardware_interface::return_type AidinHand2SystemInterface::read(
         std::get_if<ah2::JointPositionCommand>(&state_.commanded.controller_input))
     {
       controller_input_target_rad_ = input->target;
-      controller_input_speed_rad_s_ = input->speed_rad_s;
     } else if (const auto * input =
         std::get_if<ah2::JointImpedanceCommand>(&state_.commanded.controller_input))
     {
       controller_input_target_rad_ = input->target;
-      controller_input_stiffness_ = input->gains.stiffness;
-      controller_input_damping_ = input->gains.damping;
     } else if (const auto * input =
         std::get_if<ah2::ActuatorPositionCommand>(&state_.commanded.controller_input))
     {
@@ -725,11 +684,13 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
     return hardware_interface::return_type::ERROR;
   }
 
-  if (!started_.load()) {
-    return hardware_interface::return_type::OK;  // ~/stop 으로 멈춘 상태 — command 미전송 (재개는 ~/run)
-  }
-
   try {
+    // tuning 은 lifecycle·homing 과 무관하게 먼저 적용한다 — ~/stop 중에 바꿔도 반영된다.
+    apply_tuning_parameters();
+
+    if (!started_.load()) {
+      return hardware_interface::return_type::OK;  // ~/stop 으로 멈춘 상태 — command 미전송 (재개는 ~/run)
+    }
     if (hand_->get_diagnostics().lifecycle != ah2::HandLifecycle::Running) {
       return hardware_interface::return_type::OK;
     }
@@ -751,14 +712,6 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
     if (hand_->is_homing() ||
         hand_->get_diagnostics().homing_state != ah2::HomingState::Succeeded) {
       return hardware_interface::return_type::OK;
-    }
-
-    // max_effort 런타임 적용 — 모드와 무관(전 actuator 공통 안전 한계). 변경됐을 때만 SDK 재호출
-    // (config/latch 라 매 cycle 호출 불필요). ~/set_max_effort 토픽이 목표값을 갱신한다.
-    const double target_max_effort = max_effort_.load();
-    if (target_max_effort != last_applied_max_effort_) {
-      hand_->set_max_effort(target_max_effort);
-      last_applied_max_effort_ = target_max_effort;
     }
 
     switch (command_mode_) {
@@ -811,7 +764,6 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
           warn_incomplete_command();
           break;
         }
-        command.speed_rad_s = joint_position_speed_rad_s_;
         hand_->set_command(command);
         break;
       }
@@ -828,8 +780,6 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
           warn_incomplete_command();
           break;
         }
-        command.gains.stiffness = joint_impedance_stiffness_;
-        command.gains.damping = joint_impedance_damping_;
         hand_->set_command(command);
         break;
       }
@@ -865,7 +815,6 @@ void AidinHand2SystemInterface::clear_mode_command()
       break;
     case ah2::CommandMode::JointPosition:
       joint_position_target_rad_.fill(unset);
-      joint_position_speed_rad_s_ = unset;
       break;
     case ah2::CommandMode::JointImpedance:
       joint_impedance_target_rad_.fill(unset);
@@ -978,15 +927,135 @@ void AidinHand2SystemInterface::start_service_node()
       response->success = exec_reconnect(failure_message);
       response->message = response->success ? "reconnected — call ~/run to resume control" : failure_message;
     });
-  // max_effort 런타임 갱신 — 안전 한계값(rated current %). 콜백은 값만 저장하고, write 가 변경 시
-  // SDK 적용(범위 clamp 는 SDK set_max_effort 내부 소관). 모드·claim 과 무관해 controller 대신 이
-  // hardware 노드가 직접 받는다(start/stop 서비스와 동일 위치).
-  max_effort_sub_ = service_node_->create_subscription<std_msgs::msg::Float64>(
-    "~/set_max_effort", rclcpp::SystemDefaultsQoS(),
-    [this](const std_msgs::msg::Float64 & message) { max_effort_.store(message.data); });
+  declare_tuning_parameters();
   service_executor_ = std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
   service_executor_->add_node(service_node_);
   service_spin_thread_ = std::thread([this] { service_executor_->spin(); });
+}
+
+// 런타임 tuning parameter 선언 — max_effort 와 SDK ControllerConfig. mode·claim 과 무관한 값이라
+// controller 가 아니라 이 hardware 노드가 소유한다(run/stop 서비스와 같은 자리). 기본값은 xacro
+// hardware_parameter(max_effort)와 SDK 기본값이고, launch 는 controllers.yaml 에 이 노드 이름으로
+// 블록을 두어 덮는다. declare 시점에 override 가 반영되므로 별도 초기 적용 경로는 두지 않는다.
+void AidinHand2SystemInterface::declare_tuning_parameters()
+{
+  const ah2::ControllerConfig defaults{};
+  staged_max_effort_.fill(max_effort_);
+  staged_controller_config_ = defaults;
+  tuning_dirty_ = true;  // 첫 write 가 선언된 값을 그대로 SDK 에 적용한다
+
+  service_node_->declare_parameter("max_effort", std::vector<double>{max_effort_});
+  service_node_->declare_parameter(
+    "joint_position_controller.filter_enabled", defaults.joint_position_controller.filter_enabled);
+  service_node_->declare_parameter(
+    "joint_position_controller.cutoff_freq", defaults.joint_position_controller.cutoff_freq);
+  service_node_->declare_parameter(
+    "joint_position_controller.deadband", defaults.joint_position_controller.deadband);
+  service_node_->declare_parameter(
+    "joint_impedance_controller.stiffness",
+    std::vector<double>(defaults.joint_impedance_controller.stiffness.begin(),
+                        defaults.joint_impedance_controller.stiffness.end()));
+  service_node_->declare_parameter(
+    "joint_impedance_controller.damping",
+    std::vector<double>(defaults.joint_impedance_controller.damping.begin(),
+                        defaults.joint_impedance_controller.damping.end()));
+
+  // declare 로 들어온 override 를 staging 에 반영한 뒤 콜백을 붙인다 — 콜백은 이후 변경만 받는다.
+  const std::vector<std::string> tuning_names{
+    "max_effort",
+    "joint_position_controller.filter_enabled",
+    "joint_position_controller.cutoff_freq",
+    "joint_position_controller.deadband",
+    "joint_impedance_controller.stiffness",
+    "joint_impedance_controller.damping",
+  };
+  (void)on_set_tuning_parameters(service_node_->get_parameters(tuning_names));
+  tuning_callback_ = service_node_->add_on_set_parameters_callback(
+    [this](const std::vector<rclcpp::Parameter> & parameters) {
+      return on_set_tuning_parameters(parameters);
+    });
+}
+
+// parameter 검증 + staging 반영. 배열은 길이 1(전체 공통) 또는 16(actuator 별)만 받는다. 거부하면
+// ROS 가 값을 반영하지 않으므로 잘못된 값이 SDK 까지 가지 않는다. 범위 clamp 는 SDK 몫.
+rcl_interfaces::msg::SetParametersResult AidinHand2SystemInterface::on_set_tuning_parameters(
+  const std::vector<rclcpp::Parameter> & parameters)
+{
+  rcl_interfaces::msg::SetParametersResult result;
+  result.successful = true;
+
+  // 검증은 staging 사본에 먼저 적용한다 — 한 parameter 라도 거부되면 아무것도 바뀌지 않는다.
+  std::array<double, ah2::kActuatorCount> max_effort = staged_max_effort_;
+  ah2::ControllerConfig config = staged_controller_config_;
+
+  const auto expand = [&result](
+    const rclcpp::Parameter & parameter, std::array<double, ah2::kActuatorCount> & target) {
+    const std::vector<double> values = parameter.as_double_array();
+    if (values.size() != 1 && values.size() != ah2::kActuatorCount) {
+      result.successful = false;
+      result.reason = parameter.get_name() + " must have 1 or 16 values";
+      return;
+    }
+    for (const double value : values) {
+      if (!std::isfinite(value) || value < 0.0) {
+        result.successful = false;
+        result.reason = parameter.get_name() + " must be finite and >= 0";
+        return;
+      }
+    }
+    for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+      target[i] = values.size() == 1 ? values[0] : values[i];
+    }
+  };
+  const auto scalar = [&result](const rclcpp::Parameter & parameter, double & target) {
+    const double value = parameter.as_double();
+    if (!std::isfinite(value) || value < 0.0) {
+      result.successful = false;
+      result.reason = parameter.get_name() + " must be finite and >= 0";
+      return;
+    }
+    target = value;
+  };
+
+  for (const rclcpp::Parameter & parameter : parameters) {
+    const std::string & name = parameter.get_name();
+    if (name == "max_effort") {
+      expand(parameter, max_effort);
+    } else if (name == "joint_position_controller.filter_enabled") {
+      config.joint_position_controller.filter_enabled = parameter.as_bool();
+    } else if (name == "joint_position_controller.cutoff_freq") {
+      scalar(parameter, config.joint_position_controller.cutoff_freq);
+    } else if (name == "joint_position_controller.deadband") {
+      scalar(parameter, config.joint_position_controller.deadband);
+    } else if (name == "joint_impedance_controller.stiffness") {
+      expand(parameter, config.joint_impedance_controller.stiffness);
+    } else if (name == "joint_impedance_controller.damping") {
+      expand(parameter, config.joint_impedance_controller.damping);
+    }
+    if (!result.successful) return result;
+  }
+
+  std::lock_guard<std::mutex> lock(tuning_mutex_);
+  staged_max_effort_ = max_effort;
+  staged_controller_config_ = config;
+  tuning_dirty_ = true;
+  return result;
+}
+
+// staging 을 SDK 로 넘긴다 — 바뀐 cycle 에만. write 스레드에서만 부른다.
+void AidinHand2SystemInterface::apply_tuning_parameters()
+{
+  std::array<double, ah2::kActuatorCount> max_effort{};
+  ah2::ControllerConfig config{};
+  {
+    std::lock_guard<std::mutex> lock(tuning_mutex_);
+    if (!tuning_dirty_) return;
+    max_effort = staged_max_effort_;
+    config = staged_controller_config_;
+    tuning_dirty_ = false;
+  }
+  hand_->set_max_effort(max_effort);
+  hand_->set_controller_config(config);
 }
 
 void AidinHand2SystemInterface::stop_service_node()
@@ -1002,7 +1071,7 @@ void AidinHand2SystemInterface::stop_service_node()
   stop_service_.reset();
   home_service_.reset();
   reconnect_service_.reset();
-  max_effort_sub_.reset();
+  tuning_callback_.reset();
   if (service_executor_ && service_node_) {
     service_executor_->remove_node(service_node_);
   }

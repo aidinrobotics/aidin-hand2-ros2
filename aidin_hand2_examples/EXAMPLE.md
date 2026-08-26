@@ -66,8 +66,8 @@ reference 전체를 유한한 값으로 갱신하십시오.
 
 | mode | suffix |
 |---|---|
-| JointPosition | `left_<active_joint>/position` ×16 + `left_joint_position/speed_rad_s` |
-| JointImpedance | `left_<active_joint>/position` ×16 + `left_<actuator>/stiffness` ×16 + `left_<actuator>/damping` ×16 |
+| JointPosition | `left_<active_joint>/position` ×16 |
+| JointImpedance | `left_<active_joint>/position` ×16 |
 | ActuatorPosition | `left_<actuator>/position_cnt` ×16 |
 | ActuatorEffort | `left_<actuator>/effort_pct` ×16 |
 

@@ -42,10 +42,7 @@ private:
 
   double command_lock_{};
   std::array<double, aidin_hand2::kActiveJointCount> joint_position_target_rad_{};
-  double joint_position_speed_rad_s_{};
   std::array<double, aidin_hand2::kActiveJointCount> joint_impedance_target_rad_{};
-  std::array<double, aidin_hand2::kActuatorCount> joint_impedance_stiffness_{};
-  std::array<double, aidin_hand2::kActuatorCount> joint_impedance_damping_{};
   std::array<double, aidin_hand2::kActuatorCount> actuator_position_target_cnt_{};
   std::array<double, aidin_hand2::kActuatorCount> actuator_effort_target_pct_{};
 
@@ -57,8 +54,6 @@ private:
   std::array<double, aidin_hand2::kActuatorCount> actuator_velocity_rpm_{};
   std::array<double, aidin_hand2::kActuatorCount> actuator_current_ma_{};
   std::array<double, aidin_hand2::kJointCount> joint_position_rad_{};
-  std::array<double, aidin_hand2::kActiveJointCount> slew_position_rad_{};
-  bool slew_seeded_{false};
   double max_effort_pct_{1000.0};
 
   aidin_hand2::CommandMode command_mode_{aidin_hand2::CommandMode::Idle};

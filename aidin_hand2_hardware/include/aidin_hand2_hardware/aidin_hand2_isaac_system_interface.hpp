@@ -83,8 +83,7 @@ private:
   void on_palm_tactile(const std_msgs::msg::Float64MultiArray::ConstSharedPtr & msg);
 
   // write() 가 고른 목표 actuator count. 명령이 아직 완전하지 않으면 false 를 돌려준다.
-  bool resolve_target_encoder(
-    const rclcpp::Duration & period, std::array<int, aidin_hand2::kActuatorCount> & encoder);
+  bool resolve_target_encoder(std::array<int, aidin_hand2::kActuatorCount> & encoder);
   void publish_joint_command(const rclcpp::Time & time,
                              const std::array<double, aidin_hand2::kJointCount> & target_rad);
 
@@ -142,9 +141,6 @@ private:
   double controller_output_type_{};
   double selected_source_{};
   std::array<double, aidin_hand2::kActiveJointCount> controller_input_target_rad_{};
-  double controller_input_speed_rad_s_{};
-  std::array<double, aidin_hand2::kActuatorCount> controller_input_stiffness_{};
-  std::array<double, aidin_hand2::kActuatorCount> controller_input_damping_{};
   std::array<double, aidin_hand2::kActuatorCount> controller_input_target_position_cnt_{};
   std::array<double, aidin_hand2::kActuatorCount> controller_input_target_effort_pct_{};
   std::array<double, aidin_hand2::kActuatorCount> controller_output_target_position_cnt_{};
@@ -154,18 +150,13 @@ private:
   // ---- command 저장소 (command interface 가 가리키는 메모리) ----
   double command_lock_{};
   std::array<double, aidin_hand2::kActiveJointCount> joint_position_target_rad_{};
-  double joint_position_speed_rad_s_{};
   std::array<double, aidin_hand2::kActiveJointCount> joint_impedance_target_rad_{};
-  std::array<double, aidin_hand2::kActuatorCount> joint_impedance_stiffness_{};
-  std::array<double, aidin_hand2::kActuatorCount> joint_impedance_damping_{};
   std::array<double, aidin_hand2::kActuatorCount> actuator_position_target_cnt_{};
   std::array<double, aidin_hand2::kActuatorCount> actuator_effort_target_pct_{};
 
   // 직전까지 받은 목표 — command interface 의 NaN(명령 없음·미점유)을 메워 완전한 목표로 유지한다.
   std::array<double, aidin_hand2::kActiveJointCount> held_joint_target_rad_{};
   std::array<double, aidin_hand2::kActuatorCount> held_actuator_target_cnt_{};
-  std::array<double, aidin_hand2::kActiveJointCount> slew_position_rad_{};
-  bool slew_seeded_{false};
 
   // ---- command mode ----
   aidin_hand2::CommandMode command_mode_{aidin_hand2::CommandMode::Idle};

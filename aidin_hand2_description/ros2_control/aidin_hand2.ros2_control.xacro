@@ -230,7 +230,6 @@
         <command_interface name="target_position_rad.baby_joint1"/>
         <command_interface name="target_position_rad.baby_joint2"/>
         <command_interface name="target_position_rad.baby_joint3"/>
-        <command_interface name="speed_rad_s"/>
       </gpio>
 
       <gpio name="${prefix}joint_impedance_command">
@@ -250,38 +249,6 @@
         <command_interface name="target_position_rad.baby_joint1"/>
         <command_interface name="target_position_rad.baby_joint2"/>
         <command_interface name="target_position_rad.baby_joint3"/>
-        <command_interface name="stiffness.thumb_actuator0"/>
-        <command_interface name="stiffness.thumb_actuator1"/>
-        <command_interface name="stiffness.thumb_actuator2"/>
-        <command_interface name="stiffness.thumb_actuator3"/>
-        <command_interface name="stiffness.index_actuator1"/>
-        <command_interface name="stiffness.index_actuator2"/>
-        <command_interface name="stiffness.index_actuator3"/>
-        <command_interface name="stiffness.middle_actuator1"/>
-        <command_interface name="stiffness.middle_actuator2"/>
-        <command_interface name="stiffness.middle_actuator3"/>
-        <command_interface name="stiffness.ring_actuator1"/>
-        <command_interface name="stiffness.ring_actuator2"/>
-        <command_interface name="stiffness.ring_actuator3"/>
-        <command_interface name="stiffness.baby_actuator1"/>
-        <command_interface name="stiffness.baby_actuator2"/>
-        <command_interface name="stiffness.baby_actuator3"/>
-        <command_interface name="damping.thumb_actuator0"/>
-        <command_interface name="damping.thumb_actuator1"/>
-        <command_interface name="damping.thumb_actuator2"/>
-        <command_interface name="damping.thumb_actuator3"/>
-        <command_interface name="damping.index_actuator1"/>
-        <command_interface name="damping.index_actuator2"/>
-        <command_interface name="damping.index_actuator3"/>
-        <command_interface name="damping.middle_actuator1"/>
-        <command_interface name="damping.middle_actuator2"/>
-        <command_interface name="damping.middle_actuator3"/>
-        <command_interface name="damping.ring_actuator1"/>
-        <command_interface name="damping.ring_actuator2"/>
-        <command_interface name="damping.ring_actuator3"/>
-        <command_interface name="damping.baby_actuator1"/>
-        <command_interface name="damping.baby_actuator2"/>
-        <command_interface name="damping.baby_actuator3"/>
       </gpio>
 
       <gpio name="${prefix}actuator_position_command">

@@ -3,40 +3,29 @@
 #include <cmath>
 #include <limits>
 
-#include <aidin_hand2/types/command.hpp>
 #include "rclcpp/qos.hpp"
 
 // ── interface name ──────────────────────────────────────────────────────────
 //   side       ∈ {left, right}
 //   finger     ∈ {thumb, index, middle, ring, baby}
 //   joint n    : thumb = 0..3, 그 외 = 1..3
-//   actuator n : thumb = 0..3, 그 외 = 1..3
 //
 //   command interface  : {side}_hand_control/command_lock              (claim-only)
 //                        {side}_joint_impedance_command/
 //                          target_position_rad.{finger}_joint{n}         (rad)
-//                        {side}_joint_impedance_command/
-//                          stiffness.{finger}_actuator{n}
-//                        {side}_joint_impedance_command/
-//                          damping.{finger}_actuator{n}
 //   reference interface: {side}_joint_impedance_controller/
 //                          {side}_{finger}_joint{n}/position             (rad)
-//                        {side}_joint_impedance_controller/
-//                          {side}_{finger}_actuator{n}/stiffness
-//                        {side}_joint_impedance_controller/
-//                          {side}_{finger}_actuator{n}/damping
 //   command topic      : /{side}_joint_impedance_controller/command
 //                        (aidin_hand2_msgs/JointImpedanceCommand)
 //
-//   자세 reference는 JointPositionController와 같은 position 이름을 쓴다. target 16 + gain 32를
-//   reference로 노출하고, command port에도 48개 전체를 한 update에서 기록한다.
+//   자세 reference는 JointPositionController와 같은 position 이름을 쓴다. gain 은 SDK
+//   ControllerConfig 소관이라 hardware node parameter 로 조절하며 여기서는 다루지 않는다.
 // ─────────────────────────────────────────────────────────────────────────────
 
 namespace aidin_hand2_controllers
 {
 
 constexpr std::size_t kActiveJointCount = 16;
-constexpr std::size_t kActuatorCount = 16;
 constexpr const char * kActiveJointBaseNames[kActiveJointCount] = {
   "thumb_joint0",
   "thumb_joint1",
@@ -55,40 +44,16 @@ constexpr const char * kActiveJointBaseNames[kActiveJointCount] = {
   "baby_joint2",
   "baby_joint3",
 };
-constexpr const char * kActuatorBaseNames[kActuatorCount] = {
-  "thumb_actuator0",
-  "thumb_actuator1",
-  "thumb_actuator2",
-  "thumb_actuator3",
-  "index_actuator1",
-  "index_actuator2",
-  "index_actuator3",
-  "middle_actuator1",
-  "middle_actuator2",
-  "middle_actuator3",
-  "ring_actuator1",
-  "ring_actuator2",
-  "ring_actuator3",
-  "baby_actuator1",
-  "baby_actuator2",
-  "baby_actuator3",
-};
 constexpr const char * kCommandLockInterfaceName = "command_lock";
 constexpr const char * kPositionInterfaceName = "target_position_rad";
-constexpr const char * kStiffnessInterfaceName = "stiffness";
-constexpr const char * kDampingInterfaceName = "damping";
 constexpr const char * kReferencePositionInterfaceName = "position";
 
 namespace
 {
 constexpr std::size_t kTargetOffset = 0;
-constexpr std::size_t kStiffnessOffset = 16;
-constexpr std::size_t kDampingOffset = 32;
-constexpr std::size_t kReferenceCount = 48;
-// claimed command layout: [0] lock, [1..16] target position,
-// [17..32] stiffness, [33..48] damping.
-// exported reference layout: [0..15] target position,
-// [16..31] stiffness, [32..47] damping.
+constexpr std::size_t kReferenceCount = 16;
+// claimed command layout: [0] lock, [1..16] target position.
+// exported reference layout: [0..15] target position.
 constexpr std::size_t kHardwareOffset = 1;  // command_interfaces_[0] = command_lock
 
 std::vector<std::string> hardware_command_interfaces(const std::string & side)
@@ -99,12 +64,6 @@ std::vector<std::string> hardware_command_interfaces(const std::string & side)
   for (const char * joint : kActiveJointBaseNames) {
     names.push_back(component + kPositionInterfaceName + "." + joint);
   }
-  for (const char * actuator : kActuatorBaseNames) {
-    names.push_back(component + kStiffnessInterfaceName + "." + actuator);
-  }
-  for (const char * actuator : kActuatorBaseNames) {
-    names.push_back(component + kDampingInterfaceName + "." + actuator);
-  }
   return names;
 }
 }  // namespace
@@ -114,27 +73,16 @@ std::vector<std::string> hardware_command_interfaces(const std::string & side)
 controller_interface::CallbackReturn JointImpedanceController::on_init()
 {
   auto_declare<std::string>("hand_side", "");
-  auto_declare<std::vector<double>>(
-    "stiffness", std::vector<double>(
-      aidin_hand2::kDefaultStiffness.begin(), aidin_hand2::kDefaultStiffness.end()));
-  auto_declare<std::vector<double>>(
-    "damping", std::vector<double>(
-      aidin_hand2::kDefaultDamping.begin(), aidin_hand2::kDefaultDamping.end()));
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-// Side·gain을 검증하고 state/command interface와 typed command subscriber를 구성.
+// Side를 검증하고 command interface와 typed command subscriber를 구성.
 controller_interface::CallbackReturn JointImpedanceController::on_configure(
   const rclcpp_lifecycle::State &)
 {
   hand_side_ = get_node()->get_parameter("hand_side").as_string();
-  const auto stiffness = get_node()->get_parameter("stiffness").as_double_array();
-  const auto damping = get_node()->get_parameter("damping").as_double_array();
-  if ((hand_side_ != "left" && hand_side_ != "right") ||
-      stiffness.size() != kActuatorCount ||
-      damping.size() != kActuatorCount)
-  {
-    RCLCPP_ERROR(get_node()->get_logger(), "invalid hand_side or impedance gain size");
+  if (hand_side_ != "left" && hand_side_ != "right") {
+    RCLCPP_ERROR(get_node()->get_logger(), "hand_side parameter is invalid");
     return controller_interface::CallbackReturn::ERROR;
   }
 
@@ -142,23 +90,8 @@ controller_interface::CallbackReturn JointImpedanceController::on_configure(
   for (const char * base : kActiveJointBaseNames) {
     active_joint_names_.push_back(hand_side_ + "_" + base);
   }
-  actuator_names_.clear();
-  for (const char * base : kActuatorBaseNames) {
-    actuator_names_.push_back(hand_side_ + "_" + base);
-  }
-  for (std::size_t i = 0; i < kActuatorCount; ++i) {
-    if (!std::isfinite(stiffness[i]) || !std::isfinite(damping[i]) ||
-        stiffness[i] < 0.0 || damping[i] < 0.0)
-    {
-      RCLCPP_ERROR(get_node()->get_logger(), "impedance gains must be finite and non-negative");
-      return controller_interface::CallbackReturn::ERROR;
-    }
-    default_stiffness_[i] = stiffness[i];
-    default_damping_[i] = damping[i];
-  }
 
-  // command interface: [0] command_lock + [1..16] target_position_rad
-  // + [17..32] stiffness + [33..48] damping.
+  // command interface: [0] command_lock + [1..16] target_position_rad.
   command_interface_names_ = hardware_command_interfaces(hand_side_);
   drop_buffered_command();
   subscribe();
@@ -226,7 +159,7 @@ JointImpedanceController::state_interface_configuration() const
   return {controller_interface::interface_configuration_type::NONE, {}};
 }
 
-// 평형 자세 16 + stiffness 16 + damping 16 = 48개를 reference로 노출.
+// 평형 자세 16개를 reference로 노출.
 std::vector<hardware_interface::CommandInterface>
 JointImpedanceController::on_export_reference_interfaces()
 {
@@ -238,18 +171,6 @@ JointImpedanceController::on_export_reference_interfaces()
       get_node()->get_name(),
       active_joint_names_[i] + "/" + kReferencePositionInterfaceName,
       &reference_interfaces_[kTargetOffset + i]);
-  }
-  for (std::size_t i = 0; i < kActuatorCount; ++i) {
-    references.emplace_back(
-      get_node()->get_name(),
-      actuator_names_[i] + "/" + kStiffnessInterfaceName,
-      &reference_interfaces_[kStiffnessOffset + i]);
-  }
-  for (std::size_t i = 0; i < kActuatorCount; ++i) {
-    references.emplace_back(
-      get_node()->get_name(),
-      actuator_names_[i] + "/" + kDampingInterfaceName,
-      &reference_interfaces_[kDampingOffset + i]);
   }
   return references;
 }
@@ -267,7 +188,7 @@ bool JointImpedanceController::on_set_chained_mode(bool chained_mode)
 }
 
 // ── update ──────────────────────────────────────────────────────────────────
-// standalone: typed command 하나를 reference 전체(자세 16 + gain 32)에 반영.
+// standalone: typed command 하나를 reference(자세 16)에 반영.
 controller_interface::return_type
 JointImpedanceController::update_reference_from_subscribers()
 {
@@ -279,15 +200,10 @@ JointImpedanceController::update_reference_from_subscribers()
   for (std::size_t i = 0; i < kActiveJointCount; ++i) {
     reference_interfaces_[kTargetOffset + i] = message->target_position_rad[i];
   }
-  for (std::size_t i = 0; i < kActuatorCount; ++i) {
-    reference_interfaces_[kStiffnessOffset + i] = message->stiffness[i];
-    reference_interfaces_[kDampingOffset + i] = message->damping[i];
-  }
   return controller_interface::return_type::OK;
 }
 
 // reference 를 command interface 로 옮긴다. 입력이 없으면 전부 NaN(= 이번 cycle 명령 없음).
-// gain 은 상위가 모를 수 있어 NaN 이면 파라미터 기본값으로 대체한다.
 controller_interface::return_type JointImpedanceController::update_and_write_commands(
   const rclcpp::Time &, const rclcpp::Duration &)
 {
@@ -309,32 +225,15 @@ controller_interface::return_type JointImpedanceController::update_and_write_com
     }
   }
 
-  std::array<double, kActuatorCount> stiffness{};
-  std::array<double, kActuatorCount> damping{};
-  for (std::size_t i = 0; i < kActuatorCount; ++i) {
-    const double k = reference_interfaces_[kStiffnessOffset + i];
-    const double d = reference_interfaces_[kDampingOffset + i];
-    if (std::isfinite(k) && k < 0.0) invalid = true;
-    if (std::isfinite(d) && d < 0.0) invalid = true;
-    stiffness[i] = (std::isfinite(k) && k >= 0.0) ? k : default_stiffness_[i];
-    damping[i] = (std::isfinite(d) && d >= 0.0) ? d : default_damping_[i];
-  }
-
   if (invalid) {
     RCLCPP_WARN_THROTTLE(
       get_node()->get_logger(), *get_node()->get_clock(), 5000,
-      "JointImpedance reference has an invalid value (Inf or negative gain) — ignored");
+      "JointImpedance reference has an Inf value — ignored");
   }
 
   for (std::size_t i = 0; i < kActiveJointCount; ++i) {
     (void)command_interfaces_[kHardwareOffset + kTargetOffset + i].set_value(
       has_target ? target[i] : nan);
-  }
-  for (std::size_t i = 0; i < kActuatorCount; ++i) {
-    (void)command_interfaces_[kHardwareOffset + kStiffnessOffset + i].set_value(
-      has_target ? stiffness[i] : nan);
-    (void)command_interfaces_[kHardwareOffset + kDampingOffset + i].set_value(
-      has_target ? damping[i] : nan);
   }
   std::fill(reference_interfaces_.begin(), reference_interfaces_.end(), nan);
   return controller_interface::return_type::OK;

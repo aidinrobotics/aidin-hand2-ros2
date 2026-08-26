@@ -10,6 +10,7 @@ find_package(hardware_interface REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
+find_package(rcl_interfaces REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -35,6 +36,7 @@ ament_target_dependencies(${PROJECT_NAME}
   pluginlib
   rclcpp
   rclcpp_lifecycle
+  rcl_interfaces
   std_srvs
   std_msgs
   sensor_msgs
@@ -52,5 +54,6 @@ install(TARGETS ${PROJECT_NAME}
 ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME})
 ament_export_dependencies(
-  hardware_interface pluginlib rclcpp rclcpp_lifecycle std_srvs std_msgs sensor_msgs)
+  hardware_interface pluginlib rclcpp rclcpp_lifecycle rcl_interfaces
+  std_srvs std_msgs sensor_msgs)
 ament_package()

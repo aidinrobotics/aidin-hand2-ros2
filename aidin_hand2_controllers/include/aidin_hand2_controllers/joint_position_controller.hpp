@@ -37,9 +37,8 @@ private:
 
   std::string hand_side_;
   std::vector<std::string> active_joint_names_;
-  std::vector<std::string> command_interface_names_;  // lock + target 16 + speed
+  std::vector<std::string> command_interface_names_;  // lock + target 16
 
-  double default_speed_{0.0};
   const void * consumed_command_{nullptr};  // 이미 반영한 message — 같은 message 재적용 방지
 
   realtime_tools::RealtimeBuffer<
