@@ -7,6 +7,34 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-26
+
+### Added
+
+- Runtime tuning parameters on the hardware component's own node (`<side>_hand_control`):
+  `max_effort`, `joint_position_controller.{filter_enabled,cutoff_freq,deadband}` and
+  `joint_impedance_controller.{stiffness,damping}`. Array parameters take 1 value (shared by every
+  actuator) or 16 (per actuator). Set them at launch through `controllers.yaml` or at runtime with
+  `ros2 param set`; a change applies on the next cycle.
+
+### Removed
+
+- **Breaking.** `~/set_max_effort`. The `max_effort` parameter replaces it and takes a per-actuator
+  array, so one value no longer has two write paths.
+- **Breaking.** `speed_rad_s` and the 32 impedance gain command interfaces. The hardware command
+  contract goes from 98 resources to 65, `JointPositionController` exports 16 references instead of
+  17, and `JointImpedanceController` 16 instead of 48.
+- **Breaking.** `speed_rad_s` from `JointPositionCommand.msg`, and `stiffness`/`damping` from
+  `JointImpedanceCommand.msg`. `CommandState` nests both, so its echo shrinks with them.
+- The `speed_rad_s` parameter of `JointPositionController` and the `stiffness`/`damping` parameters
+  of `JointImpedanceController`.
+
+### Changed
+
+- Requires SDK 0.4.x.
+- The mock and Isaac backends apply a joint position target immediately. Their speed rate limit went
+  with `speed_rad_s`, and neither emulates the SDK's filter, so a target reaches them unshaped.
+
 ## [0.3.2] - 2026-08-26
 
 ### Changed
