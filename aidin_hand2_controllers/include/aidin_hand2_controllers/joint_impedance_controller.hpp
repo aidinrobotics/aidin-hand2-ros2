@@ -38,11 +38,7 @@ private:
 
   std::string hand_side_;
   std::vector<std::string> active_joint_names_;
-  std::vector<std::string> actuator_names_;
   std::vector<std::string> command_interface_names_;
-
-  std::array<double, 16> default_stiffness_{};  // 파라미터 초기값 (on_activate 시 reference 주입)
-  std::array<double, 16> default_damping_{};
 
   const void * consumed_command_{nullptr};  // 이미 반영한 message — 재적용 방지
 

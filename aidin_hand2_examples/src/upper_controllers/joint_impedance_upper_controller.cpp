@@ -13,8 +13,8 @@
 #include "realtime_tools/realtime_buffer.hpp"
 
 // Chain interface
-//   claims/exports position ×16, stiffness ×16, damping ×16 from/to the
-//   JointImpedance basic controller reference shape.
+//   claims/exports position ×16 from/to the JointImpedance basic controller reference shape.
+//   Gains are not a reference — they live on the hardware node as parameters.
 // State input
 //   subscribes to HandState and copies the complete message into hand_state_ every update.
 // Template behavior
@@ -29,12 +29,6 @@ constexpr std::array<const char *, 16> kActiveJointBaseNames = {
   "middle_joint1", "middle_joint2", "middle_joint3",
   "ring_joint1", "ring_joint2", "ring_joint3",
   "baby_joint1", "baby_joint2", "baby_joint3"};
-constexpr std::array<const char *, 16> kActuatorBaseNames = {
-  "thumb_actuator0", "thumb_actuator1", "thumb_actuator2", "thumb_actuator3",
-  "index_actuator1", "index_actuator2", "index_actuator3",
-  "middle_actuator1", "middle_actuator2", "middle_actuator3",
-  "ring_actuator1", "ring_actuator2", "ring_actuator3",
-  "baby_actuator1", "baby_actuator2", "baby_actuator3"};
 }
 
 class JointImpedanceUpperController : public controller_interface::ChainableControllerInterface
@@ -64,12 +58,6 @@ public:
     reference_suffixes_.clear();
     for (const char * joint : kActiveJointBaseNames) {
       reference_suffixes_.push_back(side + "_" + joint + "/position");
-    }
-    for (const char * actuator : kActuatorBaseNames) {
-      reference_suffixes_.push_back(side + "_" + actuator + "/stiffness");
-    }
-    for (const char * actuator : kActuatorBaseNames) {
-      reference_suffixes_.push_back(side + "_" + actuator + "/damping");
     }
     lower_reference_names_.clear();
     for (const auto & suffix : reference_suffixes_) {
@@ -149,8 +137,7 @@ protected:
     }
 
     // TODO(user algorithm):
-    //   hand_state_를 읽고 reference_interfaces_에 position[0..15],
-    //   stiffness[16..31], damping[32..47]을 한 update에서 모두 기록한다.
+    //   hand_state_를 읽고 reference_interfaces_에 position[0..15]을 한 update에서 기록한다.
 
     const bool has_any_reference = std::any_of(
       reference_interfaces_.begin(), reference_interfaces_.end(),

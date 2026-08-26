@@ -10,6 +10,7 @@ find_package(hardware_interface REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
+find_package(rcl_interfaces REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -17,7 +18,7 @@ find_package(sensor_msgs REQUIRED)
 # SDK 는 정적 라이브러리라 PRIVATE 의존(Eigen)도 소비자 링크 단계에 필요($<LINK_ONLY:> 전파)
 # → aidin_hand2Config 의 find_dependency(Eigen3) 가 이 스코프에서 타겟을 찾도록 직접 find.
 find_package(Eigen3 REQUIRED)
-find_package(aidin_hand2 0.3.1 REQUIRED)  # 0.x 는 minor 가 breaking 경계
+find_package(aidin_hand2 0.4 REQUIRED)  # 0.x 는 minor 가 breaking 경계
 
 add_library(${PROJECT_NAME} SHARED
   src/aidin_hand2_system_interface.cpp
@@ -35,6 +36,7 @@ ament_target_dependencies(${PROJECT_NAME}
   pluginlib
   rclcpp
   rclcpp_lifecycle
+  rcl_interfaces
   std_srvs
   std_msgs
   sensor_msgs
@@ -52,5 +54,6 @@ install(TARGETS ${PROJECT_NAME}
 ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME})
 ament_export_dependencies(
-  hardware_interface pluginlib rclcpp rclcpp_lifecycle std_srvs std_msgs sensor_msgs)
+  hardware_interface pluginlib rclcpp rclcpp_lifecycle rcl_interfaces
+  std_srvs std_msgs sensor_msgs)
 ament_package()

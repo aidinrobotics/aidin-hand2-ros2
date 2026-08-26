@@ -96,8 +96,8 @@ left_joint_position_controller:
 
 | Controller | 명령 |
 |---|---|
-| `JointPositionController` | active joint 16개 위치 [rad] + 공통 speed |
-| `JointImpedanceController` | active joint 16개 평형 자세 [rad] + actuator별 stiffness·damping |
+| `JointPositionController` | active joint 16개 위치 [rad] |
+| `JointImpedanceController` | active joint 16개 평형 자세 [rad] (gain 은 hardware node parameter) |
 | `HandStateBroadcaster` | joint·actuator·tactile 관측을 `~/hand_state`로 발행 |
 | `DiagnosticsBroadcaster` | SDK diagnostics·actuator fault를 `/diagnostics`로 발행 |
 
@@ -117,13 +117,13 @@ left_joint_position_controller:
 ### Topic (standalone)
 
 각 controller의 `~/command`에 한 cycle 분을 **전부** 담아 보냅니다. Partial update는 받지
-않습니다 — joint position이면 target 16개와 speed가 한 message입니다.
+않습니다 — joint position이면 target 16개가 한 message입니다.
 
 ```bash
 ros2 topic pub --once \
   /left_joint_position_controller/command \
   aidin_hand2_msgs/msg/JointPositionCommand \
-  "{target_position_rad: [0.2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], speed_rad_s: 0.5}"
+  "{target_position_rad: [0.2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}"
 ```
 
 ### Reference interface (chainable)

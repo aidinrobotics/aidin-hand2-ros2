@@ -2,6 +2,7 @@
 
 #include <array>
 #include <atomic>
+#include <mutex>
 #include <optional>
 #include <set>
 #include <string>
@@ -15,8 +16,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_lifecycle/state.hpp"
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
+#include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "std_srvs/srv/trigger.hpp"
-#include "std_msgs/msg/float64.hpp"
 
 #include <aidin_hand2/aidin_hand2.hpp>
 
@@ -90,9 +91,7 @@ private:
   ah2::HandSide hand_side_{ah2::HandSide::Left};
   bool auto_home_{true};
   // 아래 기본값은 SDK default 와 동일 (HandConfig / kDefaultMaxEffort)
-  // rated current % (1000 = 100%). on_configure 초기 적용 + ~/set_max_effort 토픽 런타임 갱신 공용.
-  // write(RT 스레드)와 토픽 콜백(service_node 스레드)이 함께 접근해 atomic. 안전 한계값이라 모드 무관 유지.
-  std::atomic<double> max_effort_{1000.0};
+  double max_effort_{1000.0};    // rated current % (1000 = 100%) — node parameter 기본값이 된다
   int control_rate_{500};        // RT loop Hz
   int rt_cpu_affinity_{-1};      // 코어 pin, -1 = 미설정
   std::vector<int> disabled_actuators_{};  // 미가동 actuator index (콤마 구분 파라미터 파싱 결과)
@@ -112,9 +111,6 @@ private:
   double controller_output_type_{};
   double selected_source_{};
   std::array<double, ah2::kActiveJointCount> controller_input_target_rad_{};
-  double controller_input_speed_rad_s_{};
-  std::array<double, ah2::kActuatorCount> controller_input_stiffness_{};
-  std::array<double, ah2::kActuatorCount> controller_input_damping_{};
   std::array<double, ah2::kActuatorCount> controller_input_target_position_cnt_{};
   std::array<double, ah2::kActuatorCount> controller_input_target_effort_pct_{};
   std::array<double, ah2::kActuatorCount> controller_output_target_position_cnt_{};
@@ -126,13 +122,9 @@ private:
   // ---- command 저장소 (command interface 가 가리키는 메모리) ----
   double command_lock_{};
   std::array<double, ah2::kActiveJointCount> joint_position_target_rad_{};
-  double joint_position_speed_rad_s_{0.0};
   std::array<double, ah2::kActiveJointCount> joint_impedance_target_rad_{};
-  std::array<double, ah2::kActuatorCount> joint_impedance_stiffness_{};
-  std::array<double, ah2::kActuatorCount> joint_impedance_damping_{};
   std::array<double, ah2::kActuatorCount> actuator_position_target_cnt_{};
   std::array<double, ah2::kActuatorCount> actuator_effort_target_pct_{};
-  double last_applied_max_effort_{1000.0};     // write 스레드 전용 — 직전 적용값(변경 시에만 SDK 재호출)
 
   // ---- command mode (정확한 command-port claim 집합에서 파생) ----
   ah2::CommandMode command_mode_{ah2::CommandMode::Idle};
@@ -154,9 +146,22 @@ private:
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr stop_service_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr home_service_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reconnect_service_;
-  rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr max_effort_sub_;  // ~/set_max_effort
   std::unique_ptr<rclcpp::executors::SingleThreadedExecutor> service_executor_;
   std::thread service_spin_thread_;
+
+  // ---- 런타임 tuning parameter (service node 소유 — max_effort · controller config) ----
+  // parameter 콜백(service node 스레드)이 검증 후 staging 에 쓰고, write(제어 스레드)가 dirty 일
+  // 때만 SDK 로 적용한다. 배열 parameter 는 길이 1(전체 공통) 또는 16(actuator 별)을 받는다.
+  void declare_tuning_parameters();
+  void apply_tuning_parameters();  // write 스레드 전용
+  rcl_interfaces::msg::SetParametersResult on_set_tuning_parameters(
+    const std::vector<rclcpp::Parameter> & parameters);
+
+  std::mutex tuning_mutex_;
+  std::array<double, ah2::kActuatorCount> staged_max_effort_{};
+  ah2::ControllerConfig staged_controller_config_{};
+  bool tuning_dirty_{false};
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr tuning_callback_;
 };
 
 }  // namespace aidin_hand2_hardware

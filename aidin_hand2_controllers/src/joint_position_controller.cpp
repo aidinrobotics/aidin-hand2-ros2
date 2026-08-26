@@ -15,20 +15,17 @@
 //   command interface  : {side}_hand_control/command_lock              (claim-only)
 //                        {side}_joint_position_command/
 //                          target_position_rad.{finger}_joint{n}         (rad)
-//                        {side}_joint_position_command/speed_rad_s       (rad/s)
 //   reference interface: {side}_joint_position_controller/
 //                          {side}_{finger}_joint{n}/position             (rad)
-//                        {side}_joint_position_controller/
-//                          {side}_joint_position/speed_rad_s             (rad/s)
 //   command topic      : /{side}_joint_position_controller/command
 //                        (aidin_hand2_msgs/JointPositionCommand)
 //
 //   입력을 그대로 command interface 로 옮기기만 한다 — 자체 목표를 만들지 않고 state 도 읽지
 //   않는다. 입력이 있는 cycle 에만 값이 실리고 그 외에는 NaN(= 이번 cycle 명령 없음)이다. 소비한
 //   입력은 즉시 NaN 으로 되돌려 같은 값이 다음 cycle 에 다시 명령으로 나가지 않게 한다. target 의
-//   NaN 은 "그 joint 를 상위가 점유하지 않음"이라 hardware 가 채우고, speed 는 상위가 모를 수 있어
-//   NaN 이면 speed_rad_s 파라미터로 대체한다. command_lock 은 값으로 쓰지 않고 mode 상호 배제를
-//   위한 resource claim 으로만 쓴다.
+//   NaN 은 "그 joint 를 상위가 점유하지 않음"이라 hardware 가 채운다. command_lock 은 값으로 쓰지
+//   않고 mode 상호 배제를 위한 resource claim 으로만 쓴다. 목표 filter 는 SDK ControllerConfig
+//   소관이라 hardware node parameter 로 조절한다.
 // ─────────────────────────────────────────────────────────────────────────────
 
 namespace aidin_hand2_controllers
@@ -55,18 +52,15 @@ constexpr const char * kActiveJointBaseNames[kActiveJointCount] = {
 };
 constexpr const char * kCommandLockInterfaceName = "command_lock";
 constexpr const char * kTargetPositionInterfaceName = "target_position_rad";
-constexpr const char * kSpeedInterfaceName = "speed_rad_s";
 constexpr const char * kReferencePositionInterfaceName = "position";
 
 namespace
 {
 constexpr std::size_t kTargetCount = kActiveJointCount;
-constexpr std::size_t kSpeedIndex = kTargetCount;
-constexpr std::size_t kReferenceCount = kTargetCount + 1;
-// claimed command layout: [0] lock, [1..16] target position, [17] speed.
-// exported reference layout: [0..15] target position, [16] speed.
+constexpr std::size_t kReferenceCount = kTargetCount;
+// claimed command layout: [0] lock, [1..16] target position.
+// exported reference layout: [0..15] target position.
 constexpr std::size_t kHardwareTargetOffset = 1;  // command_interfaces_[0] = command_lock
-constexpr std::size_t kHardwareSpeedIndex = kHardwareTargetOffset + kTargetCount;
 
 std::vector<std::string> hardware_command_interfaces(const std::string & side)
 {
@@ -76,7 +70,6 @@ std::vector<std::string> hardware_command_interfaces(const std::string & side)
   for (const char * joint : kActiveJointBaseNames) {
     names.push_back(component + kTargetPositionInterfaceName + "." + joint);
   }
-  names.push_back(component + kSpeedInterfaceName);
   return names;
 }
 }  // namespace
@@ -86,21 +79,16 @@ std::vector<std::string> hardware_command_interfaces(const std::string & side)
 controller_interface::CallbackReturn JointPositionController::on_init()
 {
   auto_declare<std::string>("hand_side", "");
-  auto_declare<double>("speed_rad_s", 0.0);
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-// Side·speed를 검증하고 command interface와 typed command subscriber를 구성.
+// Side를 검증하고 command interface와 typed command subscriber를 구성.
 controller_interface::CallbackReturn JointPositionController::on_configure(
   const rclcpp_lifecycle::State &)
 {
   hand_side_ = get_node()->get_parameter("hand_side").as_string();
-  default_speed_ = get_node()->get_parameter("speed_rad_s").as_double();
-  if ((hand_side_ != "left" && hand_side_ != "right") ||
-      !std::isfinite(default_speed_) || default_speed_ < 0.0)
-  {
-    RCLCPP_ERROR(
-      get_node()->get_logger(), "hand_side or speed_rad_s parameter is invalid");
+  if (hand_side_ != "left" && hand_side_ != "right") {
+    RCLCPP_ERROR(get_node()->get_logger(), "hand_side parameter is invalid");
     return controller_interface::CallbackReturn::ERROR;
   }
 
@@ -108,7 +96,7 @@ controller_interface::CallbackReturn JointPositionController::on_configure(
   for (const char * base : kActiveJointBaseNames) {
     active_joint_names_.push_back(hand_side_ + "_" + base);
   }
-  // command interface: [0] command_lock + [1..16] target_position_rad + [17] speed_rad_s.
+  // command interface: [0] command_lock + [1..16] target_position_rad.
   command_interface_names_ = hardware_command_interfaces(hand_side_);
 
   drop_buffered_command();
@@ -178,7 +166,7 @@ JointPositionController::state_interface_configuration() const
   return {controller_interface::interface_configuration_type::NONE, {}};
 }
 
-// 자세 16 + 공통 speed 1 = 17개를 reference로 노출.
+// 자세 16개를 reference로 노출.
 std::vector<hardware_interface::CommandInterface>
 JointPositionController::on_export_reference_interfaces()
 {
@@ -191,10 +179,6 @@ JointPositionController::on_export_reference_interfaces()
       active_joint_names_[i] + "/" + kReferencePositionInterfaceName,
       &reference_interfaces_[i]);
   }
-  references.emplace_back(
-    get_node()->get_name(),
-    hand_side_ + "_joint_position/" + kSpeedInterfaceName,
-    &reference_interfaces_[kSpeedIndex]);
   return references;
 }
 
@@ -224,7 +208,6 @@ JointPositionController::update_reference_from_subscribers()
   for (std::size_t i = 0; i < kTargetCount; ++i) {
     reference_interfaces_[i] = message->target_position_rad[i];
   }
-  reference_interfaces_[kSpeedIndex] = message->speed_rad_s;
   return controller_interface::return_type::OK;
 }
 
@@ -250,25 +233,16 @@ controller_interface::return_type JointPositionController::update_and_write_comm
     }
   }
 
-  double speed = reference_interfaces_[kSpeedIndex];
-  if (std::isfinite(speed) && speed < 0.0) {
-    invalid = true;
-  }
-  if (!std::isfinite(speed) || speed < 0.0) {
-    speed = default_speed_;  // 상위가 speed 를 모를 수 있다 — 파라미터로 대체
-  }
-
   if (invalid) {
     RCLCPP_WARN_THROTTLE(
       get_node()->get_logger(), *get_node()->get_clock(), 5000,
-      "JointPosition reference has an invalid value (Inf or negative speed) — ignored");
+      "JointPosition reference has an Inf value — ignored");
   }
 
   for (std::size_t i = 0; i < kTargetCount; ++i) {
     (void)command_interfaces_[kHardwareTargetOffset + i].set_value(
       has_target ? target[i] : nan);
   }
-  (void)command_interfaces_[kHardwareSpeedIndex].set_value(has_target ? speed : nan);
 
   // 소비 표시 — 다음 cycle 에 상위가 다시 쓰지 않으면 명령 없음이 된다.
   std::fill(reference_interfaces_.begin(), reference_interfaces_.end(), nan);

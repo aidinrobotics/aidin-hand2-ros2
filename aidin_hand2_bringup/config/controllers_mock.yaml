@@ -27,7 +27,6 @@ controller_manager:
 left_joint_position_controller:
   ros__parameters:
     hand_side: "left"
-    speed_rad_s: 0.0
 left_joint_impedance_controller:
   ros__parameters:
     hand_side: "left"

@@ -16,10 +16,10 @@ namespace
 //   [53..68]   actuator current_ma (16)
 //   [69..153]  finger tactile (5 × 17 = 85)
 //   [154..211] palm tactile (20 + 20 + 18 = 58)
-//   [212..215] command scalar: input mode, output type, selected source, input speed (4)
-//   [216..231] controller input joint target (16)
-//   [232..343] command per-actuator 7필드 인터리브 ×16
-//   [344..345] timestamp: sec, nanosec (2)
+//   [212..214] command scalar: input mode, output type, selected source (3)
+//   [215..230] controller input joint target (16)
+//   [231..310] command per-actuator 5필드 인터리브 ×16
+//   [311..312] timestamp: sec, nanosec (2)
 constexpr std::size_t kJointOffset = 0;
 constexpr std::size_t kActuatorPositionOffset = 21;
 constexpr std::size_t kActuatorVelocityOffset = 37;
@@ -29,12 +29,11 @@ constexpr std::size_t kPalmTactileOffset = 154;
 constexpr std::size_t kControllerInputModeOffset = 212;
 constexpr std::size_t kControllerOutputTypeOffset = 213;
 constexpr std::size_t kSelectedSourceOffset = 214;
-constexpr std::size_t kControllerInputSpeedOffset = 215;
-constexpr std::size_t kControllerInputJointOffset = 216;
-constexpr std::size_t kCommandedActuatorOffset = 232;
-constexpr std::size_t kCommandedActuatorStride = 7;
-constexpr std::size_t kTimestampSecOffset = 344;
-constexpr std::size_t kTimestampNanosecOffset = 345;
+constexpr std::size_t kControllerInputJointOffset = 215;
+constexpr std::size_t kCommandedActuatorOffset = 231;
+constexpr std::size_t kCommandedActuatorStride = 5;
+constexpr std::size_t kTimestampSecOffset = 311;
+constexpr std::size_t kTimestampNanosecOffset = 312;
 
 std::vector<std::string> joint_names(const std::string & prefix)
 {
@@ -155,7 +154,6 @@ std::vector<std::string> all_state_interface_names(const std::string & prefix)
   names.push_back(commanded + "/controller_input_mode");
   names.push_back(commanded + "/controller_output_type");
   names.push_back(commanded + "/selected_source");
-  names.push_back(commanded + "/controller_input_speed_rad_s");
   const std::vector<std::string> active_joints = active_joint_names(prefix);
   for (const auto & joint : active_joints) {
     // joint 는 "<prefix><name>" 이라 target_joint suffix 는 prefix 없는 base 이름을 쓴다.
@@ -168,8 +166,6 @@ std::vector<std::string> all_state_interface_names(const std::string & prefix)
     names.push_back(commanded + "/controller_input_target_effort_pct." + base);
     names.push_back(commanded + "/controller_output_target_position_cnt." + base);
     names.push_back(commanded + "/controller_output_target_effort_pct." + base);
-    names.push_back(commanded + "/stiffness." + base);
-    names.push_back(commanded + "/damping." + base);
     names.push_back(commanded + "/max_effort_pct." + base);
   }
 
@@ -280,8 +276,6 @@ controller_interface::return_type HandStateBroadcaster::update(
       static_cast<std::uint8_t>(state_interfaces_[kControllerOutputTypeOffset].get_value());
     command.selected_source =
       static_cast<std::uint8_t>(state_interfaces_[kSelectedSourceOffset].get_value());
-    command.joint_position_input.speed_rad_s =
-      state_interfaces_[kControllerInputSpeedOffset].get_value();
     for (std::size_t i = 0; i < 16; ++i) {
       const double target =
         state_interfaces_[kControllerInputJointOffset + i].get_value();
@@ -296,11 +290,7 @@ controller_interface::return_type HandStateBroadcaster::update(
         state_interfaces_[base + 1].get_value();
       command.target_position_cnt[i] = state_interfaces_[base + 2].get_value();
       command.target_effort_pct[i] = state_interfaces_[base + 3].get_value();
-      command.joint_impedance_input.stiffness[i] =
-        state_interfaces_[base + 4].get_value();
-      command.joint_impedance_input.damping[i] =
-        state_interfaces_[base + 5].get_value();
-      command.max_effort_pct[i] = state_interfaces_[base + 6].get_value();
+      command.max_effort_pct[i] = state_interfaces_[base + 4].get_value();
     }
 
     publisher_->unlockAndPublish();

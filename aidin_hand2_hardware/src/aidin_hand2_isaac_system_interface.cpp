@@ -34,15 +34,12 @@ constexpr char kTimestampComponent[] = "timestamp";
 constexpr char kControllerInputModeInterface[] = "controller_input_mode";
 constexpr char kControllerOutputTypeInterface[] = "controller_output_type";
 constexpr char kSelectedSourceInterface[] = "selected_source";
-constexpr char kControllerInputSpeedInterface[] = "controller_input_speed_rad_s";
 constexpr char kControllerInputTargetInterface[] = "controller_input_target_position_rad";
 constexpr char kControllerInputActuatorPositionInterface[] =
   "controller_input_target_position_cnt";
 constexpr char kControllerInputActuatorEffortInterface[] = "controller_input_target_effort_pct";
 constexpr char kControllerOutputPositionInterface[] = "controller_output_target_position_cnt";
 constexpr char kControllerOutputEffortInterface[] = "controller_output_target_effort_pct";
-constexpr char kCommandedStiffnessInterface[] = "stiffness";
-constexpr char kCommandedDampingInterface[] = "damping";
 constexpr char kCommandedMaxEffortInterface[] = "max_effort_pct";
 
 constexpr char kStampSecInterface[] = "sec";
@@ -110,16 +107,7 @@ std::vector<std::string> mode_command_interfaces(
       names.push_back(component + "target_position_rad." + joint);
     }
   }
-  if (mode == ah2::CommandMode::JointPosition) {
-    names.push_back(component + "speed_rad_s");
-  } else if (mode == ah2::CommandMode::JointImpedance) {
-    for (const char * actuator : kActuatorBaseNames) {
-      names.push_back(component + "stiffness." + actuator);
-    }
-    for (const char * actuator : kActuatorBaseNames) {
-      names.push_back(component + "damping." + actuator);
-    }
-  } else if (mode == ah2::CommandMode::ActuatorPosition) {
+  if (mode == ah2::CommandMode::ActuatorPosition) {
     for (const char * actuator : kActuatorBaseNames) {
       names.push_back(component + "target_position_cnt." + actuator);
     }
@@ -265,14 +253,11 @@ hardware_interface::CallbackReturn AidinHand2IsaacSystemInterface::on_init(
     joint_name_to_index_.emplace(prefix_ + kJointBaseNames[i], i);
   }
 
-  joint_impedance_stiffness_ = ah2::kDefaultStiffness;
-  joint_impedance_damping_ = ah2::kDefaultDamping;
   commanded_max_effort_pct_.fill(max_effort_pct_);
   actuator_enabled_.fill(1.0);   // 시뮬레이션에는 드라이브 헬스가 없다 — 항상 정상으로 보고
   actuator_fault_.fill(0.0);
 
   // Isaac 첫 상태 수신 전까지의 자세 — 원점(encoder 0) FK.
-  ah2::init_kinematics_lut();
   const std::array<int, ah2::kActuatorCount> zero_encoder{};
   joint_position_rad_ = ah2::fk_actuator_to_joint(zero_encoder);
   rx_joint_position_rad_ = joint_position_rad_;
@@ -306,7 +291,6 @@ hardware_interface::CallbackReturn AidinHand2IsaacSystemInterface::on_activate(
   last_period_ms_ = 0.0;
   last_compute_ms_ = 0.0;
   state_clock_seeded_ = false;
-  slew_seeded_ = false;
   activated_ = true;
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -479,7 +463,6 @@ AidinHand2IsaacSystemInterface::export_state_interfaces()
   interfaces.emplace_back(commanded, kControllerInputModeInterface, &controller_input_mode_);
   interfaces.emplace_back(commanded, kControllerOutputTypeInterface, &controller_output_type_);
   interfaces.emplace_back(commanded, kSelectedSourceInterface, &selected_source_);
-  interfaces.emplace_back(commanded, kControllerInputSpeedInterface, &controller_input_speed_rad_s_);
   for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
     interfaces.emplace_back(
       commanded, std::string(kControllerInputTargetInterface) + "." + kActiveJointBaseNames[i],
@@ -495,10 +478,6 @@ AidinHand2IsaacSystemInterface::export_state_interfaces()
                             &controller_output_target_position_cnt_[i]);
     interfaces.emplace_back(commanded, kControllerOutputEffortInterface + suffix,
                             &controller_output_target_effort_pct_[i]);
-    interfaces.emplace_back(commanded, kCommandedStiffnessInterface + suffix,
-                            &controller_input_stiffness_[i]);
-    interfaces.emplace_back(commanded, kCommandedDampingInterface + suffix,
-                            &controller_input_damping_[i]);
     interfaces.emplace_back(commanded, kCommandedMaxEffortInterface + suffix,
                             &commanded_max_effort_pct_[i]);
   }
@@ -525,8 +504,6 @@ AidinHand2IsaacSystemInterface::export_command_interfaces()
       std::string("target_position_rad.") + kActiveJointBaseNames[i],
       &joint_position_target_rad_[i]);
   }
-  interfaces.emplace_back(
-    joint_position_component, "speed_rad_s", &joint_position_speed_rad_s_);
 
   const std::string joint_impedance_component =
     command_component(hand_side_, ah2::CommandMode::JointImpedance);
@@ -535,18 +512,6 @@ AidinHand2IsaacSystemInterface::export_command_interfaces()
       joint_impedance_component,
       std::string("target_position_rad.") + kActiveJointBaseNames[i],
       &joint_impedance_target_rad_[i]);
-  }
-  for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
-    interfaces.emplace_back(
-      joint_impedance_component,
-      std::string("stiffness.") + kActuatorBaseNames[i],
-      &joint_impedance_stiffness_[i]);
-  }
-  for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
-    interfaces.emplace_back(
-      joint_impedance_component,
-      std::string("damping.") + kActuatorBaseNames[i],
-      &joint_impedance_damping_[i]);
   }
 
   const std::string actuator_position_component =
@@ -600,24 +565,16 @@ hardware_interface::return_type AidinHand2IsaacSystemInterface::perform_command_
   command_mode_ = pending_mode_;
   pending_mode_switch_valid_ = false;
 
-  // controller 가 처음 쓰기 전까지는 명령이 없다(NaN). 램프 기준만 현재 자세로 잡아 둔다.
+  // controller 가 처음 쓰기 전까지는 명령이 없다(NaN).
   const double unset = std::numeric_limits<double>::quiet_NaN();
   held_joint_target_rad_.fill(unset);
   held_actuator_target_cnt_.fill(unset);
   switch (command_mode_) {
     case ah2::CommandMode::JointPosition:
       joint_position_target_rad_.fill(unset);
-      joint_position_speed_rad_s_ = unset;
-      for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
-        slew_position_rad_[i] = joint_position_rad_[kActiveToJointIndex[i]];
-      }
-      slew_seeded_ = true;
       break;
     case ah2::CommandMode::JointImpedance:
       joint_impedance_target_rad_.fill(unset);
-      for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
-        slew_position_rad_[i] = joint_position_rad_[kActiveToJointIndex[i]];
-      }
       break;
     case ah2::CommandMode::ActuatorPosition:
       actuator_position_target_cnt_.fill(unset);
@@ -626,7 +583,6 @@ hardware_interface::return_type AidinHand2IsaacSystemInterface::perform_command_
       actuator_effort_target_pct_.fill(unset);
       break;
     case ah2::CommandMode::Idle:
-      slew_seeded_ = false;
       break;
   }
   return hardware_interface::return_type::OK;
@@ -693,7 +649,7 @@ hardware_interface::return_type AidinHand2IsaacSystemInterface::read(
 }
 
 bool AidinHand2IsaacSystemInterface::resolve_target_encoder(
-  const rclcpp::Duration & period, std::array<int, ah2::kActuatorCount> & encoder)
+  std::array<int, ah2::kActuatorCount> & encoder)
 {
   if (command_mode_ == ah2::CommandMode::JointPosition) {
     if (!all_nan(joint_position_target_rad_)) {
@@ -707,20 +663,7 @@ bool AidinHand2IsaacSystemInterface::resolve_target_encoder(
     command.target = held_joint_target_rad_;
     command.clamp();
     controller_input_target_rad_ = command.target;
-    controller_input_speed_rad_s_ = joint_position_speed_rad_s_;
-    if (!slew_seeded_) {
-      slew_position_rad_ = command.target;
-      slew_seeded_ = true;
-    } else if (joint_position_speed_rad_s_ > 0.0) {
-      const double max_delta = joint_position_speed_rad_s_ * period.seconds();
-      for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
-        const double delta = command.target[i] - slew_position_rad_[i];
-        slew_position_rad_[i] += std::clamp(delta, -max_delta, max_delta);
-      }
-    } else {
-      slew_position_rad_ = command.target;
-    }
-    encoder = ah2::ik_joint_to_actuator(slew_position_rad_);
+    encoder = ah2::ik_joint_to_actuator(command.target);
     return true;
   }
 
@@ -736,8 +679,6 @@ bool AidinHand2IsaacSystemInterface::resolve_target_encoder(
     command.target = held_joint_target_rad_;
     command.clamp();
     controller_input_target_rad_ = command.target;
-    controller_input_stiffness_ = joint_impedance_stiffness_;
-    controller_input_damping_ = joint_impedance_damping_;
     encoder = ah2::ik_joint_to_actuator(command.target);
     return true;
   }
@@ -778,15 +719,12 @@ void AidinHand2IsaacSystemInterface::publish_joint_command(
 }
 
 hardware_interface::return_type AidinHand2IsaacSystemInterface::write(
-  const rclcpp::Time & time, const rclcpp::Duration & period)
+  const rclcpp::Time & time, const rclcpp::Duration &)
 {
   const auto compute_start = std::chrono::steady_clock::now();
 
   const double unused = std::numeric_limits<double>::quiet_NaN();
   controller_input_target_rad_.fill(unused);
-  controller_input_speed_rad_s_ = unused;
-  controller_input_stiffness_.fill(unused);
-  controller_input_damping_.fill(unused);
   controller_input_target_position_cnt_.fill(unused);
   controller_input_target_effort_pct_.fill(unused);
   controller_output_target_position_cnt_.fill(unused);
@@ -809,7 +747,7 @@ hardware_interface::return_type AidinHand2IsaacSystemInterface::write(
     }
   } else {
     std::array<int, ah2::kActuatorCount> encoder{};
-    if (resolve_target_encoder(period, encoder)) {
+    if (resolve_target_encoder(encoder)) {
       std::array<double, ah2::kActuatorCount> encoder_cnt{};
       for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
         encoder_cnt[i] = static_cast<double>(encoder[i]);
