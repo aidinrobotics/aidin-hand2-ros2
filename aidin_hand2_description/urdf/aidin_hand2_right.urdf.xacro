@@ -174,35 +174,35 @@
       <parent link="${prefix}hand_base_link"/>
       <child link="${prefix}thumb_link0"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.9461" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.919862" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}thumb_joint1" type="revolute">
       <origin xyz="0 0 0.035" rpy="0 0.2485 -1.5708"/>
       <parent link="${prefix}thumb_link0"/>
       <child link="${prefix}thumb_link1"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.0518" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.330464" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}thumb_joint2" type="revolute">
       <origin xyz="0 0 0" rpy="0 0 -1.5708"/>
       <parent link="${prefix}thumb_link1"/>
       <child link="${prefix}thumb_link2"/>
       <axis xyz="0 1 0"/>
-      <limit lower="-0.5236" upper="0.5236" effort="1.2" velocity="1.57"/>  <!-- ±30° (2026-07-28 실측) -->
+      <limit lower="-0.787143" upper="0.787143" effort="1.2" velocity="1.57"/>  <!-- ±45.1° — joint_clamp.cpp 의 thumb plateau (실측) -->
     </joint>
     <joint name="${prefix}thumb_joint3" type="revolute">
       <origin xyz="0 0.0069 0.0705" rpy="0 0.0461 1.5708"/>
       <parent link="${prefix}thumb_link2"/>
       <child link="${prefix}thumb_link3"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.231" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.22173" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}thumb_joint4" type="revolute">
       <origin xyz="0 0 0.04124" rpy="0 -0.126425 0"/>
       <parent link="${prefix}thumb_link3"/>
       <child link="${prefix}thumb_link4"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.6581" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.500202" effort="1.2" velocity="1.57"/>  <!-- passive: q3 70° 에서 유도 (IP four-bar) -->
     </joint>
 
     <!-- ================================ index finger ================================ -->
@@ -311,28 +311,28 @@
       <parent link="${prefix}hand_base_link"/>
       <child link="${prefix}index_link1"/>
       <axis xyz="0 1 0"/>
-      <limit lower="-0.5236" upper="0.5236" effort="1.2" velocity="1.57"/>
+      <limit lower="-0.479966" upper="0.479966" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}index_joint2" type="revolute">
       <origin xyz="0 0 0" rpy="0 0.058032 1.5708"/>
       <parent link="${prefix}index_link1"/>
       <child link="${prefix}index_link2"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.6581" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.666091" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}index_joint3" type="revolute">
       <origin xyz="0 0 0.04524" rpy="0 -0.040582 0"/>
       <parent link="${prefix}index_link2"/>
       <child link="${prefix}index_link3"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.5533" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.570796" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}index_joint4" type="revolute">
       <origin xyz="0 0 0.0275" rpy="0 -0.081758 0"/>
       <parent link="${prefix}index_link3"/>
       <child link="${prefix}index_link4"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.6319" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.739111" effort="1.2" velocity="1.57"/>  <!-- passive: q3 90° 에서 유도 (four-bar) -->
     </joint>
 
     <!-- ================================ middle finger ================================ -->
@@ -441,28 +441,28 @@
       <parent link="${prefix}hand_base_link"/>
       <child link="${prefix}middle_link1"/>
       <axis xyz="0 1 0"/>
-      <limit lower="-0.5236" upper="0.5236" effort="1.2" velocity="1.57"/>
+      <limit lower="-0.479966" upper="0.479966" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}middle_joint2" type="revolute">
       <origin xyz="0 0 0" rpy="0 0.058032 1.5708"/>
       <parent link="${prefix}middle_link1"/>
       <child link="${prefix}middle_link2"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.6581" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.666091" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}middle_joint3" type="revolute">
       <origin xyz="0 0 0.04524" rpy="0 -0.040582 0"/>
       <parent link="${prefix}middle_link2"/>
       <child link="${prefix}middle_link3"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.5533" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.570796" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}middle_joint4" type="revolute">
       <origin xyz="0 0 0.0275" rpy="0 -0.081758 0"/>
       <parent link="${prefix}middle_link3"/>
       <child link="${prefix}middle_link4"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.6319" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.739111" effort="1.2" velocity="1.57"/>  <!-- passive: q3 90° 에서 유도 (four-bar) -->
     </joint>
 
     <!-- ================================ ring finger ================================ -->
@@ -571,28 +571,28 @@
       <parent link="${prefix}hand_base_link"/>
       <child link="${prefix}ring_link1"/>
       <axis xyz="0 1 0"/>
-      <limit lower="-0.5236" upper="0.5236" effort="1.2" velocity="1.57"/>
+      <limit lower="-0.479966" upper="0.479966" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}ring_joint2" type="revolute">
       <origin xyz="0 0 0" rpy="0 0.058032 1.5708"/>
       <parent link="${prefix}ring_link1"/>
       <child link="${prefix}ring_link2"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.6581" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.666091" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}ring_joint3" type="revolute">
       <origin xyz="0 0 0.04524" rpy="0 -0.040582 0"/>
       <parent link="${prefix}ring_link2"/>
       <child link="${prefix}ring_link3"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.5533" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.570796" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}ring_joint4" type="revolute">
       <origin xyz="0 0 0.0275" rpy="0 -0.081758 0"/>
       <parent link="${prefix}ring_link3"/>
       <child link="${prefix}ring_link4"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.6319" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.739111" effort="1.2" velocity="1.57"/>  <!-- passive: q3 90° 에서 유도 (four-bar) -->
     </joint>
 
     <!-- ================================ baby finger ================================ -->
@@ -701,28 +701,28 @@
       <parent link="${prefix}hand_base_link"/>
       <child link="${prefix}baby_link1"/>
       <axis xyz="0 1 0"/>
-      <limit lower="-0.5236" upper="0.5236" effort="1.2" velocity="1.57"/>
+      <limit lower="-0.479966" upper="0.479966" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}baby_joint2" type="revolute">
       <origin xyz="0 0 0" rpy="0 0.058032 1.5708"/>
       <parent link="${prefix}baby_link1"/>
       <child link="${prefix}baby_link2"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.6581" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.666091" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}baby_joint3" type="revolute">
       <origin xyz="0 0 0.04524" rpy="0 -0.040582 0"/>
       <parent link="${prefix}baby_link2"/>
       <child link="${prefix}baby_link3"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.5533" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.570796" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}baby_joint4" type="revolute">
       <origin xyz="0 0 0.0275" rpy="0 -0.081758 0"/>
       <parent link="${prefix}baby_link3"/>
       <child link="${prefix}baby_link4"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.6319" effort="1.2" velocity="1.57"/>
+      <limit lower="0" upper="1.739111" effort="1.2" velocity="1.57"/>  <!-- passive: q3 90° 에서 유도 (four-bar) -->
     </joint>
 
   </xacro:macro>
