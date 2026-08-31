@@ -11,23 +11,23 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-// Hardware command interface contract (one hand, 65 resources)
-//   <side>_hand_control/command_lock                                      ×1
-//   <side>_joint_position_command/target_position_rad.<active_joint>     ×16
-//   <side>_joint_impedance_command/target_position_rad.<active_joint>    ×16
-//   <side>_actuator_position_command/target_position_cnt.<actuator>      ×16
-//   <side>_actuator_effort_command/target_effort_pct.<actuator>          ×16
-// command_lock is claim-only. A mode switch accepts only an empty set (Idle)
-// or exactly one complete mode set including the lock.
-// Tuning (max_effort, JointPosition filter, JointImpedance gains) is not a command — it lives on
-// this component's own node as parameters and reaches the SDK through set_controller_config().
+// Command interface contract, one hand, 65 resources
+//   <side>_hand_control/command_lock                                    x1
+//   <side>_joint_position_command/target_position_rad.<active_joint>   x16
+//   <side>_joint_impedance_command/target_position_rad.<active_joint>  x16
+//   <side>_actuator_position_command/target_position_cnt.<actuator>    x16
+//   <side>_actuator_effort_command/target_effort_pct.<actuator>        x16
+//
+// command_lock is claim-only, and a mode switch takes either an empty set or exactly
+// one complete mode set with the lock
+// Tuning is not a command, it reaches the SDK from this component's own node parameters
 namespace aidin_hand2_hardware
 {
 
 namespace
 {
 
-// 표준 joint position 을 제외한 custom state interface 는 단위를 이름에 붙인다.
+// Custom state interfaces carry the unit in the name, the standard joint position does not
 constexpr char kPositionCountInterface[] = "position_cnt";
 constexpr char kVelocityRpmInterface[] = "velocity_rpm";
 constexpr char kCurrentMilliampInterface[] = "current_ma";
@@ -36,11 +36,11 @@ constexpr char kFaultInterface[] = "fault";
 
 constexpr char kPositionInterface[] = "position";
 
-// command echo·timestamp component 이름 (hand 전역 상태 — diagnostics 처럼 한 component 로 묶음)
+// Hand-wide components, grouped the way diagnostics is
 constexpr char kCommandedComponent[] = "commanded";
 constexpr char kTimestampComponent[] = "timestamp";
 
-// command echo scalar 인터페이스 (component = <prefix>commanded)
+// Command echo, on the <prefix>commanded component
 constexpr char kControllerInputModeInterface[] = "controller_input_mode";
 constexpr char kControllerOutputTypeInterface[] = "controller_output_type";
 constexpr char kSelectedSourceInterface[] = "selected_source";
@@ -51,15 +51,14 @@ constexpr char kControllerInputActuatorEffortInterface[] =
   "controller_input_target_effort_pct";
 constexpr char kControllerOutputPositionInterface[] = "controller_output_target_position_cnt";
 constexpr char kControllerOutputEffortInterface[] = "controller_output_target_effort_pct";
-constexpr char kCommandedMaxEffortInterface[] = "max_effort_pct";      // actuator
+constexpr char kCommandedMaxEffortInterface[] = "max_effort_pct";
 
-// timestamp 인터페이스 (component = <prefix>timestamp) — 관측 시점 wall-clock, header.stamp 용
+// Observation wall-clock for header.stamp, on the <prefix>timestamp component
 constexpr char kStampSecInterface[] = "sec";
 constexpr char kStampNanosecInterface[] = "nanosec";
 
-// diagnostics gpio 의 state interface 순서 = diagnostics_values_ 배열 순서.
-// lifecycle 은 double(HandLifecycle ordinal) 로 나가고 broadcaster 가 이름화한다.
-// 종합 판정(healthy)은 두지 않는다 — 소비자가 lifecycle 과 actuator fault 로 직접 판단한다.
+// Interface order of the diagnostics gpio, matching the diagnostics_values_ array
+// lifecycle goes out as the HandLifecycle ordinal and the broadcaster names it
 constexpr std::array<const char *, 7> kDiagnosticsInterfaceNames = {
   "lifecycle",
   "nan_command_count",
@@ -69,7 +68,7 @@ constexpr std::array<const char *, 7> kDiagnosticsInterfaceNames = {
   "last_compute_ms",
   "homing_state"};
 
-// tactile finger 순서 (SDK flat array 블록 순서). thumb 뒤 long finger 4개.
+// Finger order of the SDK tactile blocks
 constexpr std::array<const char *, 5> kFingerNames = {
   "thumb",
   "index",
@@ -77,8 +76,8 @@ constexpr std::array<const char *, 5> kFingerNames = {
   "ring",
   "baby"};
 
-// interface 이름(prefix 제외) — SDK 도메인 고정 순서. 이름/인덱스 매핑은 이 목록의 순서 그 자체다.
-// actuator 16: thumb 4 + long finger 3×4.
+// Interface names without the prefix, in fixed SDK order
+// The position in the list is the actuator index, so the URDF order does not matter
 constexpr std::array<const char *, ah2::kActuatorCount> kActuatorBaseNames = {
   "thumb_actuator0", "thumb_actuator1", "thumb_actuator2", "thumb_actuator3",
   "index_actuator1", "index_actuator2", "index_actuator3",
@@ -96,7 +95,7 @@ constexpr std::array<const char *, ah2::kActiveJointCount> kActiveJointBaseNames
 constexpr std::array<std::size_t, ah2::kActiveJointCount> kActiveToJointIndex = {
   0, 1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19};
 
-// joint 21 (FK state) — 각 digit 마지막이 q4 결합분. 순서 = SDK joint index.
+// FK joints, the last of each digit being the coupled q4
 constexpr std::array<const char *, ah2::kJointCount> kJointBaseNames = {
   "thumb_joint0",
   "thumb_joint1",
@@ -120,90 +119,26 @@ constexpr std::array<const char *, ah2::kJointCount> kJointBaseNames = {
   "baby_joint3",
   "baby_joint4"};
 
-std::string command_component(const std::string & side, ah2::CommandMode mode)
-{
-  switch (mode) {
-    case ah2::CommandMode::JointPosition: return side + "_joint_position_command";
-    case ah2::CommandMode::JointImpedance: return side + "_joint_impedance_command";
-    case ah2::CommandMode::ActuatorPosition: return side + "_actuator_position_command";
-    case ah2::CommandMode::ActuatorEffort: return side + "_actuator_effort_command";
-    case ah2::CommandMode::Idle: return {};
-  }
-  return {};
-}
+// Component name a mode writes its targets to
+std::string command_component(const std::string & side, ah2::CommandMode mode);
 
+// Every command interface one mode needs, the lock included
 std::vector<std::string> mode_command_interfaces(
-  const std::string & side, ah2::CommandMode mode, bool include_lock = true)
-{
-  std::vector<std::string> names;
-  if (mode == ah2::CommandMode::Idle) return names;
-  if (include_lock) names.push_back(side + "_hand_control/command_lock");
-  const std::string component = command_component(side, mode) + "/";
-  if (mode == ah2::CommandMode::JointPosition ||
-      mode == ah2::CommandMode::JointImpedance)
-  {
-    for (const char * joint : kActiveJointBaseNames) {
-      names.push_back(component + "target_position_rad." + joint);
-    }
-  }
-  if (mode == ah2::CommandMode::ActuatorPosition) {
-    for (const char * actuator : kActuatorBaseNames) {
-      names.push_back(component + "target_position_cnt." + actuator);
-    }
-  } else if (mode == ah2::CommandMode::ActuatorEffort) {
-    for (const char * actuator : kActuatorBaseNames) {
-      names.push_back(component + "target_effort_pct." + actuator);
-    }
-  }
-  return names;
-}
+  const std::string & side, ah2::CommandMode mode, bool include_lock = true);
 
-std::vector<std::string> all_command_interfaces(const std::string & side)
-{
-  std::vector<std::string> names{side + "_hand_control/command_lock"};
-  for (const auto mode : {
-      ah2::CommandMode::JointPosition, ah2::CommandMode::JointImpedance,
-      ah2::CommandMode::ActuatorPosition, ah2::CommandMode::ActuatorEffort})
-  {
-    const auto mode_names = mode_command_interfaces(side, mode, false);
-    names.insert(names.end(), mode_names.begin(), mode_names.end());
-  }
-  return names;
-}
+// Every command interface this component exports
+std::vector<std::string> all_command_interfaces(const std::string & side);
 
+// The mode whose complete set the claim matches, Idle when empty and nullopt on a partial claim
 std::optional<ah2::CommandMode> exact_mode_for_interfaces(
-  const std::string & side, const std::set<std::string> & claimed)
-{
-  if (claimed.empty()) return ah2::CommandMode::Idle;
-  for (const auto mode : {
-      ah2::CommandMode::JointPosition, ah2::CommandMode::JointImpedance,
-      ah2::CommandMode::ActuatorPosition, ah2::CommandMode::ActuatorEffort})
-  {
-    const auto names = mode_command_interfaces(side, mode);
-    if (claimed == std::set<std::string>(names.begin(), names.end())) return mode;
-  }
-  return std::nullopt;
-}
+  const std::string & side, const std::set<std::string> & claimed);
 
-
-// command interface 의 NaN 은 "이번 cycle 명령 없음"(전체) 또는 "상위가 그 축을 점유하지 않음"
-// (일부)을 뜻한다. 전자면 set_command 를 부르지 않아 SDK 가 직전 명령을 유지하고, 후자면 빈 자리를
-// 채워 완전한 command 로 만든다.
+// Whether a command interface array is entirely NaN, which means no command this cycle
 template <std::size_t N>
-bool all_nan(const std::array<double, N> & values)
-{
-  for (const double value : values) {
-    if (!std::isnan(value)) return false;
-  }
-  return true;
-}
+bool all_nan(const std::array<double, N> & values);
 
-// 빈 자리는 직전 명령값으로만 채운다 — 그 축을 지금 그대로 두라는 뜻이다. 직전 명령도 없으면
-// 채울 값이 없다(NaN 유지). hardware 가 목표를 지어내지 않는다.
-double fill_gap(double value, double previous)
-{
-  return std::isnan(value) ? previous : value;
-}
+// Fills a NaN axis from the previous command, leaving it NaN when there is no previous one
+double fill_gap(double value, double previous);
 
 }  // namespace
 
@@ -212,10 +147,7 @@ AidinHand2SystemInterface::~AidinHand2SystemInterface()
   stop_service_node();
 }
 
-rclcpp::Logger AidinHand2SystemInterface::logger() const
-{
-  return rclcpp::get_logger(info_.name.empty() ? "aidin_hand2_hardware" : info_.name);
-}
+// -------------------------------- Lifecycle ---------------------------------
 
 CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::HardwareInfo & info)
 {
@@ -223,9 +155,9 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
     return CallbackReturn::ERROR;
   }
 
-  // SDK 로그를 ROS 로깅으로 중계 — 프로세스 전역 1회 (left/right 인터페이스 2개가 같은
-  // controller_manager 에 뜨므로). SDK 로거가 전역이라 고정 이름 로거를 쓰고, hand 구분은
-  // SDK 가 본문에 넣는 [left]/[right] 태그로 된다. 해제는 안 함 — 프로세스 수명과 같다.
+  // Relay SDK logs to ROS logging, once per process, since a left and a right component
+  // share one controller_manager
+  // The SDK logger is global, so the hand is told apart by the [left] and [right] tag it writes
   static std::once_flag sdk_log_callback_registered;
   std::call_once(sdk_log_callback_registered, [] {
     ah2::set_log_callback([](ah2::LogLevel level, const std::string & message) {
@@ -250,16 +182,16 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
       }
     });
 
-    // SDK 의 stderr 직접 출력 차단 — 콘솔엔 ROS 경로로만 나가게 (이중 출력 방지)
+    // Silence the SDK console sink, leaving the ROS path as the only output
     ah2::set_log_to_console(false);
   });
 
-  // ---- 파라미터 ---- (hardware_parameters 는 전부 string 이라 숫자는 변환 필요)
+  // hardware_parameters are all strings, so a number is converted here
+  // An empty value keeps the fallback, a malformed one throws into the catch below
   const auto parameter = [this](const std::string & key) -> std::string {
     const auto found = info_.hardware_parameters.find(key);
     return found == info_.hardware_parameters.end() ? std::string{} : found->second;
   };
-  // 빈 값(미지정)이면 fallback 유지. 잘못된 숫자는 stoi/stod 가 throw → 아래 try 가 FATAL 처리.
   const auto as_int = [&](const std::string & key, int fallback) {
     const std::string value = parameter(key);
     return value.empty() ? fallback : std::stoi(value);
@@ -287,7 +219,7 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
   hand_side_name_ = hand_side_text;
   prefix_ = hand_side_name_ + "_";
 
-  // xacro 는 bool 을 "True"/"False" 로 방출한다. 그 두 값만 받는다.
+  // xacro emits a bool as "True" or "False"
   const std::string auto_home_text = parameter("auto_home");
   if (auto_home_text != "True" && auto_home_text != "False") {
     RCLCPP_FATAL(logger(), "auto_home must be True/False, got '%s'", auto_home_text.c_str());
@@ -295,7 +227,7 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
   }
   auto_home_ = auto_home_text == "True";
 
-  // auto_reconnect 3종은 선택적(없으면 기본값) — 통신 두절 시 SDK 자동 재수립 정책.
+  // Optional, falling back to the defaults
   auto_reconnect_ = parameter("auto_reconnect") == "True";
   auto_reconnect_home_ = parameter("auto_reconnect_home") == "True";
 
@@ -305,8 +237,7 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
     rt_cpu_affinity_ = as_int("rt_cpu_affinity", rt_cpu_affinity_);
     auto_reconnect_timeout_ms_ = as_int("auto_reconnect_timeout_ms", auto_reconnect_timeout_ms_);
 
-    // 미가동 actuator — 콤마 구분 index 목록(예: "0,1,2,3"). 빈 값 = 전부 가동. 공백 허용.
-    // 잘못된 토큰은 stoi 가 throw → 아래 catch 가 FATAL 처리(범위 검증은 SDK 가 담당).
+    // Comma separated index list such as "0,1,2,3", spaces allowed and the range checked by the SDK
     disabled_actuators_.clear();
     const std::string disabled_text = parameter("disabled_actuators");
     std::string token;
@@ -327,12 +258,86 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
   return CallbackReturn::SUCCESS;
 }
 
+CallbackReturn AidinHand2SystemInterface::on_configure(const rclcpp_lifecycle::State &)
+{
+  try {
+    ah2::HandConfig config{can_interface_, hand_side_};
+    config.control_rate = control_rate_;
+    config.rt_cpu_affinity = rt_cpu_affinity_;
+    config.disabled_actuators = disabled_actuators_;
+    config.auto_reconnect = auto_reconnect_;
+    config.auto_reconnect_timeout_ms = auto_reconnect_timeout_ms_;
+    config.auto_reconnect_home = auto_reconnect_home_;
+    // The SDK blocking auto-home would hold the CM executor inside run()
+    // write() triggers start_homing() instead
+    config.auto_home = false;
+
+    hand_ = manager_.create(config);
+    hand_->connect();
+    state_ = hand_->get_state();
+  } catch (const ah2::Exception &) {
+    // The SDK already logged the failure, so only the cleanup is left
+    if (hand_) {
+      manager_.destroy(*hand_);
+      hand_.reset();
+    }
+    return CallbackReturn::ERROR;
+  }
+  start_service_node();
+  return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn AidinHand2SystemInterface::on_activate(const rclcpp_lifecycle::State &)
+{
+  std::string failure_message;
+  if (!exec_run(failure_message)) {
+    return CallbackReturn::ERROR;
+  }
+  return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn AidinHand2SystemInterface::on_deactivate(const rclcpp_lifecycle::State &)
+{
+  // stop() cancels a running homing with a quick stop and blocks until the drives confirm,
+  // so nothing waits on is_homing() here
+  std::string failure_message;
+  if (!exec_stop(failure_message)) {
+    return CallbackReturn::ERROR;
+  }
+  return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn AidinHand2SystemInterface::on_cleanup(const rclcpp_lifecycle::State &)
+{
+  stop_service_node();
+  if (hand_) {
+    // destroy() tears down a live connection on its own, so a disconnect failure is swallowed
+    try {
+      hand_->disconnect();
+    } catch (const ah2::Exception &) {
+    }
+    try {
+      manager_.destroy(*hand_);
+    } catch (const ah2::Exception &) {
+    }
+    hand_.reset();
+  }
+  return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn AidinHand2SystemInterface::on_shutdown(const rclcpp_lifecycle::State & previous_state)
+{
+  return on_cleanup(previous_state);
+}
+
+// ----------------------------- Interface export -----------------------------
+
 std::vector<hardware_interface::StateInterface>
 AidinHand2SystemInterface::export_state_interfaces()
 {
   std::vector<hardware_interface::StateInterface> interfaces;
 
-  // actuator 16 — position/velocity/current (모션/센싱). enable/fault 는 진단이라 diagnostics gpio 로.
+  // Actuator motion and sensing, while enabled and fault go to the diagnostics gpio
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
     const std::string joint = prefix_ + kActuatorBaseNames[i];
     interfaces.emplace_back(joint, kPositionCountInterface, &state_.actuators.position_count[i]);
@@ -340,12 +345,10 @@ AidinHand2SystemInterface::export_state_interfaces()
     interfaces.emplace_back(joint, kCurrentMilliampInterface, &state_.actuators.current_mA[i]);
   }
 
-  // joint 21 — FK position (rad).
   for (std::size_t i = 0; i < ah2::kJointCount; ++i) {
     interfaces.emplace_back(prefix_ + kJointBaseNames[i], kPositionInterface, &joint_position_rad_[i]);
   }
 
-  // tactile — finger 5 x 17.
   for (std::size_t finger = 0; finger < ah2::kFingerCount; ++finger) {
     const std::string sensor = prefix_ + kFingerNames[finger] + "_sensor";
     for (std::size_t cell = 0; cell < ah2::kTactileTaxelsPerFinger; ++cell) {
@@ -354,7 +357,7 @@ AidinHand2SystemInterface::export_state_interfaces()
     }
   }
 
-  // palm — 3 region 58 (upper 20 + lower 20 + palm2 18), flat 저장.
+  // Palm regions, stored flat
   const std::string palm = prefix_ + "palm_sensor";
   std::size_t palm_offset = 0;
   const auto add_palm_region = [&](const char * region_prefix, std::size_t count) {
@@ -368,7 +371,6 @@ AidinHand2SystemInterface::export_state_interfaces()
   add_palm_region("palm1_lower_", ah2::kPalm1LowerCount);
   add_palm_region("palm2_", ah2::kPalm2Count);
 
-  // diagnostics gpio — hand 전역 12 + per-actuator enabled 16 + fault 16.
   const std::string diagnostics = prefix_ + "diagnostics";
   for (std::size_t i = 0; i < kDiagnosticsInterfaceNames.size(); ++i) {
     interfaces.emplace_back(diagnostics, kDiagnosticsInterfaceNames[i], &diagnostics_values_[i]);
@@ -384,8 +386,8 @@ AidinHand2SystemInterface::export_state_interfaces()
       &actuator_fault_[i]);
   }
 
-  // command state — SDK variant 를 ros2_control 의 flat double 경계로 펼친다. mode/type/source 가
-  // 어떤 typed field 가 유효한지 규정하고, broadcaster 가 다시 typed ROS message 로 조립한다.
+  // Command echo, the SDK variant spread over the flat double boundary
+  // mode, type and source say which typed field is valid, and the broadcaster rebuilds the message
   const std::string commanded = prefix_ + kCommandedComponent;
   interfaces.emplace_back(commanded, kControllerInputModeInterface, &controller_input_mode_);
   interfaces.emplace_back(commanded, kControllerOutputTypeInterface, &controller_output_type_);
@@ -409,7 +411,6 @@ AidinHand2SystemInterface::export_state_interfaces()
                             &commanded_max_effort_pct_[i]);
   }
 
-  // 관측 timestamp — sec/nanosec 로 분해된 wall-clock (header.stamp 용).
   const std::string timestamp = prefix_ + kTimestampComponent;
   interfaces.emplace_back(timestamp, kStampSecInterface, &observed_stamp_sec_);
   interfaces.emplace_back(timestamp, kStampNanosecInterface, &observed_stamp_nanosec_);
@@ -422,7 +423,6 @@ AidinHand2SystemInterface::export_command_interfaces()
 {
   std::vector<hardware_interface::CommandInterface> interfaces;
 
-  // command_lock 은 claim-only mutex다. 어느 controller 도 값을 읽거나 쓰지 않는다.
   interfaces.emplace_back(
     hand_side_name_ + "_hand_control", "command_lock", &command_lock_);
 
@@ -464,94 +464,14 @@ AidinHand2SystemInterface::export_command_interfaces()
   return interfaces;
 }
 
-CallbackReturn AidinHand2SystemInterface::on_configure(const rclcpp_lifecycle::State &)
-{
-  // configure = create(자원 할당) + connect(통신 수립·첫 수신 확인, ~300ms blocking). 여기까지는
-  // 관측만 — 드라이브 enable 은 activate(run) 몫. 통신이 살아 있어 diagnostics 를 읽을 수 있다.
-  try {
-    ah2::HandConfig config{can_interface_, hand_side_};
-    config.control_rate = control_rate_;
-    config.rt_cpu_affinity = rt_cpu_affinity_;
-    config.disabled_actuators = disabled_actuators_;
-    config.auto_reconnect = auto_reconnect_;
-    config.auto_reconnect_timeout_ms = auto_reconnect_timeout_ms_;
-    config.auto_reconnect_home = auto_reconnect_home_;
-    // SDK 의 blocking auto-home 은 절대 쓰지 않는다 — run() 이 homing 으로 CM executor 를 막지 않게.
-    // homing 은 wrapper 가 RT read/write 에서 start_homing()(non-blocking) 으로 직접 건다(auto_home_ 파라미터).
-    config.auto_home = false;
+// ------------------------------- Command mode -------------------------------
 
-    hand_ = manager_.create(config);
-    hand_->connect();
-    state_ = hand_->get_state();
-  } catch (const ah2::Exception &) {
-    // 실패 로그는 SDK 가 이미 [exception] <ErrorCode>: <msg> 로 남긴다(한 실패 한 화자). 여기선
-    // 자원 정리 + lifecycle 실패 반환만. (set_log_callback 중계로 /rosout 에 이미 나감.)
-    if (hand_) {
-      manager_.destroy(*hand_);
-      hand_.reset();
-    }
-    return CallbackReturn::ERROR;
-  }
-  start_service_node();
-  return CallbackReturn::SUCCESS;
-}
-
-CallbackReturn AidinHand2SystemInterface::on_activate(const rclcpp_lifecycle::State &)
-{
-  // activate = run (기본). 이후 ~/stop 으로 멈추고 ~/run 으로 다시 시작할 수 있다.
-  // 실패 메시지는 SDK 가 [exception] 로그로 이미 남긴다(한 실패 한 화자) — 여기선 lifecycle 실패 반환만.
-  // auto-home 트리거 래치는 exec_run 이 세운다(모든 run 경로 공용).
-  std::string failure_message;
-  if (!exec_run(failure_message)) {
-    return CallbackReturn::ERROR;
-  }
-  return CallbackReturn::SUCCESS;
-}
-
-CallbackReturn AidinHand2SystemInterface::on_deactivate(const rclcpp_lifecycle::State &)
-{
-  // homing 진행 중이어도 별도 대기가 필요 없다 — stop() 이 quick stop 으로 homing 을 중단시키고
-  // 정지 확인까지 블로킹한다(SDK). 그 뒤 is_homing() 은 한 cycle 안에 false 로 가라앉는다.
-  std::string failure_message;
-  if (!exec_stop(failure_message)) {
-    // 실패 로그는 SDK [exception] 이 유일 기록 — 여기선 반환만.
-    return CallbackReturn::ERROR;
-  }
-  return CallbackReturn::SUCCESS;
-}
-
-CallbackReturn AidinHand2SystemInterface::on_cleanup(const rclcpp_lifecycle::State &)
-{
-  // cleanup = disconnect(통신 종료) + destroy(자원 파기). destroy 는 연결 상태면 정지 확인·종료까지
-  // 하므로, disconnect 는 정상 종료 경로에서만 성공하고 실패해도 destroy 가 마무리한다.
-  stop_service_node();
-  if (hand_) {
-    // disconnect/destroy 실패는 SDK 가 [exception] 로그로 남긴다(한 실패 한 화자). disconnect 실패해도
-    // destroy 로 마무리하고, destroy 실패도 삼켜 cleanup 을 진행한다(재출력 없이 흐름만).
-    try {
-      hand_->disconnect();
-    } catch (const ah2::Exception &) {
-    }
-    try {
-      manager_.destroy(*hand_);
-    } catch (const ah2::Exception &) {
-    }
-    hand_.reset();
-  }
-  return CallbackReturn::SUCCESS;
-}
-
-CallbackReturn AidinHand2SystemInterface::on_shutdown(const rclcpp_lifecycle::State & previous_state)
-{
-  return on_cleanup(previous_state);
-}
-
-// start/stop delta 를 현재 claim 집합에 적용한 다음, 정확히 한 mode 의 완전한 port+lock 집합인지
-// 검증한다. suffix 추론이나 부분 claim 은 허용하지 않는다.
 hardware_interface::return_type AidinHand2SystemInterface::prepare_command_mode_switch(
   const std::vector<std::string> & start_interfaces,
   const std::vector<std::string> & stop_interfaces)
 {
+  // Apply the start and stop delta to the claim set, then demand one complete mode
+  // Neither a suffix guess nor a partial claim is accepted
   const auto all_names = all_command_interfaces(hand_side_name_);
   const std::set<std::string> owned(all_names.begin(), all_names.end());
   pending_command_interfaces_ = active_command_interfaces_;
@@ -587,9 +507,12 @@ hardware_interface::return_type AidinHand2SystemInterface::perform_command_mode_
   command_mode_ = pending_mode_;
   pending_mode_switch_valid_ = false;
 
-  clear_mode_command();  // controller 가 처음 쓰기 전까지는 명령 없음
+  // No command until the new controller writes for the first time
+  clear_mode_command();
   return hardware_interface::return_type::OK;
 }
+
+// ------------------------------- Control loop -------------------------------
 
 hardware_interface::return_type AidinHand2SystemInterface::read(
   const rclcpp::Time &, const rclcpp::Duration &)
@@ -598,12 +521,10 @@ hardware_interface::return_type AidinHand2SystemInterface::read(
     return hardware_interface::return_type::ERROR;
   }
   try {
-    // 관측 snapshot — SDK HandState 복사 후 joint position(rad) 은 state interface 저장소로.
     state_ = hand_->get_state();
-    joint_position_rad_ = state_.joints.position_rad;  // SDK·ROS 둘 다 rad
+    joint_position_rad_ = state_.joints.position_rad;
 
-    // SDK variant → ros2_control flat state interface. NaN 은 해당 typed input/output 에서
-    // 유효하지 않은 필드임을 뜻하며 broadcaster 가 mode/type 로 다시 구조화한다.
+    // NaN marks a field the active input or output type does not carry
     const double unused = std::numeric_limits<double>::quiet_NaN();
     controller_input_target_rad_.fill(unused);
     controller_input_target_position_cnt_.fill(unused);
@@ -647,12 +568,11 @@ hardware_interface::return_type AidinHand2SystemInterface::read(
       static_cast<double>(static_cast<int>(state_.commanded.selected_source));
     commanded_max_effort_pct_ = state_.commanded.max_effort_pct;
 
-    // 관측 timestamp(ns) → sec/nanosec 분해. 정수 나눗셈이라 double 반올림 없이 header.stamp 로 흐른다.
+    // Integer division, so header.stamp keeps every ns a double would round away
     observed_stamp_sec_ = static_cast<double>(state_.timestamp / 1000000000LL);
     observed_stamp_nanosec_ = static_cast<double>(state_.timestamp % 1000000000LL);
 
-    // 진단 snapshot — SDK Diagnostics 를 gpio state 순서로 double 화. lifecycle 은 enum→double
-    // (ordinal), broadcaster 가 to_string 으로 이름화(command echo mode/source 와 동일 방식).
+    // Diagnostics in the gpio interface order
     const ah2::Diagnostics diagnostics = hand_->get_diagnostics();
     diagnostics_values_ = {
       static_cast<double>(static_cast<int>(diagnostics.lifecycle)),
@@ -663,15 +583,14 @@ hardware_interface::return_type AidinHand2SystemInterface::read(
       diagnostics.last_compute_ms,
       static_cast<double>(static_cast<int>(diagnostics.homing_state))};
 
-    // per-actuator enable·fault
     for (std::size_t actuator = 0; actuator < ah2::kActuatorCount; ++actuator) {
       actuator_enabled_[actuator] = diagnostics.actuator_health.enabled[actuator] ? 1.0 : 0.0;
       actuator_fault_[actuator] = static_cast<double>(
         static_cast<std::uint16_t>(diagnostics.actuator_health.fault[actuator]));
     }
   } catch (const ah2::Exception &) {
-    // SDK [exception] 로그가 유일 기록(한 실패 한 화자). get_state/get_diagnostics 는 통신 두절로
-    // 던지지 않으므로(lock-free 버퍼 읽기) 여기 오면 핸들 무효(destroy 후) — 복구 불가라 fail-fast.
+    // get_state and get_diagnostics read a lock-free buffer and never throw on a lost link,
+    // so reaching here means the handle died and there is nothing to recover
     return hardware_interface::return_type::ERROR;
   }
   return hardware_interface::return_type::OK;
@@ -685,30 +604,28 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
   }
 
   try {
-    // tuning 은 lifecycle·homing 과 무관하게 먼저 적용한다 — ~/stop 중에 바꿔도 반영된다.
+    // Ahead of the gates below, so tuning still lands while the hand is stopped
     apply_tuning_parameters();
 
     if (!started_.load()) {
-      return hardware_interface::return_type::OK;  // ~/stop 으로 멈춘 상태 — command 미전송 (재개는 ~/run)
+      return hardware_interface::return_type::OK;
     }
     if (hand_->get_diagnostics().lifecycle != ah2::HandLifecycle::Running) {
       return hardware_interface::return_type::OK;
     }
 
-    // auto-home — 명령을 내보내는 이 write 단계에서 non-blocking 으로 건다(스레드 없음). 원점 미확정이면
-    // start_homing() 을 1회만(래치). start_homing() 은 request_homing_ 을 동기적으로 세우고 즉시 반환하므로,
-    // 바로 아래 억제 체크의 is_homing() 이 이 cycle 부터 true → command 유출 없음. 실제 homing 명령은
-    // SDK RT loop 가 보낸다(여기 write 아님). start_homing()/get_diagnostics() 예외는 아래 catch 가 받는다.
+    // Trigger homing once per run, non-blocking so the CM executor is never held
+    // start_homing() raises the request synchronously, so the is_homing() gate below
+    // already sees it this cycle and no command leaks out
     if (auto_home_ && !hand_->is_homing() &&
         hand_->get_diagnostics().homing_state != ah2::HomingState::Succeeded &&
         !auto_home_triggered_.exchange(true)) {
       hand_->start_homing();
     }
 
-    // homing 중이거나 원점 미확정이면 command 미전송. homing 중: FSM 간섭 방지. 미확정: SDK 가 set_command
-    // 를 거부(WrongCallOrder)하므로 매 cycle 그 예외를 내는 대신 조용히 넘긴다. is_homing() 만으로는
-    // "homing 도 아닌데 아직 미확정" 구간(재연결 직후, auto_home 실패)이 빠진다. homing_state 가 Succeeded 로
-    // 돌아오면(~/home·재homing·~/reconnect) 자연히 재개된다.
+    // A command during homing would disturb the sequence, and an unhomed SDK answers
+    // set_command with WrongCallOrder, so both are skipped quietly
+    // Testing homing_state as well covers the unhomed gap right after a reconnect
     if (hand_->is_homing() ||
         hand_->get_diagnostics().homing_state != ah2::HomingState::Succeeded) {
       return hardware_interface::return_type::OK;
@@ -785,105 +702,14 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
       }
     }
   } catch (const ah2::Exception &) {
-    // SDK [exception] 로그가 유일 기록. 위 lifecycle 게이트를 스쳐 지난 race(체크 후 두절)라 OK 로
-    // 흘려 컴포넌트를 내리지 않는다 — 명령 미전송이 곧 fail-safe 이고 복구는 ~/reconnect 로 한다.
+    // A link lost between the gate above and here, so OK keeps the component up
+    // and no command going out is itself the fail-safe, with ~/reconnect to recover
     return hardware_interface::return_type::OK;
   }
   return hardware_interface::return_type::OK;
 }
 
-// 현재 mode 의 command 저장소를 비운다(NaN = 명령 없음). mode 전환·재개 직후처럼 상위가 아직
-// 아무것도 쓰지 않은 구간에서 옛 값이 명령으로 나가지 않게 한다.
-// 일부 축이 NaN 인데 그 축에 직전 명령도 없어 명령을 완성할 수 없을 때. 상위가 그 축을 한 번도
-// 점유하지 않았다는 뜻이라, 채우지 않고 그 cycle 을 건너뛴다(hardware 가 목표를 지어내지 않는다).
-void AidinHand2SystemInterface::warn_incomplete_command()
-{
-  RCLCPP_WARN_THROTTLE(
-    logger(), throttle_clock_, 5000,
-    "command has axes that were never commanded — skipped. Send a complete command once.");
-}
-
-void AidinHand2SystemInterface::clear_mode_command()
-{
-  const double unset = std::numeric_limits<double>::quiet_NaN();
-  switch (command_mode_) {
-    case ah2::CommandMode::ActuatorPosition:
-      actuator_position_target_cnt_.fill(unset);
-      break;
-    case ah2::CommandMode::ActuatorEffort:
-      actuator_effort_target_pct_.fill(unset);
-      break;
-    case ah2::CommandMode::JointPosition:
-      joint_position_target_rad_.fill(unset);
-      break;
-    case ah2::CommandMode::JointImpedance:
-      joint_impedance_target_rad_.fill(unset);
-      break;
-    case ah2::CommandMode::Idle:
-      break;
-  }
-}
-
-bool AidinHand2SystemInterface::exec_run(std::string & failure_message)
-{
-  try {
-    hand_->run();
-    started_.store(true);
-
-    // run 시점에 상위 명령은 없다 — 저장소를 비워 옛 목표가 다시 나가지 않게 한다. 상위가 첫 명령을
-    // 줄 때까지의 자세 유지는 SDK 몫이다(stop→run 이면 run() 이 현재 자세 hold 를 세운다).
-    clear_mode_command();
-    // auto-home 1회 트리거 래치를 세운다 — homing 이 완료되지 않은 채 run 하면(첫 run·reconnect 후
-    // run·homing 중 stop 후 run) write 가 start_homing() 을 다시 건다. 완료돼 있으면 아무 일도 없다.
-    auto_home_triggered_.store(false);
-    return true;
-  } catch (const ah2::Exception & exception) {
-    failure_message = exception.what();
-    return false;
-  }
-}
-
-bool AidinHand2SystemInterface::exec_stop(std::string & failure_message)
-{
-  try {
-    hand_->stop();
-    started_.store(false);  // write 가 이후 command 를 보내지 않도록 (재가동은 ~/run)
-    return true;
-  } catch (const ah2::Exception & exception) {
-    failure_message = exception.what();
-    return false;
-  }
-}
-
-bool AidinHand2SystemInterface::exec_home(std::string & failure_message)
-{
-  // homing 트리거만 하고 즉시 반환(non-blocking) — CM executor 를 막지 않는다. 직전 명령 Idle 리셋은 SDK 가
-  // 트리거 시점에 하고, 완료 관측은 diagnostics.homing_state 로 한다(wrapper 는 상태를 세우지 않음).
-  // 재진입(이미 homing 중 재호출)은 SDK 가 처리한다(request 재설정). check_allowed(Home) 게이트가 상태 검증.
-  try {
-    hand_->start_homing();
-    return true;
-  } catch (const ah2::Exception & exception) {
-    // 서비스 응답 메시지로 돌려준다(로그 아님 — 로그는 SDK [exception] 이 유일 기록).
-    failure_message = exception.what();
-    return false;
-  }
-}
-
-bool AidinHand2SystemInterface::exec_reconnect(std::string & failure_message)
-{
-  // 통신 두절·실패 복구 — 통신만 재수립하고 제어는 시작하지 않는다(started_=false). reconnect 가
-  // homing_state 를 NotRun 으로 내리므로 homing 도 다시 해야 한다. 제어 시작은 ~/run 이 맡는다
-  // (auto_home 트리거 래치도 exec_run 이 세운다).
-  try {
-    hand_->reconnect();
-    started_.store(false);
-    return true;
-  } catch (const ah2::Exception & exception) {
-    failure_message = exception.what();
-    return false;
-  }
-}
+// ------------------------------- Service node -------------------------------
 
 void AidinHand2SystemInterface::start_service_node()
 {
@@ -891,8 +717,7 @@ void AidinHand2SystemInterface::start_service_node()
     return;
   }
 
-  // hardware 컴포넌트는 기본 node 가 없다 — start/stop/home 은 제어 루프 밖 관리 동작이라
-  // 자체 node 를 만들어 ~/run·~/stop·~/home service 로 노출한다 (전용 spin 스레드).
+  // A hardware component has no node of its own, so one is created for the services
   service_node_ = std::make_shared<rclcpp::Node>(info_.name);
   run_service_ = service_node_->create_service<std_srvs::srv::Trigger>(
     "~/run",
@@ -916,7 +741,6 @@ void AidinHand2SystemInterface::start_service_node()
            const std::shared_ptr<std_srvs::srv::Trigger::Response> & response) {
       std::string failure_message;
       response->success = exec_home(failure_message);
-      // start_homing 은 트리거만 — 완료를 기다리지 않는다. 완료는 diagnostics 의 homing_state 로 관측한다.
       response->message = response->success ? "homing started — poll diagnostics 'homing_state'" : failure_message;
     });
   reconnect_service_ = service_node_->create_service<std_srvs::srv::Trigger>(
@@ -933,16 +757,99 @@ void AidinHand2SystemInterface::start_service_node()
   service_spin_thread_ = std::thread([this] { service_executor_->spin(); });
 }
 
-// 런타임 tuning parameter 선언 — max_effort 와 SDK ControllerConfig. mode·claim 과 무관한 값이라
-// controller 가 아니라 이 hardware 노드가 소유한다(run/stop 서비스와 같은 자리). 기본값은 xacro
-// hardware_parameter(max_effort)와 SDK 기본값이고, launch 는 controllers.yaml 에 이 노드 이름으로
-// 블록을 두어 덮는다. declare 시점에 override 가 반영되므로 별도 초기 적용 경로는 두지 않는다.
+void AidinHand2SystemInterface::stop_service_node()
+{
+  // join() waits out a service callback still in flight
+  if (service_executor_) {
+    service_executor_->cancel();
+  }
+  if (service_spin_thread_.joinable()) {
+    service_spin_thread_.join();
+  }
+  run_service_.reset();
+  stop_service_.reset();
+  home_service_.reset();
+  reconnect_service_.reset();
+  tuning_callback_.reset();
+  if (service_executor_ && service_node_) {
+    service_executor_->remove_node(service_node_);
+  }
+  service_executor_.reset();
+  service_node_.reset();
+}
+
+// ------------------------------- Hand action --------------------------------
+
+bool AidinHand2SystemInterface::exec_run(std::string & failure_message)
+{
+  try {
+    hand_->run();
+    started_.store(true);
+
+    // Blank the storage so no old target goes back out
+    // The SDK holds the current pose until the first command arrives
+    clear_mode_command();
+
+    // Re-latch, so write() triggers homing again whenever this run starts unhomed
+    auto_home_triggered_.store(false);
+    return true;
+  } catch (const ah2::Exception & exception) {
+    failure_message = exception.what();
+    return false;
+  }
+}
+
+bool AidinHand2SystemInterface::exec_stop(std::string & failure_message)
+{
+  try {
+    hand_->stop();
+    started_.store(false);
+    return true;
+  } catch (const ah2::Exception & exception) {
+    failure_message = exception.what();
+    return false;
+  }
+}
+
+bool AidinHand2SystemInterface::exec_home(std::string & failure_message)
+{
+  // Triggers only and returns at once, so the CM executor is never held
+  // The outcome is observed through diagnostics.homing_state
+  try {
+    hand_->start_homing();
+    return true;
+  } catch (const ah2::Exception & exception) {
+    failure_message = exception.what();
+    return false;
+  }
+}
+
+bool AidinHand2SystemInterface::exec_reconnect(std::string & failure_message)
+{
+  // Rebuilds the link without starting control, and drops homing_state to NotRun,
+  // so ~/run has to follow and homing runs again
+  try {
+    hand_->reconnect();
+    started_.store(false);
+    return true;
+  } catch (const ah2::Exception & exception) {
+    failure_message = exception.what();
+    return false;
+  }
+}
+
+// ----------------------------- Tuning parameter -----------------------------
+
 void AidinHand2SystemInterface::declare_tuning_parameters()
 {
+  // Defaults come from the max_effort hardware parameter and the SDK, and launch overrides
+  // them through a block named after this node in controllers.yaml
   const ah2::ControllerConfig defaults{};
   staged_max_effort_.fill(max_effort_);
   staged_controller_config_ = defaults;
-  tuning_dirty_ = true;  // 첫 write 가 선언된 값을 그대로 SDK 에 적용한다
+
+  // The first write() pushes the declared values
+  tuning_dirty_ = true;
 
   service_node_->declare_parameter("max_effort", std::vector<double>{max_effort_});
   service_node_->declare_parameter(
@@ -960,7 +867,7 @@ void AidinHand2SystemInterface::declare_tuning_parameters()
     std::vector<double>(defaults.joint_impedance_controller.damping.begin(),
                         defaults.joint_impedance_controller.damping.end()));
 
-  // declare 로 들어온 override 를 staging 에 반영한 뒤 콜백을 붙인다 — 콜백은 이후 변경만 받는다.
+  // Stage what declare() picked up before attaching the callback, which then sees only later changes
   const std::vector<std::string> tuning_names{
     "max_effort",
     "joint_position_controller.filter_enabled",
@@ -976,15 +883,16 @@ void AidinHand2SystemInterface::declare_tuning_parameters()
     });
 }
 
-// parameter 검증 + staging 반영. 배열은 길이 1(전체 공통) 또는 16(actuator 별)만 받는다. 거부하면
-// ROS 가 값을 반영하지 않으므로 잘못된 값이 SDK 까지 가지 않는다. 범위 clamp 는 SDK 몫.
 rcl_interfaces::msg::SetParametersResult AidinHand2SystemInterface::on_set_tuning_parameters(
   const std::vector<rclcpp::Parameter> & parameters)
 {
+  // An array parameter takes 1 value shared by every actuator or 16 for one each
+  // A rejection stops ROS from applying the value, so the SDK never sees it, and the
+  // range clamp is the SDK's job
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
 
-  // 검증은 staging 사본에 먼저 적용한다 — 한 parameter 라도 거부되면 아무것도 바뀌지 않는다.
+  // Validate on a copy, so one rejected parameter leaves the staging untouched
   std::array<double, ah2::kActuatorCount> max_effort = staged_max_effort_;
   ah2::ControllerConfig config = staged_controller_config_;
 
@@ -1042,7 +950,6 @@ rcl_interfaces::msg::SetParametersResult AidinHand2SystemInterface::on_set_tunin
   return result;
 }
 
-// staging 을 SDK 로 넘긴다 — 바뀐 cycle 에만. write 스레드에서만 부른다.
 void AidinHand2SystemInterface::apply_tuning_parameters()
 {
   std::array<double, ah2::kActuatorCount> max_effort{};
@@ -1058,26 +965,128 @@ void AidinHand2SystemInterface::apply_tuning_parameters()
   hand_->set_controller_config(config);
 }
 
-void AidinHand2SystemInterface::stop_service_node()
+// ------------------------------ Command write -------------------------------
+
+void AidinHand2SystemInterface::clear_mode_command()
 {
-  // 진행 중인 서비스 콜백이 있으면 끝날 때까지 join 이 대기한다.
-  if (service_executor_) {
-    service_executor_->cancel();
+  const double unset = std::numeric_limits<double>::quiet_NaN();
+  switch (command_mode_) {
+    case ah2::CommandMode::ActuatorPosition:
+      actuator_position_target_cnt_.fill(unset);
+      break;
+    case ah2::CommandMode::ActuatorEffort:
+      actuator_effort_target_pct_.fill(unset);
+      break;
+    case ah2::CommandMode::JointPosition:
+      joint_position_target_rad_.fill(unset);
+      break;
+    case ah2::CommandMode::JointImpedance:
+      joint_impedance_target_rad_.fill(unset);
+      break;
+    case ah2::CommandMode::Idle:
+      break;
   }
-  if (service_spin_thread_.joinable()) {
-    service_spin_thread_.join();
-  }
-  run_service_.reset();
-  stop_service_.reset();
-  home_service_.reset();
-  reconnect_service_.reset();
-  tuning_callback_.reset();
-  if (service_executor_ && service_node_) {
-    service_executor_->remove_node(service_node_);
-  }
-  service_executor_.reset();
-  service_node_.reset();
 }
+
+void AidinHand2SystemInterface::warn_incomplete_command()
+{
+  // Some axis is NaN and has no previous command to fill it, meaning the controller has
+  // never once claimed that axis, so the cycle is skipped rather than a target invented
+  RCLCPP_WARN_THROTTLE(
+    logger(), throttle_clock_, 5000,
+    "command has axes that were never commanded — skipped. Send a complete command once.");
+}
+
+// --------------------------------- Helpers ----------------------------------
+
+rclcpp::Logger AidinHand2SystemInterface::logger() const
+{
+  return rclcpp::get_logger(info_.name.empty() ? "aidin_hand2_hardware" : info_.name);
+}
+
+namespace
+{
+
+std::string command_component(const std::string & side, ah2::CommandMode mode)
+{
+  switch (mode) {
+    case ah2::CommandMode::JointPosition: return side + "_joint_position_command";
+    case ah2::CommandMode::JointImpedance: return side + "_joint_impedance_command";
+    case ah2::CommandMode::ActuatorPosition: return side + "_actuator_position_command";
+    case ah2::CommandMode::ActuatorEffort: return side + "_actuator_effort_command";
+    case ah2::CommandMode::Idle: return {};
+  }
+  return {};
+}
+
+std::vector<std::string> mode_command_interfaces(
+  const std::string & side, ah2::CommandMode mode, bool include_lock)
+{
+  std::vector<std::string> names;
+  if (mode == ah2::CommandMode::Idle) return names;
+  if (include_lock) names.push_back(side + "_hand_control/command_lock");
+  const std::string component = command_component(side, mode) + "/";
+  if (mode == ah2::CommandMode::JointPosition ||
+      mode == ah2::CommandMode::JointImpedance)
+  {
+    for (const char * joint : kActiveJointBaseNames) {
+      names.push_back(component + "target_position_rad." + joint);
+    }
+  }
+  if (mode == ah2::CommandMode::ActuatorPosition) {
+    for (const char * actuator : kActuatorBaseNames) {
+      names.push_back(component + "target_position_cnt." + actuator);
+    }
+  } else if (mode == ah2::CommandMode::ActuatorEffort) {
+    for (const char * actuator : kActuatorBaseNames) {
+      names.push_back(component + "target_effort_pct." + actuator);
+    }
+  }
+  return names;
+}
+
+std::vector<std::string> all_command_interfaces(const std::string & side)
+{
+  std::vector<std::string> names{side + "_hand_control/command_lock"};
+  for (const auto mode : {
+      ah2::CommandMode::JointPosition, ah2::CommandMode::JointImpedance,
+      ah2::CommandMode::ActuatorPosition, ah2::CommandMode::ActuatorEffort})
+  {
+    const auto mode_names = mode_command_interfaces(side, mode, false);
+    names.insert(names.end(), mode_names.begin(), mode_names.end());
+  }
+  return names;
+}
+
+std::optional<ah2::CommandMode> exact_mode_for_interfaces(
+  const std::string & side, const std::set<std::string> & claimed)
+{
+  if (claimed.empty()) return ah2::CommandMode::Idle;
+  for (const auto mode : {
+      ah2::CommandMode::JointPosition, ah2::CommandMode::JointImpedance,
+      ah2::CommandMode::ActuatorPosition, ah2::CommandMode::ActuatorEffort})
+  {
+    const auto names = mode_command_interfaces(side, mode);
+    if (claimed == std::set<std::string>(names.begin(), names.end())) return mode;
+  }
+  return std::nullopt;
+}
+
+template <std::size_t N>
+bool all_nan(const std::array<double, N> & values)
+{
+  for (const double value : values) {
+    if (!std::isnan(value)) return false;
+  }
+  return true;
+}
+
+double fill_gap(double value, double previous)
+{
+  return std::isnan(value) ? previous : value;
+}
+
+}  // namespace
 
 }  // namespace aidin_hand2_hardware
 

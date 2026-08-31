@@ -29,19 +29,24 @@ namespace ah2 = aidin_hand2;
 using CallbackReturn =
   rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
-// AIDIN Hand Gen2 SDK 를 ros2_control 에 어댑트하는 SystemInterface.
-// protocol·kinematics·RT loop 는 SDK 소유 — 여기는 snapshot 복사와 command 조립만 한다.
-// lifecycle 매핑: configure=create+connect / activate=run(+auto_home) / deactivate=stop /
-// cleanup=disconnect+destroy. run/stop/home/reconnect 는 자체 service 로도 노출(전용 스레드).
-// command mode 는 controller 가 claim 한 인터페이스 군이 결정한다 (perform_command_mode_switch).
+// ros2_control SystemInterface over the AIDIN Hand Gen2 SDK
+// The SDK owns the protocol, the kinematics and the RT loop, this copies snapshots
+// and assembles commands
 //
-// interface 이름은 SDK 도메인이 고정(actuator 16 · joint 21 · active 16)이라 URDF 를 파싱하지
-// 않고 hardware 가 아는 고정 순서(prefix 만 붙임)로 export·매핑한다. URDF 순서는 무관하며,
-// 이름이 고정 목록에 없으면 export 시 무시된다.
+// Lifecycle
+//   on_configure   create + connect
+//   on_activate    run
+//   on_deactivate  stop
+//   on_cleanup     disconnect + destroy
+//
+// run, stop, home and reconnect are also exposed as services on this component's own node
+// Interface names follow a fixed SDK order with the side prefix, so the URDF is never parsed
 class AidinHand2SystemInterface : public hardware_interface::SystemInterface
 {
 public:
   ~AidinHand2SystemInterface() override;
+
+  // ------------------------------- Lifecycle --------------------------------
 
   CallbackReturn on_init(const hardware_interface::HardwareInfo & info) override;
   CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override;
@@ -50,9 +55,14 @@ public:
   CallbackReturn on_cleanup(const rclcpp_lifecycle::State & previous_state) override;
   CallbackReturn on_shutdown(const rclcpp_lifecycle::State & previous_state) override;
 
+  // ---------------------------- Interface export ----------------------------
+
   std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
   std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
 
+  // ------------------------------ Command mode ------------------------------
+
+  // The claimed command interface set decides the mode
   hardware_interface::return_type prepare_command_mode_switch(
     const std::vector<std::string> & start_interfaces,
     const std::vector<std::string> & stop_interfaces) override;
@@ -60,53 +70,109 @@ public:
     const std::vector<std::string> & start_interfaces,
     const std::vector<std::string> & stop_interfaces) override;
 
+  // ------------------------------ Control loop ------------------------------
+
+  // Copy the SDK snapshot into the state storage
   hardware_interface::return_type read(
     const rclcpp::Time & time, const rclcpp::Duration & period) override;
+
+  // Apply staged tuning, then hand the active mode command to the SDK
   hardware_interface::return_type write(
     const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
 private:
-  rclcpp::Logger logger() const;
+  // =============================== Functions ================================
 
-  // ---- run/stop/home/reconnect (service 콜백 스레드에서 동기 실행 — read/write 루프와 별개) ----
-  void warn_incomplete_command();
-  void clear_mode_command();  // 현재 mode 의 command 저장소를 비운다 (NaN = 명령 없음)
+  // ------------------------------ Service node ------------------------------
+
+  void start_service_node();
+  void stop_service_node();
+
+  // ---------------------- Hand action [service thread] ----------------------
+
+  // Run synchronously on the service callback thread, apart from the read and write loop
+  // A failure message goes back in the service response, since the SDK already logged it
   bool exec_run(std::string & failure_message);
   bool exec_stop(std::string & failure_message);
   bool exec_home(std::string & failure_message);
   bool exec_reconnect(std::string & failure_message);
-  void start_service_node();
-  void stop_service_node();
 
-  rclcpp::Clock throttle_clock_{RCL_STEADY_TIME};  // write 경로 throttled 로그용
+  // ---------------------------- Tuning parameter ----------------------------
 
-  // ---- SDK 세션 ----
-  ah2::HandManager manager_;
-  std::optional<ah2::Hand> hand_;
+  // Declare max_effort and the SDK ControllerConfig on the service node
+  void declare_tuning_parameters();
 
-  // ---- 파라미터 ----
-  std::string hand_side_name_;   // "left" / "right"
-  std::string prefix_;           // "<side>_" — state 이름 앞에 붙임
+  // Validate and stage [service thread]
+  rcl_interfaces::msg::SetParametersResult on_set_tuning_parameters(
+    const std::vector<rclcpp::Parameter> & parameters);
+
+  // Push a dirty staging to the SDK [CM thread]
+  void apply_tuning_parameters();
+
+  // ----------------------- Command write [CM thread] ------------------------
+
+  // Blank the command storage of the current mode, NaN meaning no command
+  void clear_mode_command();
+
+  void warn_incomplete_command();
+
+  // -------------------------------- Helpers ---------------------------------
+
+  rclcpp::Logger logger() const;
+
+  // =============================== Variables ================================
+
+  // -------------------- Config [all threads, read only] ---------------------
+
+  // Parsed in on_init from the URDF hardware parameters
+
+  // "left" or "right"
+  std::string hand_side_name_;
+
+  // "<side>_", prepended to every interface name
+  std::string prefix_;
+
   std::string can_interface_;
   ah2::HandSide hand_side_{ah2::HandSide::Left};
   bool auto_home_{true};
-  // 아래 기본값은 SDK default 와 동일 (HandConfig / kDefaultMaxEffort)
-  double max_effort_{1000.0};    // rated current % (1000 = 100%) — node parameter 기본값이 된다
-  int control_rate_{500};        // RT loop Hz
-  int rt_cpu_affinity_{-1};      // 코어 pin, -1 = 미설정
-  std::vector<int> disabled_actuators_{};  // 미가동 actuator index (콤마 구분 파라미터 파싱 결과)
-  bool auto_reconnect_{false};              // 통신 두절 시 SDK 자동 재수립
-  int auto_reconnect_timeout_ms_{0};        // 재수립 포기 상한 [ms], 0 = 무제한
-  bool auto_reconnect_home_{false};         // 재수립 복귀 시 run 전 homing
 
-  // ---- state 저장소 (state interface 가 가리키는 메모리) ----
+  // Defaults below match HandConfig and kDefaultMaxEffort
+
+  // Rated current %, 1000 being 100%, and the node parameter default
+  double max_effort_{1000.0};
+
+  // RT loop Hz
+  int control_rate_{500};
+
+  // CPU to pin the RT loop to, -1 for none
+  int rt_cpu_affinity_{-1};
+
+  // Actuator indices left unpowered
+  std::vector<int> disabled_actuators_{};
+
+  bool auto_reconnect_{false};
+
+  // 0 for no limit
+  int auto_reconnect_timeout_ms_{0};
+
+  bool auto_reconnect_home_{false};
+
+  // -------------------- SDK session [CM, service thread] --------------------
+
+  ah2::HandManager manager_;
+  std::optional<ah2::Hand> hand_;
+
+  // ----------------- Single thread: observation [CM thread] -----------------
+
+  // Backing memory of the exported state interfaces, refilled by read()
+
   ah2::HandState state_{};
   std::array<double, ah2::kJointCount> joint_position_rad_{};
   std::array<double, ah2::kActuatorCount> actuator_enabled_{};
   std::array<double, ah2::kActuatorCount> actuator_fault_{};
   std::array<double, 7> diagnostics_values_{};
 
-  // ---- command state·timestamp 저장소 ----
+  // Command echo, the SDK variant flattened to doubles
   double controller_input_mode_{};
   double controller_output_type_{};
   double selected_source_{};
@@ -116,52 +182,64 @@ private:
   std::array<double, ah2::kActuatorCount> controller_output_target_position_cnt_{};
   std::array<double, ah2::kActuatorCount> controller_output_target_effort_pct_{};
   std::array<double, ah2::kActuatorCount> commanded_max_effort_pct_{};
-  double observed_stamp_sec_{};      // HandState.timestamp 를 sec/nanosec 로 분해 (double 정밀도 손실 회피)
+
+  // HandState.timestamp split in two, since a double cannot hold the ns count
+  double observed_stamp_sec_{};
   double observed_stamp_nanosec_{};
 
-  // ---- command 저장소 (command interface 가 가리키는 메모리) ----
+  // ------------------- Single thread: command [CM thread] -------------------
+
+  // Backing memory of the exported command interfaces, written by the controllers
+
+  // Claim-only, no controller reads or writes the value
   double command_lock_{};
+
   std::array<double, ah2::kActiveJointCount> joint_position_target_rad_{};
   std::array<double, ah2::kActiveJointCount> joint_impedance_target_rad_{};
   std::array<double, ah2::kActuatorCount> actuator_position_target_cnt_{};
   std::array<double, ah2::kActuatorCount> actuator_effort_target_pct_{};
 
-  // ---- command mode (정확한 command-port claim 집합에서 파생) ----
+  // Mode in effect and the one prepare_command_mode_switch validated
   ah2::CommandMode command_mode_{ah2::CommandMode::Idle};
   ah2::CommandMode pending_mode_{ah2::CommandMode::Idle};
   std::set<std::string> active_command_interfaces_;
   std::set<std::string> pending_command_interfaces_;
   bool pending_mode_switch_valid_{false};
 
-  // ---- 제어 상태 ----
-  std::atomic<bool> started_{false};       // SDK start 상태 — false 면 write 가 command 미전송
-  // 원점 상태는 wrapper 가 추적하지 않는다 — SDK diagnostics.homing_state 가 단일 출처(read 가 관측).
-  // auto-home 1회 트리거 래치 — homing 미완료면 start_homing() 을 한 번만 걸도록. exec_run 이
-  // 세우므로 유효 범위는 run 한 번이다.
+  // Throttles the write path warning
+  rclcpp::Clock throttle_clock_{RCL_STEADY_TIME};
+
+  // -------------- Cross thread: atomic [CM <-> service thread] --------------
+
+  // Homing is not tracked here, diagnostics.homing_state is the single source
+
+  // False after stop, which keeps write() from sending commands
+  std::atomic<bool> started_{false};
+
+  // Latched by exec_run, so write() triggers homing once per run
   std::atomic<bool> auto_home_triggered_{false};
 
-  // ---- service node (hardware 자체 노드 — ~/run·~/stop·~/home·~/reconnect 노출, 전용 spin 스레드) ----
-  rclcpp::Node::SharedPtr service_node_;
-  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr run_service_;
-  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr stop_service_;
-  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr home_service_;
-  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reconnect_service_;
-  std::unique_ptr<rclcpp::executors::SingleThreadedExecutor> service_executor_;
-  std::thread service_spin_thread_;
+  // ----------- Cross thread: mutex [service thread -> CM thread] ------------
 
-  // ---- 런타임 tuning parameter (service node 소유 — max_effort · controller config) ----
-  // parameter 콜백(service node 스레드)이 검증 후 staging 에 쓰고, write(제어 스레드)가 dirty 일
-  // 때만 SDK 로 적용한다. 배열 parameter 는 길이 1(전체 공통) 또는 16(actuator 별)을 받는다.
-  void declare_tuning_parameters();
-  void apply_tuning_parameters();  // write 스레드 전용
-  rcl_interfaces::msg::SetParametersResult on_set_tuning_parameters(
-    const std::vector<rclcpp::Parameter> & parameters);
+  // The parameter callback validates and stages, write() applies a dirty staging
 
   std::mutex tuning_mutex_;
   std::array<double, ah2::kActuatorCount> staged_max_effort_{};
   ah2::ControllerConfig staged_controller_config_{};
   bool tuning_dirty_{false};
+
+  // --------------------- Service node [service thread] ----------------------
+
+  // This component's own node, exposing ~/run, ~/stop, ~/home and ~/reconnect
+
+  rclcpp::Node::SharedPtr service_node_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr run_service_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr stop_service_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr home_service_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reconnect_service_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr tuning_callback_;
+  std::unique_ptr<rclcpp::executors::SingleThreadedExecutor> service_executor_;
+  std::thread service_spin_thread_;
 };
 
 }  // namespace aidin_hand2_hardware
