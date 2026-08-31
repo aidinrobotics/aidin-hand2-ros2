@@ -11,8 +11,8 @@ use_left_hand: true
 use_right_hand: true
 
 # ── 손별 CAN interface ──
-left_hand_interface: auto
-right_hand_interface: auto
+left_hand_interface: can0
+right_hand_interface: can1
 
 # ── 손별 미가동 actuator index (콤마 구분, 예 "7,8"). 빈 문자열 = 전부 가동 ─
 # 물리적으로 없거나 끈 actuator 의 index. 여기 적힌 것은 enable 안 하고(건드리지 않음)
@@ -33,6 +33,6 @@ right_hand_cpu_affinity: -1
 auto_home: true
 
 # ── auto reconnect 정책 (양손 공통) ──
-auto_reconnect: true
+auto_reconnect: false
 auto_reconnect_timeout_ms: 0   # auto reconnect 포기 상한 [ms], 0 = 무제한
-auto_reconnect_home: true     # auto reconnect 복귀 시 run 전 homing 수행
+auto_reconnect_home: false     # auto reconnect 복귀 시 run 전 homing 수행

@@ -2,11 +2,11 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="aidin_hand2">
 
   <xacro:arg name="use_left_hand" default="true"/>
-  <xacro:arg name="use_right_hand" default="false"/>
+  <xacro:arg name="use_right_hand" default="true"/>
   <xacro:arg name="left_hand_prefix" default="left_"/>
   <xacro:arg name="right_hand_prefix" default="right_"/>
-  <xacro:arg name="left_hand_xyz" default="0 0 0"/>
-  <xacro:arg name="right_hand_xyz" default="0 0 0"/>
+  <xacro:arg name="left_hand_xyz" default="0 -0.1 0"/>
+  <xacro:arg name="right_hand_xyz" default="0 0.1 0"/>
   <xacro:arg name="left_hand_rpy" default="0 0 0"/>
   <xacro:arg name="right_hand_rpy" default="0 0 0"/>
   <xacro:arg name="left_hand_parent" default="world"/>

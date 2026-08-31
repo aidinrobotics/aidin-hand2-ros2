@@ -37,23 +37,24 @@ xacro robot_description
 
 ### 인자
 
-값은 두 층에서 옵니다 — launch source의 fallback과 `hand_bringup.yaml`. **정상 실행에서는
-YAML이 기준입니다.**
+아래 기본값은 배포되는 `hand_bringup.yaml`의 값입니다. 이 파일이 launch가 선언하는 인자
+12개를 모두 정의하므로, 정상 실행에서 적용되는 값은 전부 여기서 옵니다. 값을 덮는 순서는
+아래 [Config 파일](#config-파일)에 있습니다.
 
-| Argument | 기본값 | Fallback | 의미 |
-|---|---|---|---|
-| `use_left_hand` | `true` | `true` | 왼손 system 생성 |
-| `use_right_hand` | `true` | `false` | 오른손 system 생성 |
-| `left_hand_interface` | `auto` | `can0` | CAN interface. `auto`는 side ID로 채널 탐색 |
-| `right_hand_interface` | `auto` | `can1` | 위와 같음 |
-| `left_hand_cpu_affinity` | `-1` | `-1` | SDK RT thread CPU pin. `-1` = 미설정 |
-| `right_hand_cpu_affinity` | `-1` | `-1` | 위와 같음 |
-| `left_hand_disabled_actuators` | `""` | `""` | 미가동 actuator index (예: `"0,1,2,3"`) |
-| `right_hand_disabled_actuators` | `""` | `""` | 위와 같음 |
-| `auto_home` | `true` | `true` | 기동 직후 자동 homing — **실물이 움직인다** |
-| `auto_reconnect` | `true` | `false` | 통신 두절 시 SDK 자동 재수립 |
-| `auto_reconnect_timeout_ms` | `0` | `0` | 재수립 포기 상한 [ms]. `0` = 무제한 |
-| `auto_reconnect_home` | `true` | `false` | 재수립 복귀 후 homing |
+| Argument | 기본값 | 의미 |
+|---|---|---|
+| `use_left_hand` | `true` | 왼손 system 생성 |
+| `use_right_hand` | `true` | 오른손 system 생성 |
+| `left_hand_interface` | `can0` | CAN interface. `auto`로 주면 side ID로 채널 탐색 |
+| `right_hand_interface` | `can1` | 위와 같음 |
+| `left_hand_cpu_affinity` | `-1` | SDK RT thread CPU pin. `-1` = 미설정 |
+| `right_hand_cpu_affinity` | `-1` | 위와 같음 |
+| `left_hand_disabled_actuators` | `""` | 미가동 actuator index (예: `"0,1,2,3"`) |
+| `right_hand_disabled_actuators` | `""` | 위와 같음 |
+| `auto_home` | `true` | 기동 직후 자동 homing — **실물이 움직인다** |
+| `auto_reconnect` | `false` | 통신 두절 시 SDK 자동 재수립 |
+| `auto_reconnect_timeout_ms` | `0` | 재수립 포기 상한 [ms]. `0` = 무제한 |
+| `auto_reconnect_home` | `false` | 재수립 복귀 후 homing |
 
 `auto_home`과 `auto_reconnect` 3종은 **양손 공통**이고, interface·affinity·disabled는 손별입니다.
 
@@ -89,14 +90,13 @@ ros2 launch aidin_hand2_bringup aidin_hand2.launch.py \
 
 ### Commissioning
 
-처음 켤 때는 기본값에서 아래만 바꿉니다.
+처음 켤 때는 기본값에서 아래만 바꿉니다. `auto_reconnect`·`auto_reconnect_home`은
+기본값이 이미 `false`라 따로 덮을 것이 없습니다.
 
 | Argument | 기본값 | Commissioning |
 |---|---|---|
 | `use_right_hand` | `true` | `false` — 한 손씩 확인 |
 | `auto_home` | `true` | `false` — 작업 공간 확인 후 `~/home` 직접 호출 |
-| `auto_reconnect` | `true` | `false` — 두절 원인을 덮지 않게 |
-| `auto_reconnect_home` | `true` | `false` |
 
 > [!WARNING]
 > Operator 승인 없이 자동 homing을 허용할 수 있을 때만 `auto_home`·`auto_reconnect_home`을

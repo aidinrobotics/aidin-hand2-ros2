@@ -1,6 +1,9 @@
 # mock 전용 controller 설정. command interface 계약은 실 hardware와 동일하므로 basic controller
 # 4종을 모두 load할 수 있다. hand_state/diagnostics broadcaster는 mock이 센서 상태를 모델링하지
 # 않으므로 제외한다.
+# 왼손·오른손 인스턴스를 모두 정의하고, launch 의 use_left_hand / use_right_hand 가
+# spawn 할 쪽을 고른다
+# (controllers.yaml 과 같은 방식 — 정의만 있고 spawn 되지 않은 controller 는 load 되지 않는다).
 # glove_teleop_controller 는 launch 에서 --param-file 로 별도 spawn 한다.
 
 controller_manager:
@@ -20,7 +23,17 @@ controller_manager:
     left_actuator_effort_controller:
       type: aidin_hand2_controllers/ActuatorEffortController
 
+    right_joint_position_controller:
+      type: aidin_hand2_controllers/JointPositionController
+    right_joint_impedance_controller:
+      type: aidin_hand2_controllers/JointImpedanceController
+    right_actuator_position_controller:
+      type: aidin_hand2_controllers/ActuatorPositionController
+    right_actuator_effort_controller:
+      type: aidin_hand2_controllers/ActuatorEffortController
+
     # 글러브 텔레오퍼(옵션, use_glove:=true 일 때 spawn). 파라미터는 glove_teleop_controller.yaml 에서.
+    # 그 파일은 왼손 인스턴스만 정의하므로 use_glove:=true 는 왼손이 올라와 있을 때만 쓴다.
     left_glove_teleop_controller:
       type: aidin_hand2_examples/GloveTeleopController
 
@@ -36,3 +49,16 @@ left_actuator_position_controller:
 left_actuator_effort_controller:
   ros__parameters:
     hand_side: "left"
+
+right_joint_position_controller:
+  ros__parameters:
+    hand_side: "right"
+right_joint_impedance_controller:
+  ros__parameters:
+    hand_side: "right"
+right_actuator_position_controller:
+  ros__parameters:
+    hand_side: "right"
+right_actuator_effort_controller:
+  ros__parameters:
+    hand_side: "right"

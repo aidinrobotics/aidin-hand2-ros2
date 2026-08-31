@@ -15,8 +15,10 @@ Mock은 CAN, drive와 homing 없이 real과 같은 98개 command port와 exact m
 ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py
 ```
 
-기본값은 왼손 mock 하나, RViz on, controller manager 500 Hz,
-`joint_state_broadcaster`와 `left_joint_position_controller` active입니다. 나머지 세 basic
+기본값은 양손 mock, RViz on, controller manager 500 Hz, `joint_state_broadcaster`와
+손별 `<side>_joint_position_controller` active입니다. 한 손만 보려면
+`use_left_hand:=false` 또는 `use_right_hand:=false`를 줍니다. 두 손은 URDF에서 y로
+±0.1 m 벌려 두므로 RViz에서 겹치지 않습니다. 나머지 세 basic
 controller는 설정에 등록되어 필요할 때 load할 수 있습니다.
 
 다른 terminal:
@@ -85,7 +87,7 @@ sed -n '1,220p' \
   "$(ros2 pkg prefix --share aidin_hand2_bringup)/config/hand_bringup.yaml"
 ```
 
-Default YAML은 `auto_home=true`, `auto_reconnect=true`, timeout 0, reconnect home true입니다. Commissioning에서는 CLI로 안전하게 덮습니다.
+Default YAML은 `auto_home=true`, `auto_reconnect=false`, timeout 0, reconnect home false입니다. 즉 기동 직후 자동 homing만 켜져 있으므로, Commissioning에서는 그것을 CLI로 덮습니다.
 
 ```bash
 ros2 launch aidin_hand2_bringup aidin_hand2.launch.py \

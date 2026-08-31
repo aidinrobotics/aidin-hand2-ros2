@@ -25,7 +25,7 @@ from launch_ros.parameter_descriptions import ParameterValue
 # 키 = launch 인자명. description 은 --show-args 와 문서용.
 _ARG_DEFAULTS = {
     "use_left_hand": ("true", "왼손 기동 (can0)."),
-    "use_right_hand": ("false", "오른손 기동 (can1)."),
+    "use_right_hand": ("true", "오른손 기동 (can1)."),
     "auto_home": ("true", "기동 직후 자동 homing (실물이 움직인다)."),
     "left_hand_interface": ("can0", "왼손 CAN interface."),
     "right_hand_interface": ("can1", "오른손 CAN interface."),

@@ -139,17 +139,21 @@ timeout 3 candump -L can0
 
 전체 host 절차는 [SDK 문제 해결](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_troubleshooting.md)을 따르십시오.
 
-## 7. Default인데 `can0`가 아니라 `auto`를 사용함
+## 7. 왼손 컨트롤러가 오른손에 붙음 (또는 CAN interface를 못 찾음)
 
-정상 top-level launch는 default `hand_bringup.yaml`을 읽고 `left_hand_interface=auto`를 적용합니다. `can0`은 source fallback입니다.
-
-명시적으로 고정:
+Default `hand_bringup.yaml`은 `left_hand_interface=can0`, `right_hand_interface=can1`로
+채널을 **고정**합니다. 어느 손이 어느 채널에 있는지 검사하지 않으므로, 물리적으로 반대로
+꽂혀 있거나 USB CAN 어댑터의 열거 순서가 부팅마다 바뀌면 손이 뒤바뀌거나 configure가
+실패합니다. 채널 대응이 검증되지 않은 상태라면 side ID로 채널을 탐색하게 하십시오:
 
 ```bash
 ros2 launch aidin_hand2_bringup aidin_hand2.launch.py \
-  left_hand_interface:=can0 \
+  left_hand_interface:=auto right_hand_interface:=auto \
   auto_home:=false
 ```
+
+고정값을 쓰는 것이 default인 이유는 채널을 직접 지정하는 습관을 들이기 위함입니다. 실제
+배치에서 채널 대응이 확정되면 `hand_bringup.yaml`에 그 값을 적어 두십시오.
 
 Config 우선순위는 [Bringup 예제](05_bringup_example.md#3-config-우선순위)를 참조하십시오.
 
