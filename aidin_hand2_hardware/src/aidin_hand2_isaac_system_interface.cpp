@@ -10,11 +10,6 @@
 #include <aidin_hand2/hand/hand_kinematics.hpp>
 #include <aidin_hand2/types/state.hpp>
 
-// Isaac 브리지의 command interface 계약은 실 hardware·mock 과 같은 98개다:
-//   command_lock ×1, JointPosition ×17, JointImpedance ×48,
-//   ActuatorPosition ×16, ActuatorEffort ×16.
-// state interface 계약도 실 hardware 와 같다 (촉각·diagnostics 포함) — 이름이 같아야
-// hand_state_broadcaster / diagnostics_broadcaster 가 backend 를 가리지 않고 붙는다.
 namespace aidin_hand2_hardware
 {
 namespace
@@ -169,7 +164,7 @@ double fill_gap(double value, double previous)
   return std::isnan(value) ? previous : value;
 }
 
-// "/a" 처럼 이미 절대 경로면 그대로, 아니면 prefix 뒤에 이어 붙인다.
+// A leaf starting with '/' is absolute, otherwise it is appended to the prefix
 std::string join_topic(const std::string & prefix, const std::string & leaf)
 {
   if (!leaf.empty() && leaf.front() == '/') return leaf;
@@ -237,8 +232,7 @@ hardware_interface::CallbackReturn AidinHand2IsaacSystemInterface::on_init(
     }
   }
 
-  // 토픽 기본값 — 상태는 본체와 같은 <prefix>/joint_states 를 이름 매칭으로 공유하고,
-  // 명령만 <prefix>/hand_command 로 분리한다 (aidin_gen1 Isaac 브리지와 같은 규약).
+  // The state topic is shared with the rest of the robot by name matching, the command is not
   const std::string topic_prefix = parameter_or(parameters, "topic_prefix", "/isaac");
   joint_state_topic_ = join_topic(
     topic_prefix, parameter_or(parameters, "joint_state_topic", "joint_states"));
@@ -254,10 +248,10 @@ hardware_interface::CallbackReturn AidinHand2IsaacSystemInterface::on_init(
   }
 
   commanded_max_effort_pct_.fill(max_effort_pct_);
-  actuator_enabled_.fill(1.0);   // 시뮬레이션에는 드라이브 헬스가 없다 — 항상 정상으로 보고
+  actuator_enabled_.fill(1.0);   // No drive health in Isaac, always healthy
   actuator_fault_.fill(0.0);
 
-  // Isaac 첫 상태 수신 전까지의 자세 — 원점(encoder 0) FK.
+  // Pose until the first Isaac state, FK of encoder 0
   const std::array<int, ah2::kActuatorCount> zero_encoder{};
   joint_position_rad_ = ah2::fk_actuator_to_joint(zero_encoder);
   rx_joint_position_rad_ = joint_position_rad_;
@@ -312,7 +306,7 @@ bool AidinHand2IsaacSystemInterface::start_bridge_node()
     }
     node_ = std::make_shared<rclcpp::Node>(node_name_);
 
-    // Isaac 은 best-effort 로 상태를 뿌리는 경우가 흔하다 — sensor QoS 로 맞춘다.
+    // Sensor QoS, to match Isaac publishing best-effort
     const auto sensor_qos = rclcpp::SensorDataQoS();
     joint_state_sub_ = node_->create_subscription<sensor_msgs::msg::JointState>(
       joint_state_topic_, sensor_qos,
@@ -369,11 +363,11 @@ void AidinHand2IsaacSystemInterface::on_joint_state(
   bool matched = false;
   for (std::size_t i = 0; i < count; ++i) {
     const auto found = joint_name_to_index_.find(msg->name[i]);
-    if (found == joint_name_to_index_.end()) continue;  // 본체·반대쪽 손 조인트는 무시
+    if (found == joint_name_to_index_.end()) continue;  // Another hand or the rest of the robot
     rx_joint_position_rad_[found->second] = msg->position[i];
     matched = true;
   }
-  if (!matched) return;  // 이 손과 무관한 메시지 — 신선도 카운터를 올리지 않는다
+  if (!matched) return;  // Nothing for this hand, so rx_seq_ stays put
   rx_stamp_ns_ =
     static_cast<std::int64_t>(msg->header.stamp.sec) * 1000000000LL + msg->header.stamp.nanosec;
   rx_joint_valid_ = true;
@@ -405,7 +399,7 @@ AidinHand2IsaacSystemInterface::export_state_interfaces()
 {
   std::vector<hardware_interface::StateInterface> interfaces;
 
-  // actuator 16 — position_cnt 는 Isaac joint 자세의 IK, velocity/current 는 대응물이 없어 0.
+  // Actuator state, velocity and current stay 0
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
     const std::string actuator = prefix_ + kActuatorBaseNames[i];
     interfaces.emplace_back(actuator, kPositionCntInterface, &actuator_position_cnt_[i]);
@@ -413,13 +407,11 @@ AidinHand2IsaacSystemInterface::export_state_interfaces()
     interfaces.emplace_back(actuator, kCurrentMaInterface, &actuator_current_ma_[i]);
   }
 
-  // joint 21 — Isaac 이 보고한 자세 그대로.
   for (std::size_t i = 0; i < ah2::kJointCount; ++i) {
     interfaces.emplace_back(
       prefix_ + kJointBaseNames[i], kPositionInterface, &joint_position_rad_[i]);
   }
 
-  // tactile — finger 5 × 17.
   for (std::size_t finger = 0; finger < ah2::kFingerCount; ++finger) {
     const std::string sensor = prefix_ + kFingerNames[finger] + "_sensor";
     for (std::size_t cell = 0; cell < ah2::kTactileTaxelsPerFinger; ++cell) {
@@ -428,7 +420,7 @@ AidinHand2IsaacSystemInterface::export_state_interfaces()
     }
   }
 
-  // palm — 3 region 58 (upper 20 + lower 20 + palm2 18), flat 저장.
+  // The three palm regions share one flat array
   const std::string palm = prefix_ + "palm_sensor";
   std::size_t palm_offset = 0;
   const auto add_palm_region = [&](const char * region_prefix, std::size_t count) {
@@ -442,7 +434,6 @@ AidinHand2IsaacSystemInterface::export_state_interfaces()
   add_palm_region("palm1_lower_", ah2::kPalm1LowerCount);
   add_palm_region("palm2_", ah2::kPalm2Count);
 
-  // diagnostics gpio — hand 전역 7 + per-actuator enabled 16 + fault 16.
   const std::string diagnostics = prefix_ + "diagnostics";
   for (std::size_t i = 0; i < kDiagnosticsInterfaceNames.size(); ++i) {
     interfaces.emplace_back(diagnostics, kDiagnosticsInterfaceNames[i], &diagnostics_values_[i]);
@@ -458,7 +449,7 @@ AidinHand2IsaacSystemInterface::export_state_interfaces()
       &actuator_fault_[i]);
   }
 
-  // command echo — 실 hardware 와 같은 flat double 경계.
+  // Command echo flattened to doubles
   const std::string commanded = prefix_ + kCommandedComponent;
   interfaces.emplace_back(commanded, kControllerInputModeInterface, &controller_input_mode_);
   interfaces.emplace_back(commanded, kControllerOutputTypeInterface, &controller_output_type_);
@@ -482,7 +473,7 @@ AidinHand2IsaacSystemInterface::export_state_interfaces()
                             &commanded_max_effort_pct_[i]);
   }
 
-  // 관측 timestamp — Isaac 메시지 header.stamp 를 sec/nanosec 로 분해.
+  // Observation stamp from the Isaac message header
   const std::string timestamp = prefix_ + kTimestampComponent;
   interfaces.emplace_back(timestamp, kStampSecInterface, &observed_stamp_sec_);
   interfaces.emplace_back(timestamp, kStampNanosecInterface, &observed_stamp_nanosec_);
@@ -565,7 +556,7 @@ hardware_interface::return_type AidinHand2IsaacSystemInterface::perform_command_
   command_mode_ = pending_mode_;
   pending_mode_switch_valid_ = false;
 
-  // controller 가 처음 쓰기 전까지는 명령이 없다(NaN).
+  // No command until a controller writes
   const double unset = std::numeric_limits<double>::quiet_NaN();
   held_joint_target_rad_.fill(unset);
   held_actuator_target_cnt_.fill(unset);
@@ -607,7 +598,7 @@ hardware_interface::return_type AidinHand2IsaacSystemInterface::read(
     }
   }
 
-  // actuator count 는 Isaac 에 대응물이 없다 — 관측 자세를 SDK IK 로 되돌려 채운다.
+  // Isaac reports no actuator count, the IK of the observed pose fills it
   std::array<double, ah2::kActiveJointCount> active_rad{};
   for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
     active_rad[i] = joint_position_rad_[kActiveToJointIndex[i]];
@@ -616,13 +607,11 @@ hardware_interface::return_type AidinHand2IsaacSystemInterface::read(
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
     actuator_position_cnt_[i] = static_cast<double>(encoder[i]);
   }
-  // velocity_rpm / current_ma 는 시뮬레이터에 actuator 모델이 없어 0 을 유지한다 (mock 과 동일).
 
   ++control_cycles_;
   last_period_ms_ = period.seconds() * 1000.0;
 
-  // 신선도는 cycle 수가 아니라 경과 시간으로 본다 — 시뮬레이터가 제어 루프보다 느리게 발행하는
-  // 것은 정상이고, 링크가 끊긴 것만 이상이다.
+  // Staleness is elapsed time, not missed cycles
   const double now = time.seconds();
   if (fresh || !state_clock_seeded_) {
     last_state_seconds_ = now;
@@ -631,7 +620,7 @@ hardware_interface::return_type AidinHand2IsaacSystemInterface::read(
   const bool stale = state_timeout_ > 0.0 && (now - last_state_seconds_) > state_timeout_;
   if (stale) ++deadline_misses_;
 
-  // lifecycle: 첫 상태 수신 전이거나 상태가 끊긴 동안은 Disconnected, 그 외에는 activate 여부로.
+  // Disconnected before the first state and while it is stale, Running once activated
   const ah2::HandLifecycle lifecycle =
     (!linked || stale) ? ah2::HandLifecycle::Disconnected
                        : (activated_ ? ah2::HandLifecycle::Running
@@ -643,7 +632,7 @@ hardware_interface::return_type AidinHand2IsaacSystemInterface::read(
     static_cast<double>(deadline_misses_),
     last_period_ms_,
     last_compute_ms_,
-    // 시뮬레이션은 원점 탐색이 필요 없다 — 항상 확정으로 보고한다.
+    // Isaac needs no homing, the origin always counts as established
     static_cast<double>(static_cast<int>(ah2::HomingState::Succeeded))};
   return hardware_interface::return_type::OK;
 }
@@ -658,7 +647,7 @@ bool AidinHand2IsaacSystemInterface::resolve_target_encoder(
           fill_gap(joint_position_target_rad_[i], held_joint_target_rad_[i]);
       }
     }
-    if (any_nan(held_joint_target_rad_)) return false;  // 목표가 아직 완전하지 않다
+    if (any_nan(held_joint_target_rad_)) return false;  // Target incomplete
     ah2::JointPositionCommand command;
     command.target = held_joint_target_rad_;
     command.clamp();
@@ -698,7 +687,7 @@ bool AidinHand2IsaacSystemInterface::resolve_target_encoder(
     return true;
   }
 
-  return false;  // Idle / ActuatorEffort — 자세를 움직이지 않는다
+  return false;  // Idle and ActuatorEffort do not move the pose
 }
 
 void AidinHand2IsaacSystemInterface::publish_joint_command(
@@ -709,8 +698,8 @@ void AidinHand2IsaacSystemInterface::publish_joint_command(
   message.header.stamp = time;
   message.name.reserve(ah2::kJointCount);
   message.position.reserve(ah2::kJointCount);
-  // 21개 전부 발행한다 — 4절 링크로 종속되는 <digit>_joint4 를 Isaac 이 구속으로 모델링했다면
-  // 그 5개는 무시하면 되고, 독립 조인트로 실었다면 그대로 구동된다.
+  // All 21 go out, a coupled joint4 is driven where Isaac models it as an independent joint
+  // and ignored where Isaac models it as a constraint
   for (std::size_t i = 0; i < ah2::kJointCount; ++i) {
     message.name.push_back(prefix_ + kJointBaseNames[i]);
     message.position.push_back(target_rad[i]);
@@ -734,9 +723,9 @@ hardware_interface::return_type AidinHand2IsaacSystemInterface::write(
   selected_source_ = static_cast<double>(static_cast<int>(ah2::CommandSource::None));
 
   if (command_mode_ == ah2::CommandMode::ActuatorEffort) {
-    // 시뮬레이터에 토크 동역학이 없다 — 자세를 움직이지 않고 명령만 echo 한다 (mock 과 동일).
+    // No torque model, the pose stays put and only the command is echoed
     for (double & effort : actuator_effort_target_pct_) {
-      if (std::isnan(effort)) continue;  // 미점유·명령 없음
+      if (std::isnan(effort)) continue;  // Unowned or no command
       effort = std::clamp(effort, -max_effort_pct_, max_effort_pct_);
     }
     controller_input_target_effort_pct_ = actuator_effort_target_pct_;
@@ -757,7 +746,7 @@ hardware_interface::return_type AidinHand2IsaacSystemInterface::write(
       selected_source_ = static_cast<double>(static_cast<int>(ah2::CommandSource::Controller));
       publish_joint_command(time, ah2::fk_actuator_to_joint(encoder));
     } else if (command_mode_ != ah2::CommandMode::Idle) {
-      ++nan_command_count_;  // 목표가 불완전해 이번 cycle 은 명령을 내지 못했다
+      ++nan_command_count_;  // Target incomplete, nothing sent this cycle
     }
   }
 

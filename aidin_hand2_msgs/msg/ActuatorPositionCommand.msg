@@ -1,2 +1,2 @@
-# ActuatorPositionController의 완전한 한-cycle 입력.
+# ActuatorPositionController input, all 16 targets
 float64[16] target_position_cnt

@@ -7,10 +7,10 @@
 
 #include "rclcpp/qos.hpp"
 
-// ── interface name ──────────────────────────────────────────────────────────
+// ------------------------------ Interface name ------------------------------
 //   side       ∈ {left, right}
 //   finger     ∈ {thumb, index, middle, ring, baby}
-//   n          : thumb = 0..3, 그 외 = 1..3
+//   n          : thumb = 0..3, otherwise 1..3
 //
 //   command interface  : {side}_hand_control/command_lock              (claim-only)
 //                        {side}_joint_position_command/
@@ -20,13 +20,12 @@
 //   command topic      : /{side}_joint_position_controller/command
 //                        (aidin_hand2_msgs/JointPositionCommand)
 //
-//   입력을 그대로 command interface 로 옮기기만 한다 — 자체 목표를 만들지 않고 state 도 읽지
-//   않는다. 입력이 있는 cycle 에만 값이 실리고 그 외에는 NaN(= 이번 cycle 명령 없음)이다. 소비한
-//   입력은 즉시 NaN 으로 되돌려 같은 값이 다음 cycle 에 다시 명령으로 나가지 않게 한다. target 의
-//   NaN 은 "그 joint 를 상위가 점유하지 않음"이라 hardware 가 채운다. command_lock 은 값으로 쓰지
-//   않고 mode 상호 배제를 위한 resource claim 으로만 쓴다. 목표 filter 는 SDK ControllerConfig
-//   소관이라 hardware node parameter 로 조절한다.
-// ─────────────────────────────────────────────────────────────────────────────
+//   The input moves to the command interface unchanged, no target is generated and no state
+//   is read
+//   A cycle with no input writes NaN, and a consumed input is reset to NaN at once
+//   A NaN target is a joint no upper controller owns, and the hardware fills it
+//   command_lock is claim-only, taken for mode exclusion
+//   The target filter belongs to the SDK ControllerConfig, tuned on the hardware node
 
 namespace aidin_hand2_controllers
 {
@@ -58,9 +57,9 @@ namespace
 {
 constexpr std::size_t kTargetCount = kActiveJointCount;
 constexpr std::size_t kReferenceCount = kTargetCount;
-// claimed command layout: [0] lock, [1..16] target position.
-// exported reference layout: [0..15] target position.
-constexpr std::size_t kHardwareTargetOffset = 1;  // command_interfaces_[0] = command_lock
+// Claimed command layout is [0] lock then [1..16] target position
+// Exported reference layout is [0..15] target position
+constexpr std::size_t kHardwareTargetOffset = 1;
 
 std::vector<std::string> hardware_command_interfaces(const std::string & side)
 {
@@ -74,15 +73,14 @@ std::vector<std::string> hardware_command_interfaces(const std::string & side)
 }
 }  // namespace
 
-// ── lifecycle ────────────────────────────────────────────────────────────────
-// Parameter 기본값 선언.
+// --------------------------------- Lifecycle --------------------------------
+
 controller_interface::CallbackReturn JointPositionController::on_init()
 {
   auto_declare<std::string>("hand_side", "");
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-// Side를 검증하고 command interface와 typed command subscriber를 구성.
 controller_interface::CallbackReturn JointPositionController::on_configure(
   const rclcpp_lifecycle::State &)
 {
@@ -96,7 +94,6 @@ controller_interface::CallbackReturn JointPositionController::on_configure(
   for (const char * base : kActiveJointBaseNames) {
     active_joint_names_.push_back(hand_side_ + "_" + base);
   }
-  // command interface: [0] command_lock + [1..16] target_position_rad.
   command_interface_names_ = hardware_command_interfaces(hand_side_);
 
   drop_buffered_command();
@@ -104,7 +101,7 @@ controller_interface::CallbackReturn JointPositionController::on_configure(
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-// 활성화 시점에는 목표가 없다 — reference 를 비우고 활성화 이전 message 는 버린다.
+// No target at activation, the references are cleared and any earlier message dropped
 controller_interface::CallbackReturn JointPositionController::on_activate(
   const rclcpp_lifecycle::State &)
 {
@@ -118,7 +115,6 @@ controller_interface::CallbackReturn JointPositionController::on_activate(
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-// Resource release는 controller_manager가 처리하며 추가 동작 없음.
 controller_interface::CallbackReturn JointPositionController::on_deactivate(
   const rclcpp_lifecycle::State &)
 {
@@ -150,8 +146,8 @@ void JointPositionController::drop_buffered_command()
   consumed_command_ = nullptr;
 }
 
-// ── interface configuration ─────────────────────────────────────────────────
-// claim: command_lock + JointPosition hardware command interface 17개.
+// -------------------------- Interface configuration -------------------------
+
 controller_interface::InterfaceConfiguration
 JointPositionController::command_interface_configuration() const
 {
@@ -159,14 +155,12 @@ JointPositionController::command_interface_configuration() const
           command_interface_names_};
 }
 
-// 입력을 옮기기만 하므로 state 는 claim 하지 않는다.
 controller_interface::InterfaceConfiguration
 JointPositionController::state_interface_configuration() const
 {
   return {controller_interface::interface_configuration_type::NONE, {}};
 }
 
-// 자세 16개를 reference로 노출.
 std::vector<hardware_interface::CommandInterface>
 JointPositionController::on_export_reference_interfaces()
 {
@@ -182,7 +176,7 @@ JointPositionController::on_export_reference_interfaces()
   return references;
 }
 
-// chained 에서는 상위가 reference 를 쓰므로 topic 입력을 내린다(입력 경로 이중화 방지).
+// Chained mode takes the reference, so the topic input is dropped
 bool JointPositionController::on_set_chained_mode(bool chained_mode)
 {
   if (chained_mode) {
@@ -194,9 +188,9 @@ bool JointPositionController::on_set_chained_mode(bool chained_mode)
   return true;
 }
 
-// ── update ──────────────────────────────────────────────────────────────────
-// standalone: 새로 도착한 typed command 한 건만 reference 로 옮긴다. 같은 message 를 다시 반영하면
-// 이미 소비한 명령이 매 cycle 되살아난다.
+// ---------------------------------- Update ----------------------------------
+
+// Only a message not yet consumed moves to the references
 controller_interface::return_type
 JointPositionController::update_reference_from_subscribers()
 {
@@ -211,7 +205,6 @@ JointPositionController::update_reference_from_subscribers()
   return controller_interface::return_type::OK;
 }
 
-// reference 를 command interface 로 옮긴다. 입력이 없으면 전부 NaN(= 이번 cycle 명령 없음).
 controller_interface::return_type JointPositionController::update_and_write_commands(
   const rclcpp::Time &, const rclcpp::Duration &)
 {
@@ -223,7 +216,7 @@ controller_interface::return_type JointPositionController::update_and_write_comm
   for (std::size_t i = 0; i < kTargetCount; ++i) {
     const double value = reference_interfaces_[i];
     if (std::isnan(value)) {
-      target[i] = nan;  // 상위가 점유하지 않은 joint — hardware 가 채운다
+      target[i] = nan;  // Not owned, the hardware fills it
     } else if (!std::isfinite(value)) {
       target[i] = nan;
       invalid = true;
@@ -244,7 +237,7 @@ controller_interface::return_type JointPositionController::update_and_write_comm
       has_target ? target[i] : nan);
   }
 
-  // 소비 표시 — 다음 cycle 에 상위가 다시 쓰지 않으면 명령 없음이 된다.
+  // Marks the input consumed
   std::fill(reference_interfaces_.begin(), reference_interfaces_.end(), nan);
   return controller_interface::return_type::OK;
 }

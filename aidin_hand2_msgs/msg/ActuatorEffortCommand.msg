@@ -1,2 +1,3 @@
-# ActuatorEffortController의 완전한 한-cycle 입력.
+# ActuatorEffortController input, all 16 targets
+# Unit is 0.1% of rated current, 1000 = 100%
 float64[16] target_effort_pct

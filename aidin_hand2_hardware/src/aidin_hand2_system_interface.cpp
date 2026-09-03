@@ -77,7 +77,7 @@ constexpr std::array<const char *, 5> kFingerNames = {
   "baby"};
 
 // Interface names without the prefix, in fixed SDK order
-// The position in the list is the actuator index, so the URDF order does not matter
+// The position in the list is the actuator index, the URDF order does not matter
 constexpr std::array<const char *, ah2::kActuatorCount> kActuatorBaseNames = {
   "thumb_actuator0", "thumb_actuator1", "thumb_actuator2", "thumb_actuator3",
   "index_actuator1", "index_actuator2", "index_actuator3",
@@ -95,7 +95,7 @@ constexpr std::array<const char *, ah2::kActiveJointCount> kActiveJointBaseNames
 constexpr std::array<std::size_t, ah2::kActiveJointCount> kActiveToJointIndex = {
   0, 1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19};
 
-// FK joints, the last of each digit being the coupled q4
+// FK joints, the last of each digit being the coupled joint4
 constexpr std::array<const char *, ah2::kJointCount> kJointBaseNames = {
   "thumb_joint0",
   "thumb_joint1",
@@ -142,6 +142,8 @@ double fill_gap(double value, double previous);
 
 }  // namespace
 
+// ------------------------------- Construction -------------------------------
+
 AidinHand2SystemInterface::~AidinHand2SystemInterface()
 {
   stop_service_node();
@@ -155,9 +157,8 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
     return CallbackReturn::ERROR;
   }
 
-  // Relay SDK logs to ROS logging, once per process, since a left and a right component
-  // share one controller_manager
-  // The SDK logger is global, so the hand is told apart by the [left] and [right] tag it writes
+  // Relay SDK logs to ROS logging, once per process
+  // The SDK logger is global and tags each line [left] or [right]
   static std::once_flag sdk_log_callback_registered;
   std::call_once(sdk_log_callback_registered, [] {
     ah2::set_log_callback([](ah2::LogLevel level, const std::string & message) {
@@ -186,7 +187,7 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
     ah2::set_log_to_console(false);
   });
 
-  // hardware_parameters are all strings, so a number is converted here
+  // hardware_parameters are all strings
   // An empty value keeps the fallback, a malformed one throws into the catch below
   const auto parameter = [this](const std::string & key) -> std::string {
     const auto found = info_.hardware_parameters.find(key);
@@ -268,15 +269,14 @@ CallbackReturn AidinHand2SystemInterface::on_configure(const rclcpp_lifecycle::S
     config.auto_reconnect = auto_reconnect_;
     config.auto_reconnect_timeout_ms = auto_reconnect_timeout_ms_;
     config.auto_reconnect_home = auto_reconnect_home_;
-    // The SDK blocking auto-home would hold the CM executor inside run()
-    // write() triggers start_homing() instead
+    // Homing is triggered from write() with start_homing(), never by the SDK auto-home
     config.auto_home = false;
 
     hand_ = manager_.create(config);
     hand_->connect();
     state_ = hand_->get_state();
   } catch (const ah2::Exception &) {
-    // The SDK already logged the failure, so only the cleanup is left
+    // The SDK already logged the failure
     if (hand_) {
       manager_.destroy(*hand_);
       hand_.reset();
@@ -298,8 +298,7 @@ CallbackReturn AidinHand2SystemInterface::on_activate(const rclcpp_lifecycle::St
 
 CallbackReturn AidinHand2SystemInterface::on_deactivate(const rclcpp_lifecycle::State &)
 {
-  // stop() cancels a running homing with a quick stop and blocks until the drives confirm,
-  // so nothing waits on is_homing() here
+  // stop() cancels a running homing with a quick stop and blocks until the drives confirm
   std::string failure_message;
   if (!exec_stop(failure_message)) {
     return CallbackReturn::ERROR;
@@ -311,7 +310,7 @@ CallbackReturn AidinHand2SystemInterface::on_cleanup(const rclcpp_lifecycle::Sta
 {
   stop_service_node();
   if (hand_) {
-    // destroy() tears down a live connection on its own, so a disconnect failure is swallowed
+    // destroy() tears down a live connection on its own
     try {
       hand_->disconnect();
     } catch (const ah2::Exception &) {
@@ -507,7 +506,7 @@ hardware_interface::return_type AidinHand2SystemInterface::perform_command_mode_
   command_mode_ = pending_mode_;
   pending_mode_switch_valid_ = false;
 
-  // No command until the new controller writes for the first time
+  // No command until a controller writes
   clear_mode_command();
   return hardware_interface::return_type::OK;
 }
@@ -568,7 +567,7 @@ hardware_interface::return_type AidinHand2SystemInterface::read(
       static_cast<double>(static_cast<int>(state_.commanded.selected_source));
     commanded_max_effort_pct_ = state_.commanded.max_effort_pct;
 
-    // Integer division, so header.stamp keeps every ns a double would round away
+    // Integer split, a double cannot hold the whole ns count
     observed_stamp_sec_ = static_cast<double>(state_.timestamp / 1000000000LL);
     observed_stamp_nanosec_ = static_cast<double>(state_.timestamp % 1000000000LL);
 
@@ -589,8 +588,7 @@ hardware_interface::return_type AidinHand2SystemInterface::read(
         static_cast<std::uint16_t>(diagnostics.actuator_health.fault[actuator]));
     }
   } catch (const ah2::Exception &) {
-    // get_state and get_diagnostics read a lock-free buffer and never throw on a lost link,
-    // so reaching here means the handle died and there is nothing to recover
+    // get_state and get_diagnostics read a lock-free buffer and never throw on a lost link
     return hardware_interface::return_type::ERROR;
   }
   return hardware_interface::return_type::OK;
@@ -604,7 +602,7 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
   }
 
   try {
-    // Ahead of the gates below, so tuning still lands while the hand is stopped
+    // Ahead of the gates below, tuning lands while the hand is stopped
     apply_tuning_parameters();
 
     if (!started_.load()) {
@@ -614,17 +612,15 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
       return hardware_interface::return_type::OK;
     }
 
-    // Trigger homing once per run, non-blocking so the CM executor is never held
-    // start_homing() raises the request synchronously, so the is_homing() gate below
-    // already sees it this cycle and no command leaks out
+    // Trigger homing once per run, non-blocking
+    // start_homing() raises the request synchronously and the gate below sees it this cycle
     if (auto_home_ && !hand_->is_homing() &&
         hand_->get_diagnostics().homing_state != ah2::HomingState::Succeeded &&
         !auto_home_triggered_.exchange(true)) {
       hand_->start_homing();
     }
 
-    // A command during homing would disturb the sequence, and an unhomed SDK answers
-    // set_command with WrongCallOrder, so both are skipped quietly
+    // An unhomed SDK answers set_command with WrongCallOrder
     // Testing homing_state as well covers the unhomed gap right after a reconnect
     if (hand_->is_homing() ||
         hand_->get_diagnostics().homing_state != ah2::HomingState::Succeeded) {
@@ -702,8 +698,7 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
       }
     }
   } catch (const ah2::Exception &) {
-    // A link lost between the gate above and here, so OK keeps the component up
-    // and no command going out is itself the fail-safe, with ~/reconnect to recover
+    // The link was lost between the gate above and here, ~/reconnect recovers it
     return hardware_interface::return_type::OK;
   }
   return hardware_interface::return_type::OK;
@@ -717,7 +712,7 @@ void AidinHand2SystemInterface::start_service_node()
     return;
   }
 
-  // A hardware component has no node of its own, so one is created for the services
+  // A hardware component has no node of its own
   service_node_ = std::make_shared<rclcpp::Node>(info_.name);
   run_service_ = service_node_->create_service<std_srvs::srv::Trigger>(
     "~/run",
@@ -778,7 +773,7 @@ void AidinHand2SystemInterface::stop_service_node()
   service_node_.reset();
 }
 
-// ------------------------------- Hand action --------------------------------
+// ----------------------- Hand action [service thread] -----------------------
 
 bool AidinHand2SystemInterface::exec_run(std::string & failure_message)
 {
@@ -786,11 +781,10 @@ bool AidinHand2SystemInterface::exec_run(std::string & failure_message)
     hand_->run();
     started_.store(true);
 
-    // Blank the storage so no old target goes back out
-    // The SDK holds the current pose until the first command arrives
+    // Blank the storage, the SDK holds the current pose until the first command arrives
     clear_mode_command();
 
-    // Re-latch, so write() triggers homing again whenever this run starts unhomed
+    // Re-latch, write() triggers homing again when this run starts unhomed
     auto_home_triggered_.store(false);
     return true;
   } catch (const ah2::Exception & exception) {
@@ -813,7 +807,7 @@ bool AidinHand2SystemInterface::exec_stop(std::string & failure_message)
 
 bool AidinHand2SystemInterface::exec_home(std::string & failure_message)
 {
-  // Triggers only and returns at once, so the CM executor is never held
+  // Triggers only and returns at once
   // The outcome is observed through diagnostics.homing_state
   try {
     hand_->start_homing();
@@ -826,8 +820,7 @@ bool AidinHand2SystemInterface::exec_home(std::string & failure_message)
 
 bool AidinHand2SystemInterface::exec_reconnect(std::string & failure_message)
 {
-  // Rebuilds the link without starting control, and drops homing_state to NotRun,
-  // so ~/run has to follow and homing runs again
+  // Rebuilds the link without starting control and drops homing_state to NotRun
   try {
     hand_->reconnect();
     started_.store(false);
@@ -867,7 +860,7 @@ void AidinHand2SystemInterface::declare_tuning_parameters()
     std::vector<double>(defaults.joint_impedance_controller.damping.begin(),
                         defaults.joint_impedance_controller.damping.end()));
 
-  // Stage what declare() picked up before attaching the callback, which then sees only later changes
+  // Stage what declare() picked up before attaching the callback, which sees only later changes
   const std::vector<std::string> tuning_names{
     "max_effort",
     "joint_position_controller.filter_enabled",
@@ -887,12 +880,11 @@ rcl_interfaces::msg::SetParametersResult AidinHand2SystemInterface::on_set_tunin
   const std::vector<rclcpp::Parameter> & parameters)
 {
   // An array parameter takes 1 value shared by every actuator or 16 for one each
-  // A rejection stops ROS from applying the value, so the SDK never sees it, and the
-  // range clamp is the SDK's job
+  // A rejection stops ROS from applying the value, and the range clamp is the SDK's job
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
 
-  // Validate on a copy, so one rejected parameter leaves the staging untouched
+  // Validate on a copy, one rejected parameter leaves the staging untouched
   std::array<double, ah2::kActuatorCount> max_effort = staged_max_effort_;
   ah2::ControllerConfig config = staged_controller_config_;
 
@@ -965,7 +957,7 @@ void AidinHand2SystemInterface::apply_tuning_parameters()
   hand_->set_controller_config(config);
 }
 
-// ------------------------------ Command write -------------------------------
+// ------------------------- Command write [CM thread] ------------------------
 
 void AidinHand2SystemInterface::clear_mode_command()
 {
@@ -990,8 +982,7 @@ void AidinHand2SystemInterface::clear_mode_command()
 
 void AidinHand2SystemInterface::warn_incomplete_command()
 {
-  // Some axis is NaN and has no previous command to fill it, meaning the controller has
-  // never once claimed that axis, so the cycle is skipped rather than a target invented
+  // An axis is NaN with no previous command to fill it, never once claimed
   RCLCPP_WARN_THROTTLE(
     logger(), throttle_clock_, 5000,
     "command has axes that were never commanded — skipped. Send a complete command once.");

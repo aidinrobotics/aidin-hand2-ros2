@@ -1,2 +1,2 @@
-# JointPositionController의 완전한 한-cycle 입력.
+# JointPositionController input, all 16 targets
 float64[16] target_position_rad

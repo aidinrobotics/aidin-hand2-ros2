@@ -40,10 +40,12 @@ using CallbackReturn =
 //   on_cleanup     disconnect + destroy
 //
 // run, stop, home and reconnect are also exposed as services on this component's own node
-// Interface names follow a fixed SDK order with the side prefix, so the URDF is never parsed
+// Interface names follow a fixed SDK order with the side prefix, the URDF is never parsed
 class AidinHand2SystemInterface : public hardware_interface::SystemInterface
 {
 public:
+  // ------------------------------ Construction ------------------------------
+
   ~AidinHand2SystemInterface() override;
 
   // ------------------------------- Lifecycle --------------------------------
@@ -91,7 +93,7 @@ private:
   // ---------------------- Hand action [service thread] ----------------------
 
   // Run synchronously on the service callback thread, apart from the read and write loop
-  // A failure message goes back in the service response, since the SDK already logged it
+  // A failure message goes back in the service response
   bool exec_run(std::string & failure_message);
   bool exec_stop(std::string & failure_message);
   bool exec_home(std::string & failure_message);
@@ -162,7 +164,7 @@ private:
   ah2::HandManager manager_;
   std::optional<ah2::Hand> hand_;
 
-  // ----------------- Single thread: observation [CM thread] -----------------
+  // -------------------- Single thread: plain [CM thread] --------------------
 
   // Backing memory of the exported state interfaces, refilled by read()
 
@@ -183,11 +185,9 @@ private:
   std::array<double, ah2::kActuatorCount> controller_output_target_effort_pct_{};
   std::array<double, ah2::kActuatorCount> commanded_max_effort_pct_{};
 
-  // HandState.timestamp split in two, since a double cannot hold the ns count
+  // HandState.timestamp split in two, a double cannot hold the whole ns count
   double observed_stamp_sec_{};
   double observed_stamp_nanosec_{};
-
-  // ------------------- Single thread: command [CM thread] -------------------
 
   // Backing memory of the exported command interfaces, written by the controllers
 
@@ -216,7 +216,7 @@ private:
   // False after stop, which keeps write() from sending commands
   std::atomic<bool> started_{false};
 
-  // Latched by exec_run, so write() triggers homing once per run
+  // Latched by exec_run, write() triggers homing once per run
   std::atomic<bool> auto_home_triggered_{false};
 
   // ----------- Cross thread: mutex [service thread -> CM thread] ------------

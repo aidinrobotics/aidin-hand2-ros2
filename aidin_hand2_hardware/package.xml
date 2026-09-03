@@ -17,8 +17,8 @@
   <depend>std_srvs</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
-  <!-- C++ SDK (cpp/). colcon 이 plain-CMake 패키지로 빌드 — rosdep 키가 아니라
-       워크스페이스 밖에서는 CMAKE_PREFIX_PATH 로 SDK install prefix 를 지정한다. -->
+  <!-- C++ SDK, not a rosdep key. colcon builds it as a plain CMake package, and outside the
+       workspace CMAKE_PREFIX_PATH points at the SDK install prefix -->
   <depend>aidin_hand2</depend>
 
   <export>
