@@ -99,7 +99,7 @@ left_joint_position_controller:
 | `JointPositionController` | active joint 16개 위치 [rad] |
 | `JointImpedanceController` | active joint 16개 평형 자세 [rad] (gain 은 hardware node parameter) |
 | `HandStateBroadcaster` | joint·actuator·tactile 관측을 `~/hand_state`로 발행 |
-| `DiagnosticsBroadcaster` | SDK diagnostics·actuator fault를 `/diagnostics`로 발행 |
+| `DiagnosticsBroadcaster` | Lifecycle·homing·RT 통계·actuator fault를 `~/hand_diagnostics`로 발행 |
 
 <!-- INTERNAL-BEGIN: actuator controller (개발용 — 외부 배포 시 이 블록 삭제) -->
 > [!NOTE]

@@ -906,8 +906,8 @@ Command interface 는 claim 하지 않고(`NONE`), diagnostics 39 개만 claim �
 (claim 순서 = [5.1](#51-hand-전역-7-개) → [5.2](#52-actuator-enabled-16-개) →
 [5.3](#53-actuator-fault-16-개)).
 
-발행 topic: `/diagnostics` (`diagnostic_msgs/DiagnosticArray`) 와
-`/{side}_diagnostics_broadcaster/hand_diagnostics` (`aidin_hand2_msgs/HandDiagnostics`).
+발행 topic: `/{side}_diagnostics_broadcaster/hand_diagnostics`
+(`aidin_hand2_msgs/HandDiagnostics`).
 
 ### 8.7 GloveTeleopController (example)
 

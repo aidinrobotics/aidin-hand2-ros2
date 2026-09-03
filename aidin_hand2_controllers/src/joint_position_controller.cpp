@@ -5,6 +5,8 @@
 #include <cmath>
 #include <limits>
 
+#include <aidin_hand2/types/description.hpp>
+
 #include "rclcpp/qos.hpp"
 
 // ------------------------------ Interface name ------------------------------
@@ -24,14 +26,18 @@
 //   is read
 //   A cycle with no input writes NaN, and a consumed input is reset to NaN at once
 //   A NaN target is a joint no upper controller owns, and the hardware fills it
+//   The claim is command_lock x1 and target_position_rad x16, 17 resources
 //   command_lock is claim-only, taken for mode exclusion
-//   The target filter belongs to the SDK ControllerConfig, tuned on the hardware node
+//   The target filter is tuned on the hardware node, not in this controller
 
 namespace aidin_hand2_controllers
 {
 
-constexpr std::size_t kActiveJointCount = 16;
-constexpr const char * kActiveJointBaseNames[kActiveJointCount] = {
+namespace ah2 = aidin_hand2;
+
+// Interface names without the prefix
+// The position in the list is the active joint index
+constexpr std::array<const char *, ah2::kActiveJointCount> kActiveJointBaseNames = {
   "thumb_joint0",
   "thumb_joint1",
   "thumb_joint2",
@@ -49,25 +55,23 @@ constexpr const char * kActiveJointBaseNames[kActiveJointCount] = {
   "baby_joint2",
   "baby_joint3",
 };
-constexpr const char * kCommandLockInterfaceName = "command_lock";
-constexpr const char * kTargetPositionInterfaceName = "target_position_rad";
-constexpr const char * kReferencePositionInterfaceName = "position";
+constexpr char kCommandLockInterface[] = "command_lock";
+constexpr char kTargetInterface[] = "target_position_rad";
+constexpr char kReferenceInterface[] = "position";
 
 namespace
 {
-constexpr std::size_t kTargetCount = kActiveJointCount;
-constexpr std::size_t kReferenceCount = kTargetCount;
-// Claimed command layout is [0] lock then [1..16] target position
-// Exported reference layout is [0..15] target position
-constexpr std::size_t kHardwareTargetOffset = 1;
+// Claimed command layout is the lock first, then the 16 targets
+// Exported reference layout is the 16 targets alone
+constexpr std::size_t kCommandLockCount = 1;
 
 std::vector<std::string> hardware_command_interfaces(const std::string & side)
 {
   std::vector<std::string> names{
-    side + "_hand_control/" + kCommandLockInterfaceName};
+    side + "_hand_control/" + kCommandLockInterface};
   const std::string component = side + "_joint_position_command/";
   for (const char * joint : kActiveJointBaseNames) {
-    names.push_back(component + kTargetPositionInterfaceName + "." + joint);
+    names.push_back(component + kTargetInterface + "." + joint);
   }
   return names;
 }
@@ -86,7 +90,9 @@ controller_interface::CallbackReturn JointPositionController::on_configure(
 {
   hand_side_ = get_node()->get_parameter("hand_side").as_string();
   if (hand_side_ != "left" && hand_side_ != "right") {
-    RCLCPP_ERROR(get_node()->get_logger(), "hand_side parameter is invalid");
+    RCLCPP_ERROR(
+      get_node()->get_logger(), "hand_side must be 'left' or 'right', got '%s'",
+      hand_side_.c_str());
     return controller_interface::CallbackReturn::ERROR;
   }
 
@@ -106,7 +112,7 @@ controller_interface::CallbackReturn JointPositionController::on_activate(
   const rclcpp_lifecycle::State &)
 {
   drop_buffered_command();
-  if (reference_interfaces_.size() != kReferenceCount) {
+  if (reference_interfaces_.size() != ah2::kActiveJointCount) {
     return controller_interface::CallbackReturn::ERROR;
   }
   std::fill(
@@ -164,19 +170,20 @@ JointPositionController::state_interface_configuration() const
 std::vector<hardware_interface::CommandInterface>
 JointPositionController::on_export_reference_interfaces()
 {
-  reference_interfaces_.assign(kReferenceCount, std::numeric_limits<double>::quiet_NaN());
+  reference_interfaces_.assign(
+    ah2::kActiveJointCount, std::numeric_limits<double>::quiet_NaN());
   std::vector<hardware_interface::CommandInterface> references;
-  references.reserve(kReferenceCount);
-  for (std::size_t i = 0; i < kTargetCount; ++i) {
+  references.reserve(ah2::kActiveJointCount);
+  for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
     references.emplace_back(
       get_node()->get_name(),
-      active_joint_names_[i] + "/" + kReferencePositionInterfaceName,
+      active_joint_names_[i] + "/" + kReferenceInterface,
       &reference_interfaces_[i]);
   }
   return references;
 }
 
-// Chained mode takes the reference, so the topic input is dropped
+// Chained mode drops the topic input, the reference is the only path in
 bool JointPositionController::on_set_chained_mode(bool chained_mode)
 {
   if (chained_mode) {
@@ -199,7 +206,7 @@ JointPositionController::update_reference_from_subscribers()
     return controller_interface::return_type::OK;
   }
   consumed_command_ = message.get();
-  for (std::size_t i = 0; i < kTargetCount; ++i) {
+  for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
     reference_interfaces_[i] = message->target_position_rad[i];
   }
   return controller_interface::return_type::OK;
@@ -209,11 +216,11 @@ controller_interface::return_type JointPositionController::update_and_write_comm
   const rclcpp::Time &, const rclcpp::Duration &)
 {
   const double nan = std::numeric_limits<double>::quiet_NaN();
-  std::array<double, kTargetCount> target{};
+  std::array<double, ah2::kActiveJointCount> target{};
   bool has_target = false;
   bool invalid = false;
 
-  for (std::size_t i = 0; i < kTargetCount; ++i) {
+  for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
     const double value = reference_interfaces_[i];
     if (std::isnan(value)) {
       target[i] = nan;  // Not owned, the hardware fills it
@@ -232,8 +239,8 @@ controller_interface::return_type JointPositionController::update_and_write_comm
       "JointPosition reference has an Inf value — ignored");
   }
 
-  for (std::size_t i = 0; i < kTargetCount; ++i) {
-    (void)command_interfaces_[kHardwareTargetOffset + i].set_value(
+  for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+    (void)command_interfaces_[kCommandLockCount + i].set_value(
       has_target ? target[i] : nan);
   }
 

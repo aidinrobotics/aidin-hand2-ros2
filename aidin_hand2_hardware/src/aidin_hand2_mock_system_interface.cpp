@@ -25,29 +25,70 @@ constexpr char kVelocityRpmInterface[] = "velocity_rpm";
 constexpr char kCurrentMaInterface[] = "current_ma";
 
 constexpr std::array<const char *, ah2::kActuatorCount> kActuatorBaseNames = {
-  "thumb_actuator0", "thumb_actuator1", "thumb_actuator2", "thumb_actuator3",
-  "index_actuator1", "index_actuator2", "index_actuator3",
-  "middle_actuator1", "middle_actuator2", "middle_actuator3",
-  "ring_actuator1", "ring_actuator2", "ring_actuator3",
-  "baby_actuator1", "baby_actuator2", "baby_actuator3"};
+  "thumb_actuator0",
+  "thumb_actuator1",
+  "thumb_actuator2",
+  "thumb_actuator3",
+  "index_actuator1",
+  "index_actuator2",
+  "index_actuator3",
+  "middle_actuator1",
+  "middle_actuator2",
+  "middle_actuator3",
+  "ring_actuator1",
+  "ring_actuator2",
+  "ring_actuator3",
+  "baby_actuator1",
+  "baby_actuator2",
+  "baby_actuator3",
+};
 
 constexpr std::array<const char *, ah2::kActiveJointCount> kActiveJointBaseNames = {
-  "thumb_joint0", "thumb_joint1", "thumb_joint2", "thumb_joint3",
-  "index_joint1", "index_joint2", "index_joint3",
-  "middle_joint1", "middle_joint2", "middle_joint3",
-  "ring_joint1", "ring_joint2", "ring_joint3",
-  "baby_joint1", "baby_joint2", "baby_joint3"};
+  "thumb_joint0",
+  "thumb_joint1",
+  "thumb_joint2",
+  "thumb_joint3",
+  "index_joint1",
+  "index_joint2",
+  "index_joint3",
+  "middle_joint1",
+  "middle_joint2",
+  "middle_joint3",
+  "ring_joint1",
+  "ring_joint2",
+  "ring_joint3",
+  "baby_joint1",
+  "baby_joint2",
+  "baby_joint3",
+};
 
 constexpr std::array<std::size_t, ah2::kActiveJointCount> kActiveToJointIndex = {
   0, 1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19};
 
 // FK joints, the last of each digit being the coupled joint4
 constexpr std::array<const char *, ah2::kJointCount> kJointBaseNames = {
-  "thumb_joint0", "thumb_joint1", "thumb_joint2", "thumb_joint3", "thumb_joint4",
-  "index_joint1", "index_joint2", "index_joint3", "index_joint4",
-  "middle_joint1", "middle_joint2", "middle_joint3", "middle_joint4",
-  "ring_joint1", "ring_joint2", "ring_joint3", "ring_joint4",
-  "baby_joint1", "baby_joint2", "baby_joint3", "baby_joint4"};
+  "thumb_joint0",
+  "thumb_joint1",
+  "thumb_joint2",
+  "thumb_joint3",
+  "thumb_joint4",
+  "index_joint1",
+  "index_joint2",
+  "index_joint3",
+  "index_joint4",
+  "middle_joint1",
+  "middle_joint2",
+  "middle_joint3",
+  "middle_joint4",
+  "ring_joint1",
+  "ring_joint2",
+  "ring_joint3",
+  "ring_joint4",
+  "baby_joint1",
+  "baby_joint2",
+  "baby_joint3",
+  "baby_joint4",
+};
 
 std::string command_component(const std::string & side, ah2::CommandMode mode)
 {

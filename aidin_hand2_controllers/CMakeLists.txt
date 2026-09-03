@@ -12,11 +12,8 @@ find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(realtime_tools REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(diagnostic_msgs REQUIRED)
 find_package(aidin_hand2_msgs REQUIRED)
-find_package(aidin_hand2 0.4 REQUIRED)  # 0.x 는 minor 가 breaking 경계
+find_package(aidin_hand2 0.4 REQUIRED)  # 0.x treats a minor bump as breaking
 
 add_library(${PROJECT_NAME} SHARED
   src/joint_position_controller.cpp
@@ -39,9 +36,6 @@ ament_target_dependencies(${PROJECT_NAME}
   rclcpp
   rclcpp_lifecycle
   realtime_tools
-  sensor_msgs
-  std_msgs
-  diagnostic_msgs
   aidin_hand2_msgs
 )
 
@@ -63,9 +57,6 @@ ament_export_dependencies(
   rclcpp
   rclcpp_lifecycle
   realtime_tools
-  sensor_msgs
-  std_msgs
-  diagnostic_msgs
   aidin_hand2_msgs
 )
 ament_package()

@@ -158,17 +158,17 @@ if homing_state != Succeeded:
 
 ROS time이 simulation 또는 clock jump의 영향을 받을 수 있으면 node-local monotonic receive time도 기록합니다.
 
-### Diagnostics level의 경계
+### Health 판정의 경계
 
-`/diagnostics` level 규칙은 셋뿐입니다.
+`HandDiagnostics`는 종합 level 필드를 내지 않습니다. 판정은 구독자가 필드로 직접 합니다.
 
-| 조건 | Level |
+| 조건 | 판정 |
 |---|---|
-| Lifecycle `Faulted` | `ERROR` |
-| Lifecycle `Running` + actuator fault 존재 | `WARN` (일부 mask 후 동작) |
-| 그 외 | `OK` |
+| Lifecycle `Faulted` | 복구 필요 |
+| Lifecycle `Running` + `actuator_fault_name` 비어 있지 않음 | 일부 mask 후 동작 |
+| 그 외 | 정상 |
 
-따라서 다음은 모두 `OK`로 나옵니다.
+따라서 다음은 위 세 줄 어디에도 나타나지 않습니다.
 
 - `homing_state != Succeeded`
 - Deadline miss 급증
@@ -176,8 +176,8 @@ ROS time이 simulation 또는 clock jump의 영향을 받을 수 있으면 node-
 - Actuator가 expected 상태와 다르게 disabled
 - Auto reconnect transition 전후
 
-`HandDiagnostics`에도 last exception text, reconnect attempt count, state freshness boolean,
-command age, composite operation-ready field가 없습니다. Operation-ready 판정은 supervisor가
+`HandDiagnostics`에는 last exception text, reconnect attempt count, state freshness boolean,
+command age, composite operation-ready field도 없습니다. Operation-ready 판정은 supervisor가
 lifecycle·homing_state·actuator fault·stamp·control cycle을 합성해서 해야 합니다.
 
 ### Command timeout이 없다
@@ -306,7 +306,7 @@ Incident에 보존할 것:
 - Launch CLI와 config YAML
 - `ros2 control` list 3종
 - HandState·HandDiagnostics time series
-- `/diagnostics`와 `/rosout`
+- `/rosout`
 - SocketCAN statistics와 CAN capture
 - Kernel·systemd journal
 - SDK·wrapper commit과 kernel version

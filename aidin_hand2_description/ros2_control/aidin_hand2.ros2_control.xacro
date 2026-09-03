@@ -289,7 +289,7 @@
         <command_interface name="target_effort_pct.baby_actuator3"/>
       </gpio>
 
-      <!-- SDK Diagnostics 노출 — broadcaster 가 /diagnostics 로 변환 (Stage 2).
+      <!-- SDK Diagnostics 노출 — broadcaster 가 ~/hand_diagnostics 로 변환 (Stage 2).
            hand 전역 7 필드 + actuator 16 각각의 enabled·fault. mock 은 미노출(제외).
            Isaac 브리지는 브리지 자신이 채운 값(lifecycle·control_cycles·deadline_misses 등)을 낸다.
            lifecycle 은 double(HandLifecycle ordinal) — broadcaster 가 이름화. -->

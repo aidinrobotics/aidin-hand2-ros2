@@ -14,7 +14,10 @@ Comments, log messages and user-facing strings in this repository are English, f
   `—` belongs to log and exception strings only
 - Member comments go **above** the declaration, one per group. Trailing comments are for aligned
   tables of constants only, two spaces before `//`
-- Thread ownership is a bracket tag: `[CM thread]`, `[service thread]`, `[bridge thread]`
+- Thread ownership is a bracket tag: `[CM thread]`, `[service thread]`, `[bridge thread]`.
+  These belong to `aidin_hand2_hardware` alone, it being the package that meets the SDK.
+  Everywhere else state the invariant in words and leave the threading unlabelled, even where
+  the code does cross threads
 
 ## Content
 
@@ -43,6 +46,10 @@ Do **not** write:
 - a comment on the second and later overloads, on special members (ctor/dtor/copy/move), or on a
   `.cpp` definition whose header declaration already carries one
 
+A contract line carries a **count**, which is what catches the claim going stale: "the claim is
+`command_lock` x1 and `target_position_rad` x16, 17 resources", "39 resources", "313 state
+interfaces".
+
 ## Section banners
 
 Exactly **79 columns** including the indent, `-` filled, Sentence case noun-phrase label, blank
@@ -68,11 +75,55 @@ Rules:
 
 - **A `.cpp` banner label matches its `.hpp` label exactly**, thread tag included, and the
   sections appear in the same order in both files
-- Variable sections follow the SDK vocabulary and order:
+- Variable sections in `aidin_hand2_hardware` follow the SDK vocabulary and order:
   `Config` -> `Single thread: plain` -> `Cross thread: buffer` -> `Cross thread: atomic`.
-  Inside a section, subgroups are one-line comments, not more banners
+  Inside a section, subgroups are one-line comments, not more banners. Other packages group
+  their members with one-line comments and no banner
 - Constructors and destructors live under `Construction`
 - Do not use box-drawing dividers (`── … ──`)
+
+## Constants
+
+A comment that repeats a number the code could have named is a comment that will go stale, so the
+constants come first.
+
+- **Structural counts come from `aidin_hand2/types/description.hpp`**, never a local `= 16` or a
+  bare `21`, `17`, `20`, `18`. Alias the namespace once per file and use it:
+
+  ```cpp
+  namespace ah2 = aidin_hand2;
+  ...
+  for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+  ```
+
+- **Interface-name constants are `constexpr char kXxxInterface[] = "..."`**, one shape across the
+  whole repository. Not `const char *`, not an `InterfaceName` suffix
+- **Sibling files share the constant names, values differ.** The four command controllers all
+  declare `kCommandLockInterface`, `kTargetInterface`, `kReferenceInterface` and
+  `kCommandLockCount`, so the four files diff against each other line for line. Resist a
+  per-controller name like `kTargetPositionInterfaceName`
+- **Name an offset after what makes it what it is.** `kCommandLockCount = 1` says why the target
+  block starts at 1; `kHardwareTargetOffset` only restates the number. Drop an offset that is
+  always `0`
+- **`kXxxBaseNames` holds the unprefixed name**, and the side prefix is applied at the use site.
+  Never store the prefixed name and cut it back off with `substr`. Where both live in one file the
+  `Base` in the name is the only thing keeping them apart
+
+### Name array layout
+
+A naming array is written **one entry per line**, trailing comma, `};` on its own line, with the
+index contract above it. Never packed several to a line, which is how a wrong order hides.
+
+```cpp
+// Interface names without the prefix
+// The position in the list is the actuator index
+constexpr std::array<const char *, ah2::kActuatorCount> kActuatorBaseNames = {
+  "thumb_actuator0",
+  "thumb_actuator1",
+  ...
+  "baby_actuator3",
+};
+```
 
 ## Log and exception strings
 
@@ -80,6 +131,9 @@ Rules:
   `topic: ` prefix for a subsystem
 - Exception: `Cannot <verb phrase>: <cause> — <remedy naming the call>`
 - Public vocabulary only, no internal protocol terms
+- One wording per check across the repository, and it carries the offending value. Parameter
+  validation is `"hand_side must be 'left' or 'right', got '%s'"`, never a second phrasing such as
+  `"hand_side parameter is invalid"`
 
 ## Terminology
 
@@ -90,6 +144,11 @@ Rules:
   baby_actuator1..3`
 - `bridge` belongs to the Isaac interface only, which bridges the simulator over ROS 2 topics.
   The real interface uses `service node`, the mock has no node
+- **`SDK` belongs to `aidin_hand2_hardware`**, the package that meets it. Elsewhere name the
+  concrete thing instead: "tuned on the hardware node", not "belongs to the SDK ControllerConfig".
+  An internal type name such as `ControllerConfig` goes with it
+- Only the hardware interface talks about threads at all, see the bracket-tag rule under
+  [Form](#form)
 
 ## Checks
 
@@ -108,6 +167,19 @@ grep -rnE '^\s*//.*[a-z0-9)]\.\s*$'  --include=*.hpp --include=*.cpp .
 
 # Rationale clauses
 grep -rnE '^\s*//.*\b(so|since|because|would)\b' --include=*.hpp --include=*.cpp .
+
+# Structural count redeclared locally instead of taken from description.hpp
+grep -rnE 'constexpr std::size_t k(Actuator|ActiveJoint|Joint|Finger)Count *= *[0-9]' \
+  --include=*.hpp --include=*.cpp .
+
+# Name array packed several entries to a line
+grep -rnE '^\s*"[^"]*", *"[^"]*"' --include=*.hpp --include=*.cpp .
+
+# Old interface-name constant shape, the plural kXxxInterfaceNames array being fine
+grep -rnE 'InterfaceName\b' --include=*.hpp --include=*.cpp .
+
+# SDK named outside the hardware package
+grep -rn 'SDK' --include=*.hpp --include=*.cpp . | grep -v aidin_hand2_hardware
 ```
 
 ## Migration status
@@ -119,20 +191,17 @@ Done:
 
 - `aidin_hand2_msgs` — 7 files
 - `aidin_hand2_hardware` — 7 files, plus the two reference files brought in line
-- `aidin_hand2_controllers/src/joint_position_controller.cpp`
+- `aidin_hand2_controllers` — 12 files, plus `plugin/*.xml`, `CMakeLists.txt`, `package.xml`
 
 Remaining, in order:
 
-1. `aidin_hand2_controllers` — `joint_position_controller.hpp`, then joint_impedance,
-   actuator_position, actuator_effort (`.cpp` then `.hpp` each), `hand_state_broadcaster`,
-   `diagnostics_broadcaster`, `plugin/*.xml`, `CMakeLists.txt`, `package.xml`
-2. `aidin_hand2_description` — `ros2_control/aidin_hand2.ros2_control.xacro`,
+1. `aidin_hand2_description` — `ros2_control/aidin_hand2.ros2_control.xacro`,
    `urdf/aidin_hand2.urdf.xacro`, `_left`, `_right`, `launch/description.launch.py`, `package.xml`
-3. `aidin_hand2_bringup` — `config/hand_bringup.yaml` and `launch/aidin_hand2.launch.py` first,
+2. `aidin_hand2_bringup` — `config/hand_bringup.yaml` and `launch/aidin_hand2.launch.py` first,
    then the controllers, mock and isaac config/launch pairs, `gui_bridge.launch.py`, `package.xml`
-4. `aidin_hand2_examples` — glove_teleop `.hpp`, `.cpp`, `.yaml`, `glove_calibrate.py`, the four
+3. `aidin_hand2_examples` — glove_teleop `.hpp`, `.cpp`, `.yaml`, `glove_calibrate.py`, the four
    upper controllers, `plugin/*.xml`, `CMakeLists.txt`, `package.xml`
-5. Markdown — `docs/en` mirroring `docs/ko`, the three package READMEs and `EXAMPLE.md`,
+4. Markdown — `docs/en` mirroring `docs/ko`, the three package READMEs and `EXAMPLE.md`,
    and the `docs/ko` links in `README.md` repointed to `docs/en`. `docs/ko` and `README.ko.md`
    stay Korean
 
@@ -140,5 +209,16 @@ Stale claims found and corrected so far, worth watching for elsewhere:
 
 - "98 command interface resources" in the mock and isaac interfaces. The contract is
   `command_lock` 1 + 16 x 4 = **65**
-- `actuator_position_controller.cpp` and `actuator_effort_controller.cpp` still claim that
-  activation seeds the references from state. Both fill NaN and claim no state interface at all
+- `actuator_position_controller.cpp` and `actuator_effort_controller.cpp` claimed that
+  activation seeds the references from state, and `actuator_position_controller.cpp` listed a
+  state interface. Both fill NaN and claim `NONE`
+- `joint_impedance_controller.cpp` claimed "hardware command port 48". The claim is
+  `command_lock` 1 + 16 = **17**, the same as the other three controllers
+- `joint_impedance_controller.cpp`, the plugin description and `package.xml` claimed an impedance
+  gain parameter. No controller declares one, the gains are tuned on the hardware node
+- `package.xml` claimed the `aidin_hand2` header is taken for gain defaults. It is taken for the
+  structural constants and the lifecycle, homing and fault names
+- `hand_state_broadcaster.hpp` listed only joint, actuator and tactile. It also carries the
+  command echo and the observation timestamp, **313** state interfaces in total
+- The `DiagnosticsBroadcaster` description named only `/diagnostics`. That publisher is gone,
+  `~/hand_diagnostics` is the only topic

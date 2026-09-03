@@ -325,9 +325,9 @@ ros2 topic echo \
 
 Broadcaster 수신 여부가 아니라 underlying 값 변화로 health를 판정합니다. [운영과 복구](06_operations.md#5-health-monitoring)를 참조하십시오.
 
-## 19. `/diagnostics`가 OK인데 motion-ready가 아님
+## 19. Lifecycle이 `Running`이고 fault도 없는데 motion-ready가 아님
 
-Standard level은 homing_state != Succeeded, stale state와 deadline miss rate를 반영하지 않습니다. Custom supervisor가 별도 gate를 적용해야 합니다.
+`HandDiagnostics`는 종합 판정 필드를 내지 않고, lifecycle과 actuator fault만으로는 homing_state != Succeeded, stale state, deadline miss rate가 드러나지 않습니다. Custom supervisor가 별도 gate를 적용해야 합니다.
 
 ```bash
 ros2 topic echo \
@@ -355,6 +355,6 @@ Remote browser에서 `localhost`는 robot host가 아니라 browser host입니�
 - `ros2 doctor --report`
 - Hardware·controller·interface list
 - HandState·HandDiagnostics sample과 time series
-- `/rosout`, `/diagnostics`, process journal
+- `/rosout`, process journal
 - SocketCAN statistics와 CAN capture
 - 재현 순서와 안전 조치

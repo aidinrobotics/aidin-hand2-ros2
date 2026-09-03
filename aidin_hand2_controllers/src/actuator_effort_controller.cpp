@@ -5,30 +5,39 @@
 #include <cmath>
 #include <limits>
 
+#include <aidin_hand2/types/description.hpp>
+
 #include "rclcpp/qos.hpp"
 
-// ── interface name ──────────────────────────────────────────────────────────
+// ------------------------------ Interface name ------------------------------
 //   side       ∈ {left, right}
 //   finger     ∈ {thumb, index, middle, ring, baby}
-//   n          : thumb = 0..3, 그 외 = 1..3
+//   n          : thumb = 0..3, otherwise 1..3
 //
 //   command interface  : {side}_hand_control/command_lock              (claim-only)
 //                        {side}_actuator_effort_command/
 //                          target_effort_pct.{finger}_actuator{n}        (rated %)
 //   reference interface: {side}_actuator_effort_controller/
-//                          {side}_{finger}_actuator{n}/effort_pct
+//                          {side}_{finger}_actuator{n}/effort_pct        (rated %)
 //   command topic      : /{side}_actuator_effort_controller/command
 //                        (aidin_hand2_msgs/ActuatorEffortCommand)
 //
-//   activation 때 16개 reference를 0%로 seed하고, 매 update에 target_effort_pct 16개 전체를
-//   command port에 기록한다. command_lock은 값으로 쓰지 않는다.
-// ─────────────────────────────────────────────────────────────────────────────
+//   The input moves to the command interface unchanged, no target is generated and no state
+//   is read
+//   A cycle with no input writes NaN, and a consumed input is reset to NaN at once
+//   A NaN target is an actuator no upper controller owns, and the hardware fills it
+//   The claim is command_lock x1 and target_effort_pct x16, 17 resources
+//   command_lock is claim-only, taken for mode exclusion
+//   This is a raw interface, the rated current is commanded with no position loop in the way
 
 namespace aidin_hand2_controllers
 {
 
-constexpr std::size_t kActuatorCount = 16;
-constexpr const char * kActuatorBaseNames[kActuatorCount] = {
+namespace ah2 = aidin_hand2;
+
+// Interface names without the prefix
+// The position in the list is the actuator index
+constexpr std::array<const char *, ah2::kActuatorCount> kActuatorBaseNames = {
   "thumb_actuator0",
   "thumb_actuator1",
   "thumb_actuator2",
@@ -46,49 +55,51 @@ constexpr const char * kActuatorBaseNames[kActuatorCount] = {
   "baby_actuator2",
   "baby_actuator3",
 };
-constexpr const char * kCommandLockInterfaceName = "command_lock";
-constexpr const char * kEffortInterfaceName = "target_effort_pct";
-constexpr const char * kReferenceEffortInterfaceName = "effort_pct";
+constexpr char kCommandLockInterface[] = "command_lock";
+constexpr char kTargetInterface[] = "target_effort_pct";
+constexpr char kReferenceInterface[] = "effort_pct";
 
 namespace
 {
-// claimed command layout: [0] lock, [1..16] target effort.
-// exported reference layout: [0..15] actuator effort.
-constexpr std::size_t kHardwareTargetOffset = 1;  // command_interfaces_[0] = command_lock
+// Claimed command layout is the lock first, then the 16 targets
+// Exported reference layout is the 16 targets alone
+constexpr std::size_t kCommandLockCount = 1;
+
 std::vector<std::string> hardware_command_interfaces(const std::string & side)
 {
   std::vector<std::string> names{
-    side + "_hand_control/" + kCommandLockInterfaceName};
+    side + "_hand_control/" + kCommandLockInterface};
   const std::string component = side + "_actuator_effort_command/";
   for (const char * actuator : kActuatorBaseNames) {
-    names.push_back(component + kEffortInterfaceName + "." + actuator);
+    names.push_back(component + kTargetInterface + "." + actuator);
   }
   return names;
 }
 }  // namespace
 
-// ── lifecycle ────────────────────────────────────────────────────────────────
-// Hand side parameter를 선언.
+// --------------------------------- Lifecycle --------------------------------
+
 controller_interface::CallbackReturn ActuatorEffortController::on_init()
 {
   auto_declare<std::string>("hand_side", "");
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-// Side를 검증하고 hardware command interface와 typed command subscriber를 구성.
 controller_interface::CallbackReturn ActuatorEffortController::on_configure(
   const rclcpp_lifecycle::State &)
 {
   hand_side_ = get_node()->get_parameter("hand_side").as_string();
   if (hand_side_ != "left" && hand_side_ != "right") {
-    RCLCPP_ERROR(get_node()->get_logger(), "hand_side must be left or right");
+    RCLCPP_ERROR(
+      get_node()->get_logger(), "hand_side must be 'left' or 'right', got '%s'",
+      hand_side_.c_str());
     return controller_interface::CallbackReturn::ERROR;
   }
+
   actuator_names_.clear();
   for (const char * base : kActuatorBaseNames) {
     actuator_names_.push_back(hand_side_ + "_" + base);
   }
-  // command interface: [0] command_lock + [1..16] target_effort_pct.
   command_interface_names_ = hardware_command_interfaces(hand_side_);
 
   drop_buffered_command();
@@ -96,12 +107,12 @@ controller_interface::CallbackReturn ActuatorEffortController::on_configure(
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-// 활성화 시점에는 목표가 없다 — reference 를 비우고 활성화 이전 message 는 버린다.
+// No target at activation, the references are cleared and any earlier message dropped
 controller_interface::CallbackReturn ActuatorEffortController::on_activate(
   const rclcpp_lifecycle::State &)
 {
   drop_buffered_command();
-  if (reference_interfaces_.size() != kActuatorCount) {
+  if (reference_interfaces_.size() != ah2::kActuatorCount) {
     return controller_interface::CallbackReturn::ERROR;
   }
   std::fill(
@@ -110,7 +121,6 @@ controller_interface::CallbackReturn ActuatorEffortController::on_activate(
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-// Resource release는 controller_manager가 처리하며 추가 동작 없음.
 controller_interface::CallbackReturn ActuatorEffortController::on_deactivate(
   const rclcpp_lifecycle::State &)
 {
@@ -137,12 +147,13 @@ void ActuatorEffortController::unsubscribe()
 
 void ActuatorEffortController::drop_buffered_command()
 {
-  command_buffer_.writeFromNonRT(std::shared_ptr<aidin_hand2_msgs::msg::ActuatorEffortCommand>());
+  command_buffer_.writeFromNonRT(
+    std::shared_ptr<aidin_hand2_msgs::msg::ActuatorEffortCommand>());
   consumed_command_ = nullptr;
 }
 
-// ── interface configuration ─────────────────────────────────────────────────
-// claim: command_lock + ActuatorEffort hardware command port 16개.
+// -------------------------- Interface configuration -------------------------
+
 controller_interface::InterfaceConfiguration
 ActuatorEffortController::command_interface_configuration() const
 {
@@ -150,31 +161,29 @@ ActuatorEffortController::command_interface_configuration() const
           command_interface_names_};
 }
 
-// Effort mode는 activation seed에 hardware state를 요구하지 않음.
 controller_interface::InterfaceConfiguration
 ActuatorEffortController::state_interface_configuration() const
 {
   return {controller_interface::interface_configuration_type::NONE, {}};
 }
 
-// actuator effort_pct 16개를 reference로 노출.
 std::vector<hardware_interface::CommandInterface>
 ActuatorEffortController::on_export_reference_interfaces()
 {
   reference_interfaces_.assign(
-    kActuatorCount, std::numeric_limits<double>::quiet_NaN());
+    ah2::kActuatorCount, std::numeric_limits<double>::quiet_NaN());
   std::vector<hardware_interface::CommandInterface> references;
-  references.reserve(kActuatorCount);
-  for (std::size_t i = 0; i < kActuatorCount; ++i) {
+  references.reserve(ah2::kActuatorCount);
+  for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
     references.emplace_back(
       get_node()->get_name(),
-      actuator_names_[i] + "/" + kReferenceEffortInterfaceName,
+      actuator_names_[i] + "/" + kReferenceInterface,
       &reference_interfaces_[i]);
   }
   return references;
 }
 
-// chained 에서는 상위가 reference 를 쓰므로 topic 입력을 내린다(입력 경로 이중화 방지).
+// Chained mode drops the topic input, the reference is the only path in
 bool ActuatorEffortController::on_set_chained_mode(bool chained_mode)
 {
   if (chained_mode) {
@@ -186,8 +195,9 @@ bool ActuatorEffortController::on_set_chained_mode(bool chained_mode)
   return true;
 }
 
-// ── update ──────────────────────────────────────────────────────────────────
-// standalone: 새로 도착한 typed command 한 건만 reference 로 옮긴다.
+// ---------------------------------- Update ----------------------------------
+
+// Only a message not yet consumed moves to the references
 controller_interface::return_type
 ActuatorEffortController::update_reference_from_subscribers()
 {
@@ -196,25 +206,24 @@ ActuatorEffortController::update_reference_from_subscribers()
     return controller_interface::return_type::OK;
   }
   consumed_command_ = message.get();
-  for (std::size_t i = 0; i < kActuatorCount; ++i) {
+  for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
     reference_interfaces_[i] = message->target_effort_pct[i];
   }
   return controller_interface::return_type::OK;
 }
 
-// reference 를 command interface 로 옮긴다. 입력이 없으면 전부 NaN(= 이번 cycle 명령 없음).
 controller_interface::return_type ActuatorEffortController::update_and_write_commands(
   const rclcpp::Time &, const rclcpp::Duration &)
 {
   const double nan = std::numeric_limits<double>::quiet_NaN();
-  std::array<double, kActuatorCount> target{};
+  std::array<double, ah2::kActuatorCount> target{};
   bool has_target = false;
   bool invalid = false;
 
-  for (std::size_t i = 0; i < kActuatorCount; ++i) {
+  for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
     const double value = reference_interfaces_[i];
     if (std::isnan(value)) {
-      target[i] = nan;  // 상위가 점유하지 않은 actuator — hardware 가 채운다
+      target[i] = nan;  // Not owned, the hardware fills it
     } else if (!std::isfinite(value)) {
       target[i] = nan;
       invalid = true;
@@ -223,16 +232,19 @@ controller_interface::return_type ActuatorEffortController::update_and_write_com
       has_target = true;
     }
   }
+
   if (invalid) {
     RCLCPP_WARN_THROTTLE(
       get_node()->get_logger(), *get_node()->get_clock(), 5000,
       "ActuatorEffort reference has an Inf value — ignored");
   }
 
-  for (std::size_t i = 0; i < kActuatorCount; ++i) {
-    (void)command_interfaces_[kHardwareTargetOffset + i].set_value(
+  for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+    (void)command_interfaces_[kCommandLockCount + i].set_value(
       has_target ? target[i] : nan);
   }
+
+  // Marks the input consumed
   std::fill(reference_interfaces_.begin(), reference_interfaces_.end(), nan);
   return controller_interface::return_type::OK;
 }

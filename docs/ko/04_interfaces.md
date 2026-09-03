@@ -230,7 +230,6 @@ Runtime schema는 `ros2 control list_hardware_interfaces`로 확인하십시오.
 | `/joint_states` | `sensor_msgs/JointState` | 100 Hz | 표준 joint position 21개 |
 | `/left_hand_state_broadcaster/hand_state` | `aidin_hand2_msgs/HandState` | 100 Hz | Joint·actuator·tactile·nested `CommandState` |
 | `/left_diagnostics_broadcaster/hand_diagnostics` | `aidin_hand2_msgs/HandDiagnostics` | 20 Hz | Lifecycle, homing_state, RT 통계, actuator health |
-| `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | 20 Hz/hand | 표준 diagnostics |
 
 `HandState.header.stamp`는 SDK RX 관측 시각이며 초기값이 0일 때만 broadcaster update time을
 사용합니다.
