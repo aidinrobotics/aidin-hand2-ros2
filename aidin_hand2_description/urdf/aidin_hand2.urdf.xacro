@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="aidin_hand2">
 
+  <!-- ============================= Placement ============================ -->
+
   <xacro:arg name="use_left_hand" default="true"/>
   <xacro:arg name="use_right_hand" default="true"/>
   <xacro:arg name="left_hand_prefix" default="left_"/>
@@ -14,7 +16,9 @@
 
   <link name="world"/>
 
-  <!-- 좌/우 손 link·joint·mesh 정의 -->
+  <!-- ============================= Hand URDF ============================ -->
+
+  <!-- Link, joint and mesh of each hand -->
   <xacro:include filename="$(find aidin_hand2_description)/urdf/aidin_hand2_left.urdf.xacro"/>
   <xacro:include filename="$(find aidin_hand2_description)/urdf/aidin_hand2_right.urdf.xacro"/>
 
@@ -34,40 +38,39 @@
     </xacro:aidin_hand2_right>
   </xacro:if>
 
-  <!-- ros2_control system 은 손마다 별도. use_left_hand / use_right_hand
-       각각에 대해 macro 호출 1번 → <ros2_control> system 1개 생성. -->
-  <xacro:include filename="$(find aidin_hand2_description)/ros2_control/aidin_hand2.ros2_control.xacro"/>
+  <!-- ==================== Hardware interface argument =================== -->
 
-  <!-- 손별 CAN bus. SDK 는 손당 단일 bus (tactile 포함). -->
+  <!-- Forwarded to the aidin_hand2_ros2_control macro, which documents each one -->
+
+  <!-- Common -->
   <xacro:arg name="left_hand_interface"   default="can0"/>
   <xacro:arg name="right_hand_interface"  default="can1"/>
-  <!-- on_activate 자동 homing on/off. 별도 트리거는 homing gpio 의 request. -->
   <xacro:arg name="auto_home"            default="true"/>
-  <!-- effort 한계 (rated current %, 0~2000). 기본값은 SDK default 와 동일. -->
   <xacro:arg name="max_effort"           default="1000"/>
-  <!-- SDK RT loop 설정. control_rate 는 loop Hz, cpu_affinity 는 격리 코어 pin 이라
-       손별 (-1 = 미설정). -->
   <xacro:arg name="control_rate"             default="500"/>
   <xacro:arg name="left_hand_cpu_affinity"   default="-1"/>
   <xacro:arg name="right_hand_cpu_affinity"  default="-1"/>
-  <!-- 미가동 actuator index (콤마 구분, 예 "0,1,2,3"). 빈 값 = 전부 가동. 손별로 지정. -->
   <xacro:arg name="left_hand_disabled_actuators"  default=""/>
   <xacro:arg name="right_hand_disabled_actuators" default=""/>
-  <!-- 통신 두절 시 SDK 자동 재수립. timeout_ms 초과면 Failed 로 종결(0=무제한),
-       home 은 재수립 복귀 시 run 전 homing 여부. 양손 공통 정책. -->
   <xacro:arg name="auto_reconnect"            default="false"/>
   <xacro:arg name="auto_reconnect_timeout_ms" default="0"/>
   <xacro:arg name="auto_reconnect_home"       default="false"/>
-  <!-- true 면 실 CAN 대신 kinematics mock(clamp→IK→FK) hardware 사용 -->
+
+  <!-- Mock only -->
   <xacro:arg name="use_mock" default="false"/>
-  <!-- true 면 Isaac Sim 브리지 hardware 사용 (use_mock 보다 우선). 토픽은 topic_prefix 기준
-       기본 이름(joint_states / hand_command / tactile)을 쓰고, 아래 인자로 개별 지정한다. -->
+
+  <!-- Isaac only -->
   <xacro:arg name="use_isaac" default="false"/>
   <xacro:arg name="isaac_topic_prefix"       default="/isaac"/>
-  <xacro:arg name="isaac_joint_state_topic"  default=""/>
-  <xacro:arg name="isaac_joint_command_topic" default=""/>
-  <xacro:arg name="isaac_tactile_prefix"     default=""/>
+  <xacro:arg name="isaac_joint_state_topic"  default="joint_states"/>
+  <xacro:arg name="isaac_joint_command_topic" default="hand_command"/>
+  <xacro:arg name="isaac_tactile_prefix"     default="tactile"/>
   <xacro:arg name="isaac_state_timeout"      default="0.1"/>
+
+  <!-- ======================== ros2_control system ======================= -->
+
+  <!-- One ros2_control system per hand -->
+  <xacro:include filename="$(find aidin_hand2_description)/ros2_control/aidin_hand2.ros2_control.xacro"/>
 
   <xacro:if value="$(arg use_left_hand)">
     <xacro:aidin_hand2_ros2_control

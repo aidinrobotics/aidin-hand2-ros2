@@ -1,38 +1,31 @@
 <?xml version="1.0"?>
-<!-- AIDIN Hand Gen2 한 손 ros2_control system — SDK(aidin_hand2) wrapper 인터페이스.
-     protocol·kinematics 는 SDK 소유. 여기는 SDK public 타입과 1:1 인 값 인터페이스만 선언한다. -->
+<!-- ros2_control system for one hand, interface declarations only -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <!-- Actuator 1개 — physical state만 소유한다. command는 아래 mode별 GPIO port가 소유한다.
-       state: position_cnt · velocity_rpm · current_ma (모션/센싱, hand_state_broadcaster).
-       actuator 헬스(enabled/fault)는 진단이라 아래 diagnostics gpio 로 모았다.
-       이름을 표준 position/velocity/effort 와 다르게 두는 이유: joint_state_broadcaster 가
-       count 스케일 값을 /joint_states 로 내보내지 않게 하기 위함. -->
+  <!-- =========================== Helper macro =========================== -->
+
+  <!-- Actuator physical state -->
   <xacro:macro name="hand_actuator" params="joint_name">
     <joint name="${joint_name}">
-      <!-- ── hand_state_broadcaster: 모션/센싱 → HandState ── -->
       <state_interface name="position_cnt"/>
       <state_interface name="velocity_rpm"/>
       <state_interface name="current_ma"/>
     </joint>
   </xacro:macro>
 
-  <!-- actuator 16 각각의 enabled·fault state 를 diagnostics gpio 에 방출.
-       gpio 이름(<prefix>diagnostics)이 이미 좌우를 가르므로 interface 이름엔 prefix 없이
-       actuator base 이름만 접미사로: enabled_<actuator_base>·fault_<actuator_base>. -->
+  <!-- Actuator health, suffixed with the unprefixed actuator base name -->
   <xacro:macro name="diagnostics_actuator_health" params="actuator_base">
     <state_interface name="enabled_${actuator_base}"/>
     <state_interface name="fault_${actuator_base}"/>
   </xacro:macro>
 
-  <!-- Joint broadcaster가 소비하는 표준 position state만 둔다. -->
+  <!-- Joint position for joint_state_broadcaster -->
   <xacro:macro name="hand_joint" params="joint_name">
     <joint name="${joint_name}">
       <state_interface name="position"/>
     </joint>
   </xacro:macro>
 
-  <!-- state_interface 를 <prefix>idx_min..idx_max 로 방출 -->
   <xacro:macro name="state_interface_range" params="prefix idx_min idx_max">
     <state_interface name="${prefix}${idx_min}"/>
     <xacro:if value="${idx_min &lt; idx_max}">
@@ -40,14 +33,14 @@
     </xacro:if>
   </xacro:macro>
 
-  <!-- Finger tactile — 17 cell -->
+  <!-- Finger tactile, 17 cells -->
   <xacro:macro name="finger_tactile_sensor" params="sensor_name">
     <sensor name="${sensor_name}">
       <xacro:state_interface_range prefix="tactile_" idx_min="1" idx_max="17"/>
     </sensor>
   </xacro:macro>
 
-  <!-- Palm tactile — 3 region, 58 cell -->
+  <!-- Palm tactile, 3 regions, 58 cells -->
   <xacro:macro name="palm_tactile_sensor" params="sensor_name">
     <sensor name="${sensor_name}">
       <xacro:state_interface_range prefix="palm1_upper_" idx_min="1" idx_max="20"/>
@@ -56,25 +49,31 @@
     </sensor>
   </xacro:macro>
 
-  <!--
-    한 손 ros2_control system macro. params 는 SDK OpenConfig 와 1:1 (기본값 = SDK default):
-      identity : name, prefix, hand_side
-      CAN      : can_interface
-      homing   : auto_home (on_activate 자동 homing on/off)
-      effort   : max_effort (rated current %, 0~2000)
-      control  : control_rate (RT loop Hz)
-      realtime : rt_cpu_affinity (코어 pin, -1 = 미설정)
-      reconnect: auto_reconnect (통신 두절 시 자동 재수립),
-                 auto_reconnect_timeout_ms (재수립 포기 상한, 0=무제한),
-                 auto_reconnect_home (재수립 복귀 시 run 전 homing)
+  <!-- =========================== System macro =========================== -->
 
-    backend 는 use_isaac > use_mock > 실 CAN 순으로 정해진다 (셋 다 같은 interface 이름 규약이라
-    controller 는 동일하게 붙는다):
-      use_isaac : Isaac Sim 과 ROS 2 토픽으로 주고받는 브리지. 실 hardware 와 같은 state 계약이라
-                  촉각·diagnostics 도 그대로 나온다.
-      use_mock  : SDK kinematics(clamp→IK→FK) mock. 촉각·diagnostics 는 내보내지 않는다.
-    isaac_* 파라미터는 use_isaac 일 때만 쓰인다. 토픽 인자가 빈 값이면 하드웨어가 topic_prefix
-    기준 기본 이름(joint_states / hand_command / tactile)을 쓴다.
+  <!--
+    ros2_control system macro for one hand
+
+    name                       ros2_control system name, and the hardware node name
+    prefix                     prepended to every joint, actuator and gpio name
+    hand_side                  "left" or "right"
+    can_interface              one CAN bus per hand, tactile included
+    auto_home                  homing on activate, otherwise the ~/home service
+    max_effort                 rated current %, 0~2000
+    control_rate               RT loop Hz
+    rt_cpu_affinity            core the RT loop is pinned to, -1 = unset
+    disabled_actuators         comma separated index list such as "0,1,2,3", empty = all on
+    auto_reconnect             reconnect after a lost link
+    auto_reconnect_timeout_ms  0 = no limit
+    auto_reconnect_home        homing before run on recovery
+    use_mock                   kinematic mock, no tactile and no diagnostics
+    use_isaac                  Isaac Sim over ROS 2 topics, taking priority over use_mock,
+                               with the same state contract as the real hardware
+    isaac_topic_prefix         the three topic names below hang off this prefix
+    isaac_joint_state_topic    Isaac to hardware, sensor_msgs/JointState
+    isaac_joint_command_topic  hardware to Isaac, sensor_msgs/JointState
+    isaac_tactile_prefix       <prefix>/<side>_<finger>_sensor, std_msgs/Float64MultiArray
+    isaac_state_timeout        seconds without a new state before the link counts as lost
   -->
   <xacro:macro name="aidin_hand2_ros2_control"
                params="name prefix hand_side
@@ -90,60 +89,54 @@
                        use_mock:=^|false
                        use_isaac:=^|false
                        isaac_topic_prefix:=^|'/isaac'
-                       isaac_joint_state_topic:=^|''
-                       isaac_joint_command_topic:=^|''
-                       isaac_tactile_prefix:=^|''
+                       isaac_joint_state_topic:=^|'joint_states'
+                       isaac_joint_command_topic:=^|'hand_command'
+                       isaac_tactile_prefix:=^|'tactile'
                        isaac_state_timeout:=^|0.1">
 
-    <!-- launch 에서 온 값은 'true'/'false' 문자열, dispatcher 에서 온 값은 파이썬 bool 이라
-         둘 다 받도록 정규화한다. 문자열 'false' 는 그냥 두면 참이 되어 조건이 뒤집힌다. -->
+    <!-- Takes both the 'true'/'false' string from launch and the python bool -->
     <xacro:property name="hand2_isaac" value="${str(use_isaac).lower() in ['true', '1']}"/>
     <xacro:property name="hand2_mock"
                     value="${str(use_mock).lower() in ['true', '1'] and not hand2_isaac}"/>
 
     <ros2_control name="${name}" type="system">
+
+      <!-- ====================== Hardware interface ====================== -->
+
       <hardware>
-        <xacro:if value="${hand2_isaac}">
-          <plugin>aidin_hand2_hardware/AidinHand2IsaacSystemInterface</plugin>
-          <param name="hand_side">${hand_side}</param>
-          <param name="max_effort">${max_effort}</param>
-          <param name="topic_prefix">${isaac_topic_prefix}</param>
-          <!-- Isaac 상태가 이 시간[s]을 넘겨 끊기면 lifecycle 이 Disconnected 로 떨어지고
-               diagnostics 의 deadline_misses 가 오른다. 0 이하면 검사하지 않는다. -->
-          <param name="state_timeout">${isaac_state_timeout}</param>
-          <xacro:if value="${isaac_joint_state_topic != ''}">
-            <param name="joint_state_topic">${isaac_joint_state_topic}</param>
-          </xacro:if>
-          <xacro:if value="${isaac_joint_command_topic != ''}">
-            <param name="joint_command_topic">${isaac_joint_command_topic}</param>
-          </xacro:if>
-          <xacro:if value="${isaac_tactile_prefix != ''}">
-            <param name="tactile_prefix">${isaac_tactile_prefix}</param>
-          </xacro:if>
-        </xacro:if>
-        <xacro:if value="${hand2_mock}">
-          <plugin>aidin_hand2_hardware/AidinHand2MockSystemInterface</plugin>
-          <param name="hand_side">${hand_side}</param>
-          <param name="max_effort">${max_effort}</param>
-        </xacro:if>
         <xacro:unless value="${hand2_isaac or hand2_mock}">
           <plugin>aidin_hand2_hardware/AidinHand2SystemInterface</plugin>
-
           <param name="hand_side">${hand_side}</param>
           <param name="can_interface">${can_interface}</param>
           <param name="auto_home">${auto_home}</param>
           <param name="max_effort">${max_effort}</param>
           <param name="control_rate">${control_rate}</param>
           <param name="rt_cpu_affinity">${rt_cpu_affinity}</param>
-          <!-- 미가동 actuator index (콤마 구분, 예 "0,1,2,3"). 빈 값 = 전부 가동 -->
           <param name="disabled_actuators">${disabled_actuators}</param>
           <param name="auto_reconnect">${auto_reconnect}</param>
           <param name="auto_reconnect_timeout_ms">${auto_reconnect_timeout_ms}</param>
           <param name="auto_reconnect_home">${auto_reconnect_home}</param>
         </xacro:unless>
+        <xacro:if value="${hand2_mock}">
+          <plugin>aidin_hand2_hardware/AidinHand2MockSystemInterface</plugin>
+          <param name="hand_side">${hand_side}</param>
+          <param name="max_effort">${max_effort}</param>
+        </xacro:if>
+        <xacro:if value="${hand2_isaac}">
+          <plugin>aidin_hand2_hardware/AidinHand2IsaacSystemInterface</plugin>
+          <param name="hand_side">${hand_side}</param>
+          <param name="max_effort">${max_effort}</param>
+          <param name="topic_prefix">${isaac_topic_prefix}</param>
+          <param name="state_timeout">${isaac_state_timeout}</param>
+          <param name="joint_state_topic">${isaac_joint_state_topic}</param>
+          <param name="joint_command_topic">${isaac_joint_command_topic}</param>
+          <param name="tactile_prefix">${isaac_tactile_prefix}</param>
+        </xacro:if>
       </hardware>
 
-      <!-- Actuator 16 = thumb 4 + long finger 3×4. 실·mock 모두 같은 physical state 계약. -->
+      <!-- =========================== Actuator =========================== -->
+
+      <!-- Actuator 16 = thumb 4 + long finger 3x4 -->
         <xacro:hand_actuator joint_name="${prefix}thumb_actuator0"/>
         <xacro:hand_actuator joint_name="${prefix}thumb_actuator1"/>
         <xacro:hand_actuator joint_name="${prefix}thumb_actuator2"/>
@@ -165,7 +158,9 @@
         <xacro:hand_actuator joint_name="${prefix}baby_actuator2"/>
         <xacro:hand_actuator joint_name="${prefix}baby_actuator3"/>
 
-      <!-- Joint 21 — physical position state. -->
+      <!-- ============================= Joint ============================ -->
+
+      <!-- Joint 21 = thumb 5 + long finger 4x4 -->
       <xacro:hand_joint joint_name="${prefix}thumb_joint0"/>
       <xacro:hand_joint joint_name="${prefix}thumb_joint1"/>
       <xacro:hand_joint joint_name="${prefix}thumb_joint2"/>
@@ -192,23 +187,27 @@
       <xacro:hand_joint joint_name="${prefix}baby_joint3"/>
       <xacro:hand_joint joint_name="${prefix}baby_joint4"/>
 
-      <!-- Finger/Palm tactile — mock 은 촉각 미노출(제외). Isaac 브리지는 토픽으로 받아 내보낸다. -->
+      <!-- ============================ Tactile =========================== -->
+
+      <!-- Finger and palm tactile, not exported by the mock -->
       <xacro:unless value="${hand2_mock}">
-        <!-- Finger tactile — 5 × 17 cell -->
+        <!-- Finger tactile, 5 x 17 cells -->
         <xacro:finger_tactile_sensor sensor_name="${prefix}thumb_sensor"/>
         <xacro:finger_tactile_sensor sensor_name="${prefix}index_sensor"/>
         <xacro:finger_tactile_sensor sensor_name="${prefix}middle_sensor"/>
         <xacro:finger_tactile_sensor sensor_name="${prefix}ring_sensor"/>
         <xacro:finger_tactile_sensor sensor_name="${prefix}baby_sensor"/>
 
-        <!-- Palm tactile — 3 region, 58 cell -->
+        <!-- Palm tactile, 3 regions, 58 cells -->
         <xacro:palm_tactile_sensor sensor_name="${prefix}palm_sensor"/>
       </xacro:unless>
 
-      <!-- Homing 은 hardware 가 여는 ~/home service 로만 트리거·통지 (별도 state interface 없음) -->
+      <!-- ============================ Command =========================== -->
 
-      <!-- Mode별 complete command port. 기존 4개 basic controller 중 하나만 lock과 한 port 전체를
-           claim한다. command_lock은 claim-only이며 수치값은 사용하지 않는다. -->
+      <!-- Homing goes through the ~/home service, it has no state interface -->
+
+      <!-- One complete command port per mode, claimed whole with the lock by one controller
+           command_lock is claim-only -->
       <gpio name="${prefix}hand_control">
         <command_interface name="command_lock"/>
       </gpio>
@@ -289,10 +288,11 @@
         <command_interface name="target_effort_pct.baby_actuator3"/>
       </gpio>
 
-      <!-- SDK Diagnostics 노출 — broadcaster 가 ~/hand_diagnostics 로 변환 (Stage 2).
-           hand 전역 7 필드 + actuator 16 각각의 enabled·fault. mock 은 미노출(제외).
-           Isaac 브리지는 브리지 자신이 채운 값(lifecycle·control_cycles·deadline_misses 등)을 낸다.
-           lifecycle 은 double(HandLifecycle ordinal) — broadcaster 가 이름화. -->
+      <!-- ========================== Diagnostics ========================= -->
+
+      <!-- Diagnostics, 7 hand-wide fields plus enabled and fault per actuator, 39 interfaces
+           Not exported by the mock
+           lifecycle and homing_state go out as ordinals, the broadcaster names them -->
       <xacro:unless value="${hand2_mock}">
       <gpio name="${prefix}diagnostics">
         <state_interface name="lifecycle"/>
@@ -301,10 +301,9 @@
         <state_interface name="deadline_misses"/>
         <state_interface name="last_period_ms"/>
         <state_interface name="last_compute_ms"/>
-        <!-- 원점 상태 (HomingState ordinal: 0=NotRun, 1=Succeeded, 2=InProgress, 3=Failed) -->
         <state_interface name="homing_state"/>
 
-        <!-- per-actuator enabled·fault (actuator 16, hand_actuator 호출과 같은 순서) -->
+        <!-- Same order as the hand_actuator calls above -->
         <xacro:diagnostics_actuator_health actuator_base="thumb_actuator0"/>
         <xacro:diagnostics_actuator_health actuator_base="thumb_actuator1"/>
         <xacro:diagnostics_actuator_health actuator_base="thumb_actuator2"/>

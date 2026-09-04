@@ -16,7 +16,7 @@
       <xacro:insert_block name="origin"/>
     </joint>
 
-    <!-- ================================ base link ================================ -->
+    <!-- ============================ Base link =========================== -->
     <link name="${prefix}hand_base_link">
       <inertial>
         <origin xyz="0.00320138275084623 0.000486961406823378 0.0551088066173012" rpy="0 0 0"/>
@@ -43,7 +43,7 @@
       </collision>
     </link>
 
-    <!-- ================================ thumb  ================================ -->
+    <!-- ============================== Thumb ============================= -->
     <link name="${prefix}thumb_link0">
       <inertial>
         <origin xyz="-0.000530418447680113 0.0181722170592327 -0.00309086613343537" rpy="0 0 0"/>
@@ -188,7 +188,7 @@
       <parent link="${prefix}thumb_link1"/>
       <child link="${prefix}thumb_link2"/>
       <axis xyz="0 1 0"/>
-      <limit lower="-0.787143" upper="0.787143" effort="1.2" velocity="1.57"/>  <!-- ±45.1° — joint_clamp.cpp 의 thumb plateau (실측) -->
+      <limit lower="-0.787143" upper="0.787143" effort="1.2" velocity="1.57"/>  <!-- ±45.1°, the thumb plateau in joint_clamp.cpp -->
     </joint>
     <joint name="${prefix}thumb_joint3" type="revolute">
       <origin xyz="0 0.0069 0.0705" rpy="0 0.0461 1.5708"/>
@@ -202,10 +202,10 @@
       <parent link="${prefix}thumb_link3"/>
       <child link="${prefix}thumb_link4"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.500202" effort="1.2" velocity="1.57"/>  <!-- passive: q3 70° 에서 유도 (IP four-bar) -->
+      <limit lower="0" upper="1.500202" effort="1.2" velocity="1.57"/>  <!-- Passive, derived from joint3 at 70°, IP four-bar -->
     </joint>
 
-    <!-- ================================ index finger ================================ -->
+    <!-- ========================== Index finger ========================== -->
     <link name="${prefix}index_link1">
       <inertial>
         <origin xyz="-1.0596E-13 -0.0057308 -0.00027754" rpy="0 0 0"/>
@@ -332,10 +332,10 @@
       <parent link="${prefix}index_link3"/>
       <child link="${prefix}index_link4"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.739111" effort="1.2" velocity="1.57"/>  <!-- passive: q3 90° 에서 유도 (four-bar) -->
+      <limit lower="0" upper="1.739111" effort="1.2" velocity="1.57"/>  <!-- Passive, derived from joint3 at 90°, four-bar -->
     </joint>
 
-    <!-- ================================ middle finger ================================ -->
+    <!-- ========================== Middle finger ========================= -->
     <link name="${prefix}middle_link1">
       <inertial>
         <origin xyz="-1.0596E-13 -0.0057308 -0.00027754" rpy="0 0 0"/>
@@ -462,10 +462,10 @@
       <parent link="${prefix}middle_link3"/>
       <child link="${prefix}middle_link4"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.739111" effort="1.2" velocity="1.57"/>  <!-- passive: q3 90° 에서 유도 (four-bar) -->
+      <limit lower="0" upper="1.739111" effort="1.2" velocity="1.57"/>  <!-- Passive, derived from joint3 at 90°, four-bar -->
     </joint>
 
-    <!-- ================================ ring finger ================================ -->
+    <!-- =========================== Ring finger ========================== -->
     <link name="${prefix}ring_link1">
       <inertial>
         <origin xyz="-1.05960379359615E-13 -0.0057307919555478 -0.000277538692472143" rpy="0 0 0"/>
@@ -592,10 +592,10 @@
       <parent link="${prefix}ring_link3"/>
       <child link="${prefix}ring_link4"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.739111" effort="1.2" velocity="1.57"/>  <!-- passive: q3 90° 에서 유도 (four-bar) -->
+      <limit lower="0" upper="1.739111" effort="1.2" velocity="1.57"/>  <!-- Passive, derived from joint3 at 90°, four-bar -->
     </joint>
 
-    <!-- ================================ baby finger ================================ -->
+    <!-- =========================== Baby finger ========================== -->
     <link name="${prefix}baby_link1">
       <inertial>
         <origin xyz="-1.05956909912663E-13 -0.0057307919555478 -0.000277538692472129" rpy="0 0 0"/>
@@ -722,7 +722,7 @@
       <parent link="${prefix}baby_link3"/>
       <child link="${prefix}baby_link4"/>
       <axis xyz="0 1 0"/>
-      <limit lower="0" upper="1.739111" effort="1.2" velocity="1.57"/>  <!-- passive: q3 90° 에서 유도 (four-bar) -->
+      <limit lower="0" upper="1.739111" effort="1.2" velocity="1.57"/>  <!-- Passive, derived from joint3 at 90°, four-bar -->
     </joint>
 
   </xacro:macro>

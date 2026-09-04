@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include <aidin_hand2/types/description.hpp>
+
 #include "aidin_hand2_msgs/msg/hand_state.hpp"
 #include "controller_interface/chainable_controller_interface.hpp"
 #include "pluginlib/class_list_macros.hpp"
@@ -13,23 +15,40 @@
 #include "realtime_tools/realtime_buffer.hpp"
 
 // Chain interface
-//   claims/exports <side>_<actuator>/effort_pct ×16 for the
-//   ActuatorEffort basic controller.
+//   claims and exports <side>_<actuator>/effort_pct x16 on the ActuatorEffortController
 // State input
-//   subscribes to HandState and copies the complete message into hand_state_ every update.
+//   subscribes to HandState and copies the whole message into hand_state_ every update
 // Template behavior
-//   no values are generated; a higher controller's complete finite reference set is forwarded.
+//   generates nothing, only a complete finite reference set from above is forwarded
 namespace aidin_hand2_examples
 {
+namespace ah2 = aidin_hand2;
+
 namespace
 {
-constexpr std::array<const char *, 16> kActuatorBaseNames = {
-  "thumb_actuator0", "thumb_actuator1", "thumb_actuator2", "thumb_actuator3",
-  "index_actuator1", "index_actuator2", "index_actuator3",
-  "middle_actuator1", "middle_actuator2", "middle_actuator3",
-  "ring_actuator1", "ring_actuator2", "ring_actuator3",
-  "baby_actuator1", "baby_actuator2", "baby_actuator3"};
-}
+
+// Interface names without the prefix
+// The position in the list is the actuator index
+constexpr std::array<const char *, ah2::kActuatorCount> kActuatorBaseNames = {
+  "thumb_actuator0",
+  "thumb_actuator1",
+  "thumb_actuator2",
+  "thumb_actuator3",
+  "index_actuator1",
+  "index_actuator2",
+  "index_actuator3",
+  "middle_actuator1",
+  "middle_actuator2",
+  "middle_actuator3",
+  "ring_actuator1",
+  "ring_actuator2",
+  "ring_actuator3",
+  "baby_actuator1",
+  "baby_actuator2",
+  "baby_actuator3",
+};
+
+}  // namespace
 
 class ActuatorEffortUpperController : public controller_interface::ChainableControllerInterface
 {
@@ -132,12 +151,12 @@ protected:
   {
     const auto state = *hand_state_buffer_.readFromRT();
     if (state) {
-      hand_state_ = *state;  // joint, actuator, tactile, command_state 전부 보존
+      hand_state_ = *state;
       has_hand_state_ = true;
     }
 
-    // TODO(user algorithm):
-    //   hand_state_를 읽고 reference_interfaces_[0..15]에 target_effort_pct를 기록한다.
+    // Write the algorithm here
+    //   read hand_state_ and fill reference_interfaces_[0..15] with target_effort_pct
 
     const bool has_any_reference = std::any_of(
       reference_interfaces_.begin(), reference_interfaces_.end(),

@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include <aidin_hand2/types/description.hpp>
+
 #include "aidin_hand2_msgs/msg/hand_state.hpp"
 #include "controller_interface/chainable_controller_interface.hpp"
 #include "pluginlib/class_list_macros.hpp"
@@ -13,23 +15,40 @@
 #include "realtime_tools/realtime_buffer.hpp"
 
 // Chain interface
-//   claims/exports position ×16 from/to the JointImpedance basic controller reference shape.
-//   Gains are not a reference — they live on the hardware node as parameters.
+//   claims and exports <side>_<active_joint>/position x16 on the JointImpedanceController
 // State input
-//   subscribes to HandState and copies the complete message into hand_state_ every update.
+//   subscribes to HandState and copies the whole message into hand_state_ every update
 // Template behavior
-//   no values are generated; a higher controller's complete finite reference set is forwarded.
+//   generates nothing, only a complete finite reference set from above is forwarded
 namespace aidin_hand2_examples
 {
+namespace ah2 = aidin_hand2;
+
 namespace
 {
-constexpr std::array<const char *, 16> kActiveJointBaseNames = {
-  "thumb_joint0", "thumb_joint1", "thumb_joint2", "thumb_joint3",
-  "index_joint1", "index_joint2", "index_joint3",
-  "middle_joint1", "middle_joint2", "middle_joint3",
-  "ring_joint1", "ring_joint2", "ring_joint3",
-  "baby_joint1", "baby_joint2", "baby_joint3"};
-}
+
+// Interface names without the prefix
+// The position in the list is the active joint index
+constexpr std::array<const char *, ah2::kActiveJointCount> kActiveJointBaseNames = {
+  "thumb_joint0",
+  "thumb_joint1",
+  "thumb_joint2",
+  "thumb_joint3",
+  "index_joint1",
+  "index_joint2",
+  "index_joint3",
+  "middle_joint1",
+  "middle_joint2",
+  "middle_joint3",
+  "ring_joint1",
+  "ring_joint2",
+  "ring_joint3",
+  "baby_joint1",
+  "baby_joint2",
+  "baby_joint3",
+};
+
+}  // namespace
 
 class JointImpedanceUpperController : public controller_interface::ChainableControllerInterface
 {
@@ -132,12 +151,12 @@ protected:
   {
     const auto state = *hand_state_buffer_.readFromRT();
     if (state) {
-      hand_state_ = *state;  // joint, actuator, tactile, command_state 전부 보존
+      hand_state_ = *state;
       has_hand_state_ = true;
     }
 
-    // TODO(user algorithm):
-    //   hand_state_를 읽고 reference_interfaces_에 position[0..15]을 한 update에서 기록한다.
+    // Write the algorithm here
+    //   read hand_state_ and fill reference_interfaces_[0..15] with the target position
 
     const bool has_any_reference = std::any_of(
       reference_interfaces_.begin(), reference_interfaces_.end(),

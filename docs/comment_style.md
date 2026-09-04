@@ -62,13 +62,22 @@ line above and below.
 `=` is the second tier, used only to split a large `private:` block into `Functions` and
 `Variables`.
 
+YAML and CMake banners are the same shape with `#`. **XML and xacro use `=` as the fill**, since
+an XML comment may not contain `--`:
+
+```
+  <!-- ============================= Placement ============================ -->
+```
+
 Generate them, never count by hand:
 
 ```python
-def banner(label, indent=""):
-    avail = 79 - len(indent) - 3 - len(label) - 2
+def banner(label, indent="", comment="//"):
+    close = " -->" if comment == "<!--" else ""
+    fill = "=" if comment == "<!--" else "-"
+    avail = 79 - len(indent) - len(comment) - 1 - len(label) - 2 - len(close)
     left = (avail + 1) // 2
-    return f"{indent}// {'-' * left} {label} {'-' * (avail - left)}"
+    return f"{indent}{comment} {fill * left} {label} {fill * (avail - left)}{close}"
 ```
 
 Rules:
@@ -80,7 +89,30 @@ Rules:
   Inside a section, subgroups are one-line comments, not more banners. Other packages group
   their members with one-line comments and no banner
 - Constructors and destructors live under `Construction`
+- A label names what the section holds, and an instantiation section is named after the thing
+  it instantiates, not after the file it came from
 - Do not use box-drawing dividers (`── … ──`)
+
+## Argument and parameter lists
+
+An argument is described **once, where it is defined**, as a name-keyed aligned list. The macro,
+the launch file and the URDF that only forward it carry one line pointing at that definition,
+never a second copy of the table.
+
+```
+    can_interface              one CAN bus per hand, tactile included
+    disabled_actuators         comma separated index list such as "0,1,2,3", empty = all on
+    isaac_state_timeout        seconds without a new state before the link counts as lost
+```
+
+- The list order matches the declaration order, and both stay in step with the call sites
+- No comment between the declarations themselves, the list above them carries everything
+- Arguments that apply to one backend are separated by a light comment, not a banner:
+  `<!-- Isaac only -->`
+- Every argument reaches the hardware the same way. The URDF holds the default and the macro
+  always emits the `<param>`, so a hardware member initialiser is only the fallback for a URDF
+  written without this macro. Do not add a `<xacro:if>` that emits a parameter only when it is
+  non-empty
 
 ## Constants
 

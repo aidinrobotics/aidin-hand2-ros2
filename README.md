@@ -41,7 +41,7 @@ Prepare the host first: PREEMPT_RT and boot-time CAN-FD bring-up are covered by 
 | `aidin_hand2_msgs` | 4 typed commands, `CommandState`, `HandState`, `HandDiagnostics` |
 | `aidin_hand2_description` | URDF, xacro, meshes, ros2_control description |
 | `aidin_hand2_bringup` | Real, Isaac Sim and mock launch files with controller config |
-| `aidin_hand2_examples` | 4 chainable upper-controller skeletons, optional MANUS glove teleop |
+| `aidin_hand2_examples` | 4 chainable upper-controller skeletons |
 
 ## Build from source
 
