@@ -63,11 +63,11 @@ rosdep install \
   --ignore-src \
   --recursive \
   --rosdistro humble \
-  --skip-keys "aidin_hand2 manus_ros2_msgs" \
+  --skip-keys "aidin_hand2" \
   -y
 ```
 
-`aidin_hand2`는 rosdep key가 아니라 아래에서 설치하는 CMake package입니다. `manus_ros2_msgs`는 optional glove integration이지만 `package.xml`에는 mandatory dependency로 선언돼 있어 일반 환경에서는 skip합니다.
+`aidin_hand2`는 rosdep key가 아니라 아래에서 설치하는 CMake package입니다.
 
 `ros-humble-ros2controlcli`는 이 문서의 `ros2 control ...` 진단·전환 명령에 필요합니다. 현재 wrapper package metadata가 CLI 자체를 runtime dependency로 선언하지 않으므로 명시적으로 설치합니다.
 

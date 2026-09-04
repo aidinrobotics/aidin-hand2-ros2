@@ -154,7 +154,6 @@ ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py
 | Argument | 기본값 | 의미 |
 |---|---|---|
 | `use_rviz` | `false` | RViz 실행 |
-| `use_glove` | `false` | MANUS 글러브 teleop (별도 `manus_data_publisher` 필요) |
 
 왼손 mock 하나에 `joint_state_broadcaster`와 `left_joint_position_controller`만 active입니다.
 

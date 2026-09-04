@@ -659,7 +659,6 @@ update time 으로 대체합니다.
 | `{side}_actuator_effort_controller` | `aidin_hand2_controllers/ActuatorEffortController` | O | 17 | 0 (NONE) | 16 |
 | `{side}_hand_state_broadcaster` | `aidin_hand2_controllers/HandStateBroadcaster` | X | 0 (NONE) | 346 | — |
 | `{side}_diagnostics_broadcaster` | `aidin_hand2_controllers/DiagnosticsBroadcaster` | X | 0 (NONE) | 39 | — |
-| `{side}_glove_teleop_controller` | `aidin_hand2_examples/GloveTeleopController` | O | 16 (하위 reference) | 0 (NONE) | 16 |
 | `{side}_joint_position_upper` | `aidin_hand2_examples/JointPositionUpperController` | O | 17 (하위 reference) | 0 (NONE) | 17 |
 | `{side}_joint_impedance_upper` | `aidin_hand2_examples/JointImpedanceUpperController` | O | 48 (하위 reference) | 0 (NONE) | 48 |
 | `{side}_actuator_position_upper` | `aidin_hand2_examples/ActuatorPositionUpperController` | O | 16 (하위 reference) | 0 (NONE) | 16 |
@@ -909,35 +908,7 @@ Command interface 는 claim 하지 않고(`NONE`), diagnostics 39 개만 claim �
 발행 topic: `/{side}_diagnostics_broadcaster/hand_diagnostics`
 (`aidin_hand2_msgs/HandDiagnostics`).
 
-### 8.7 GloveTeleopController (example)
-
-Chain 최상위입니다. 하위 자세 controller 의 reference 16 개를 command 로 claim 하고,
-같은 형식의 reference 16 개를 자기 이름으로 export 합니다(Humble 의 chainable 최소 1 개
-요구 충족 겸 확장 대비 — 상위가 소비하지 않습니다). `speed_rad_s` reference 는 claim 하지
-않아 하위 controller 가 activation 때 seed 한 속도를 유지합니다.
-
-`{target_controller}` 는 파라미터이며 기본값은 `{side}_joint_position_controller` 입니다.
-
-| # | claim 하는 하위 reference | export 하는 reference | 단위 |
-|---|---|---|---|
-| 0 | `{target_controller}/{side}_thumb_joint0/position` | `{side}_glove_teleop_controller/{side}_thumb_joint0/position` | rad |
-| 1 | `{target_controller}/{side}_thumb_joint1/position` | `{side}_glove_teleop_controller/{side}_thumb_joint1/position` | rad |
-| 2 | `{target_controller}/{side}_thumb_joint2/position` | `{side}_glove_teleop_controller/{side}_thumb_joint2/position` | rad |
-| 3 | `{target_controller}/{side}_thumb_joint3/position` | `{side}_glove_teleop_controller/{side}_thumb_joint3/position` | rad |
-| 4 | `{target_controller}/{side}_index_joint1/position` | `{side}_glove_teleop_controller/{side}_index_joint1/position` | rad |
-| 5 | `{target_controller}/{side}_index_joint2/position` | `{side}_glove_teleop_controller/{side}_index_joint2/position` | rad |
-| 6 | `{target_controller}/{side}_index_joint3/position` | `{side}_glove_teleop_controller/{side}_index_joint3/position` | rad |
-| 7 | `{target_controller}/{side}_middle_joint1/position` | `{side}_glove_teleop_controller/{side}_middle_joint1/position` | rad |
-| 8 | `{target_controller}/{side}_middle_joint2/position` | `{side}_glove_teleop_controller/{side}_middle_joint2/position` | rad |
-| 9 | `{target_controller}/{side}_middle_joint3/position` | `{side}_glove_teleop_controller/{side}_middle_joint3/position` | rad |
-| 10 | `{target_controller}/{side}_ring_joint1/position` | `{side}_glove_teleop_controller/{side}_ring_joint1/position` | rad |
-| 11 | `{target_controller}/{side}_ring_joint2/position` | `{side}_glove_teleop_controller/{side}_ring_joint2/position` | rad |
-| 12 | `{target_controller}/{side}_ring_joint3/position` | `{side}_glove_teleop_controller/{side}_ring_joint3/position` | rad |
-| 13 | `{target_controller}/{side}_baby_joint1/position` | `{side}_glove_teleop_controller/{side}_baby_joint1/position` | rad |
-| 14 | `{target_controller}/{side}_baby_joint2/position` | `{side}_glove_teleop_controller/{side}_baby_joint2/position` | rad |
-| 15 | `{target_controller}/{side}_baby_joint3/position` | `{side}_glove_teleop_controller/{side}_baby_joint3/position` | rad |
-
-### 8.8 상위 skeleton controller 4 종 (example)
+### 8.7 상위 skeleton controller 4 종 (example)
 
 각 skeleton 은 대응 basic controller 의 reference 전체를 claim 하고, **같은 suffix** 를 자기
 이름으로 다시 export 합니다. 즉 claim 이름은 `{target_controller}/<suffix>`, export 이름은
@@ -1027,7 +998,6 @@ SDK 가 없으므로 브리지가 직접 채웁니다. 값의 의미가 real 과
 | Reference | JointImpedanceController | 48 | O | O |
 | Reference | ActuatorPositionController | 16 | O | O |
 | Reference | ActuatorEffortController | 16 | O | O |
-| Reference | GloveTeleopController (example) | 16 | O | O |
 | Reference | 상위 skeleton 4 종 (example) | 17 / 48 / 16 / 16 | O | O |
 
 위 개수는 손 하나 기준입니다. 양손 bringup 이면 `left_`·`right_` 두 벌이므로 두 배가 됩니다.

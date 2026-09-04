@@ -51,9 +51,9 @@ colcon build --symlink-install
 
 사용자 prefix(`--prefix "$HOME/.local"`)에 install했다면 그 경로를 `CMAKE_PREFIX_PATH`에 export한 shell에서 build해야 합니다. `/usr/local`은 CMake 기본 탐색 경로라 export가 필요 없습니다. SDK build tree(`cpp/build`) 자체를 prefix로 넣지 말고 install prefix를 사용하십시오.
 
-## 3. `rosdep`이 `aidin_hand2` 또는 `manus_ros2_msgs`에서 실패
+## 3. `rosdep`이 `aidin_hand2`에서 실패
 
-SDK는 rosdep package가 아니며 MANUS integration은 CMake에서 optional입니다.
+SDK는 rosdep package가 아닙니다.
 
 ```bash
 rosdep install \
@@ -61,11 +61,9 @@ rosdep install \
   --ignore-src \
   --recursive \
   --rosdistro humble \
-  --skip-keys "aidin_hand2 manus_ros2_msgs" \
+  --skip-keys "aidin_hand2" \
   -y
 ```
-
-Glove를 실제로 쓸 때만 호환되는 `manus_ros2_msgs` package를 workspace에 추가합니다.
 
 ## 4. Package 또는 launch를 찾지 못함
 

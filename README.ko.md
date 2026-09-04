@@ -41,7 +41,7 @@ Standalone에서는 각 controller의 `~/command`에 한 cycle의 target을 모�
 | `aidin_hand2_msgs` | 4개 typed command, `CommandState`, `HandState`, `HandDiagnostics` |
 | `aidin_hand2_description` | URDF, xacro, mesh, ros2_control description |
 | `aidin_hand2_bringup` | 실제·Isaac Sim·mock launch와 controller config |
-| `aidin_hand2_examples` | 4개 chainable 상위 controller skeleton, optional MANUS glove teleop controller |
+| `aidin_hand2_examples` | 4개 chainable 상위 controller skeleton |
 
 ## 빌드
 
