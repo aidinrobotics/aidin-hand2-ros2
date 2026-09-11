@@ -15,9 +15,7 @@ find_package(std_srvs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 # C++ SDK, not a ROS package. Point at it with CMAKE_PREFIX_PATH or aidin_hand2_DIR
-# The SDK is a static library, so Eigen has to resolve in this scope for its find_dependency
-find_package(Eigen3 REQUIRED)
-find_package(aidin_hand2 0.4 REQUIRED)  # 0.x treats a minor bump as breaking
+find_package(aidin_hand2 0.5 REQUIRED)  # 0.x treats a minor bump as breaking
 
 add_library(${PROJECT_NAME} SHARED
   src/aidin_hand2_system_interface.cpp

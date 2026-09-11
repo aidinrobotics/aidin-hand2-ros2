@@ -1,8 +1,16 @@
-<div align="right"><sub><a href="README.md">English</a></sub></div>
+<div align="center">
 
-# AIDIN Hand Gen2 ROS 2 &nbsp;[![version](https://img.shields.io/badge/version-0.4.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.4.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#지원-범위)
+<a href="https://www.aidinrobotics.co.kr/"><img height="240" src="docs/assets/aidin_hand2_logo.webp" alt="AIDIN Hand Gen2 — AIDIN Robotics"></a>
+
+<h1>AIDIN Hand Gen2 ROS 2</h1>
 
 AIDIN Hand Gen2 C++ SDK를 `ros2_control`에 연결하는 thin wrapper입니다. CAN-FD protocol, drive state machine, kinematics와 500 Hz hand control loop는 SDK가 소유하며 이 repository는 hardware plugin, controller, message, URDF와 launch를 제공합니다.
+
+[![version](https://img.shields.io/badge/version-0.5.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.5.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#지원-범위)
+
+[빌드](#빌드) | [문서](#문서) | [Changelog](CHANGELOG.md) | [공식 사이트](https://www.aidinrobotics.co.kr/) | [English](README.md) | 한국어
+
+</div>
 
 ## 구조
 
@@ -27,7 +35,7 @@ Standalone에서는 각 controller의 `~/command`에 한 cycle의 target을 모�
 | OS | Ubuntu 22.04 |
 | ROS 2 | Humble |
 | Control framework | `ros2_control` |
-| SDK | `aidin_hand2` 0.4.x — [`aidin_hand2.repos`](aidin_hand2.repos) 참조 |
+| SDK | `aidin_hand2` 0.5.x — [`aidin_hand2.repos`](aidin_hand2.repos) 참조 |
 | CAN interface | USB CAN-FD adapter (SocketCAN), nominal 1 Mbit/s / data phase 5 Mbit/s |
 
 실물 host의 PREEMPT_RT와 boot-time CAN-FD 설정은 SDK의 [real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/04_real_time_kernel_setup.md)과 [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_can_fd_setup.md)을 먼저 완료하십시오.
@@ -122,7 +130,7 @@ chaining 시 reference interface로 보냅니다.
 
 ### 시작하기
 
-- [설치](docs/ko/01_installation.md) — 사전 조건, 의존성, SDK·wrapper build
+- [설치](docs/ko/01_installation.md) — 의존성, SDK·wrapper build
 - [첫 bringup](docs/ko/02_first_bringup.md) — mock, 실물, homing, 첫 command, 종료
 
 ### 사용

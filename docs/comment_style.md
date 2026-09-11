@@ -231,8 +231,8 @@ Remaining, in order:
    `urdf/aidin_hand2.urdf.xacro`, `_left`, `_right`, `launch/description.launch.py`, `package.xml`
 2. `aidin_hand2_bringup` — `config/hand_bringup.yaml` and `launch/aidin_hand2.launch.py` first,
    then the controllers, mock and isaac config/launch pairs, `gui_bridge.launch.py`, `package.xml`
-3. `aidin_hand2_examples` — glove_teleop `.hpp`, `.cpp`, `.yaml`, `glove_calibrate.py`, the four
-   upper controllers, `plugin/*.xml`, `CMakeLists.txt`, `package.xml`
+3. `aidin_hand2_examples` — the four upper controllers, `plugin/*.xml`, `CMakeLists.txt`,
+   `package.xml`
 4. Markdown — `docs/en` mirroring `docs/ko`, the three package READMEs and `EXAMPLE.md`,
    and the `docs/ko` links in `README.md` repointed to `docs/en`. `docs/ko` and `README.ko.md`
    stay Korean

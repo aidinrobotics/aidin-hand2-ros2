@@ -247,7 +247,8 @@ Default YAML은 timeout 0, 즉 무제한이고 reconnect home true입니다. 통
 1. 외부 안전 상태를 확보합니다.
 2. 전원·배선·SocketCAN error와 drive fault 원인을 제거합니다.
 3. Auto reconnect가 동작 중이면 중복 manual call 전에 lifecycle를 확인합니다.
-4. `Faulted`에서 reconnect를 호출합니다.
+4. `Faulted`에서 reconnect를 호출합니다. `Faulted`가 아니면 거부되므로, 통신이 살아 있는 상태에서
+   다시 수립하려면 [Hardware lifecycle](#hardware-lifecycle)의 inactive → active 전환을 씁니다.
 
 ```bash
 ros2 service call \

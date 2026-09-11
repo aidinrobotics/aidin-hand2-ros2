@@ -1,8 +1,16 @@
-<div align="right"><sub><a href="README.ko.md">한국어</a></sub></div>
+<div align="center">
 
-# AIDIN Hand Gen2 ROS 2 &nbsp;[![version](https://img.shields.io/badge/version-0.4.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.4.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
+<a href="https://www.aidinrobotics.co.kr/"><img height="240" src="docs/assets/aidin_hand2_logo.webp" alt="AIDIN Hand Gen2 — AIDIN Robotics"></a>
+
+<h1>AIDIN Hand Gen2 ROS 2</h1>
 
 A thin `ros2_control` wrapper around the AIDIN Hand Gen2 C++ SDK. The SDK owns the CAN-FD protocol, drive state machine, kinematics, and the 500 Hz control loop; this repository provides the hardware plugin, controllers, messages, URDF, and launch files.
+
+[![version](https://img.shields.io/badge/version-0.5.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.5.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
+
+[Build](#build-from-source) | [Documentation](#documentation) | [Changelog](CHANGELOG.md) | [Official Site](https://www.aidinrobotics.co.kr/) | English | [한국어](README.ko.md)
+
+</div>
 
 ## Architecture
 
@@ -27,7 +35,7 @@ Standalone, each controller's `~/command` carries one cycle's target: all four m
 | Operating System | Ubuntu 22.04 |
 | ROS 2 | Humble |
 | Control framework | `ros2_control` |
-| SDK | `aidin_hand2` 0.4.x — see [`aidin_hand2.repos`](aidin_hand2.repos) |
+| SDK | `aidin_hand2` 0.5.x — see [`aidin_hand2.repos`](aidin_hand2.repos) |
 | CAN interface | USB CAN-FD adapter (SocketCAN), 1 Mbit/s nominal / 5 Mbit/s data phase |
 
 Prepare the host first: PREEMPT_RT and boot-time CAN-FD bring-up are covered by the SDK's [real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/04_real_time_kernel_setup.md) and [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/05_can_fd_setup.md).
@@ -126,7 +134,7 @@ Written in Korean; an English translation is planned.
 
 ### Getting started
 
-- [Installation](docs/ko/01_installation.md) — prerequisites, dependencies, SDK and wrapper build
+- [Installation](docs/ko/01_installation.md) — dependencies, SDK and wrapper build
 - [First bringup](docs/ko/02_first_bringup.md) — mock, real hand, homing, first command, shutdown
 
 ### Using the hand

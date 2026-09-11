@@ -1,7 +1,8 @@
-# SDK revision this release is built against.
+# SDK revision to clone. Any 0.5.x works, because the wrapper's
+# find_package(aidin_hand2 0.5 REQUIRED) uses SameMinorVersion.
 #   vcs import .. < aidin_hand2.repos
 repositories:
   aidin-hand2-sdk:
     type: git
     url: git@github.com:aidinrobotics/aidin-hand2-sdk.git
-    version: v0.4.0
+    version: v0.5.1

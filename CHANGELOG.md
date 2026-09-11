@@ -7,6 +7,93 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-10
+
+Requires SDK 0.5.x, whose lifecycle now reports what the hand reached rather than what was asked
+of it. Glove teleop is gone. The URDF joint limits were wrong and are corrected. Read the
+**Breaking** entries before upgrading.
+
+### Removed
+
+- **Breaking.** Glove teleop. The sources, the config, the scripts and the `use_glove` wiring in
+  `aidin_hand2_bringup` are removed. `aidin_hand2_examples` no longer builds conditionally on
+  `manus_ros2_msgs`, so it always builds.
+- **Breaking.** The controllers no longer publish `/diagnostics`. Read the hand's health from
+  `~/hand_diagnostics` instead, which is the single publisher now.
+
+### Changed
+
+- **Breaking: requires SDK 0.5.x.** `find_package(aidin_hand2 0.5 REQUIRED)` fails at configure
+  time against 0.4. The compatibility policy is `SameMinorVersion`.
+- **Breaking: `~/reconnect` fails outside a fault.** The service returns the SDK's message, and
+  the SDK now allows `reconnect()` only in `Faulted`. Rebuilding a healthy link is no longer
+  possible through this service; deactivate and activate the hardware component instead.
+- **Breaking: `~/run` blocks until the drives confirm Operation Enabled**, up to 4000 ms, and the
+  service reports the failure when they do not. It used to return as soon as the SDK recorded the
+  request, so a success now means the hardware got there.
+- **Breaking: `~/stop` reports failure when the drives do not confirm the quick stop.** The
+  lifecycle stays `Running` in that case, which means the actuators may still hold the last
+  command. Power the hand off rather than retrying.
+- **A command with a non-finite value is dropped instead of raising an error.** The previous
+  command keeps going out and the SDK increments its own counter, so a bad target no longer shows
+  up as a failed write. Check the value before you publish it.
+- **`aidin_hand2` is no longer declared in any `package.xml`.** It is neither a ROS package nor a
+  rosdep key, so no resolver could act on the name and every `rosdep install` needed
+  `--skip-keys "aidin_hand2"` to get past it. The requirement lives in each `CMakeLists.txt`,
+  where `find_package(aidin_hand2 0.5 REQUIRED)` enforces it at configure time.
+- Eigen is no longer looked for in `aidin_hand2_hardware`. The SDK stopped exposing it as a
+  dependency, because it is compiled into the prebuilt kinematics library.
+- The Isaac topic parameters are always created rather than conditionally, which makes them
+  consistent with the other arguments. The defaults live in the xacro.
+- The joint and actuator count constants come from the SDK's `description.hpp` instead of being
+  declared in `aidin_hand2_controllers` and `aidin_hand2_examples`.
+
+### Added
+
+- `use_left_hand` and `use_right_hand` arguments on the mock launch, with the matching `right_*`
+  entries in `controllers_mock.yaml`. The defaults are aligned across the xacro, the launch file
+  and the YAML.
+
+### Fixed
+
+- **The URDF joint limits disagreed with the SDK.** The 16 active limits now match the measured
+  bounds in the SDK's `joint_clamp.cpp`, and the five passive `q4` limits are derived from the
+  `q3` limit through the four-bar linkage. A planner reading the URDF was allowed to ask for
+  poses the SDK clamps.
+
+### Documentation
+
+- **The install guide duplicated the SDK's build and install commands, and the copy had gone stale
+  in three places.** It passed `-DAIDIN_HAND2_BUILD_WEB_BRIDGE=OFF`, which the SDK does not
+  define, installed `libeigen3-dev`, which the SDK stopped needing, and omitted `sudo ldconfig`,
+  without which the wrapper builds and then fails to load. The SDK section links the SDK document
+  instead and keeps only the check that `find_package` will succeed, so one procedure has one
+  home. The thumb ball screw lead is called out there, because building for the wrong lead moves
+  two thumb actuators by twice or half the commanded distance.
+- The prerequisites and workspace layout sections are gone. The list repeated what the following
+  sections install, and the tree was the standard colcon layout. What the reader needs from them,
+  the ROS 2 install link and the `COLCON_IGNORE` that keeps colcon out of an SDK clone under
+  `src/`, moved to the header and the SDK section. The guide is three sections.
+- `rosdep install` no longer carries `--recursive`, which is not an option and fails before rosdep
+  does anything, nor `--skip-keys "aidin_hand2"`, which the manifests no longer need. The package
+  config check reads the installed version rather than being a bare `test -f`, which printed
+  nothing either way.
+- **The service contract table described three of the four services incorrectly.** `~/run` and
+  `~/stop` block until the drives confirm, and the table now names both timeouts. `~/reconnect`
+  succeeds only while the lifecycle is `Faulted`, and manual recovery names the hardware component
+  transition for the case where the link is alive.
+- **Troubleshooting covers the two failures a first build actually hits.** `ament_cmake` not found
+  means the ROS 2 environment was not sourced in that shell, and an SDK in two prefixes means
+  `find_package` may pick either one — with the libraries of two releases ending up in one
+  process. Section 3 no longer documents a rosdep failure that cannot happen any more.
+- Both READMEs carry the centered header and the logo, matching the SDK. The three package
+  READMEs and `EXAMPLE.md` are in English, `aidin_hand2_bringup` documents the Isaac launch file
+  and its config, and `EXAMPLE.md` no longer points at a TODO that the code had moved past.
+- `docs/comment_style.md` records the comment rules, which are the SDK's, and they are applied
+  across `aidin_hand2_msgs`, `aidin_hand2_hardware` and `aidin_hand2_controllers`.
+- `08_interface_matrix` drops the controller table row and section 8.7 that described glove
+  teleop, and 8.8 becomes 8.7.
+
 ## [0.4.0] - 2026-08-26
 
 ### Added

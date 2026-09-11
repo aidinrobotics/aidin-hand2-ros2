@@ -1,54 +1,25 @@
 # 설치
 
-이 문서는 Ubuntu 22.04·ROS 2 Humble 환경에서 SDK와 wrapper를 build하고 mock을 먼저 통과한 뒤 실제 hand를 의도적으로 homing하는 절차입니다.
+Ubuntu 22.04·ROS 2 Humble 환경에서 SDK를 install하고 wrapper package 6개를 build하는 절차입니다.
+실물 로봇 핸드를 처음 움직이는 절차는 [첫 bringup](02_first_bringup.md)에 있습니다.
 
-## 1. 사전 조건
-
-- Ubuntu 22.04
-- ROS 2 Humble desktop 또는 필요한 base package
-- `ros-dev-tools`, `rosdep`, `colcon`
-- AIDIN Hand Gen2 SDK source
-- AIDIN Hand Gen2 ROS 2 wrapper source
-- 실물 사용 시 CAN-FD adapter와 안전한 작업 공간
-
-ROS 2 Humble의 Ubuntu binary package는 Ubuntu 22.04 Jammy를 대상으로 합니다. ROS 2가 아직 없다면 [공식 Humble Ubuntu 설치 절차](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html)로 설치하십시오.
+ROS 2 Humble의 Ubuntu binary package는 Ubuntu 22.04 Jammy를 대상으로 합니다. ROS 2가 아직 없다면
+[공식 Humble Ubuntu 설치 절차](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html)로
+먼저 설치하십시오. 설치되어 있다면 아래 두 명령이 `humble`을 출력합니다.
 
 ```bash
 source /opt/ros/humble/setup.bash
 printenv ROS_DISTRO
 ```
 
-결과가 `humble`인지 확인합니다.
+## 1. ROS 2 dependency 설치
 
-## 2. Workspace layout
-
-권장 layout:
-
-```text
-~/your_ws/
-├── src/
-│   └── aidin-hand2-ros2/
-├── build/
-├── install/
-└── log/
-```
-
-SDK는 이 workspace에 포함되지 않습니다. Plain CMake package라 colcon workspace 밖에서 따로 build·install하고, wrapper는 설치된 결과를 `find_package(aidin_hand2)`로 찾습니다. Build tree는 SDK 문서의 표준 위치인 `cpp/build`, install prefix는 system prefix `/usr/local`입니다. SDK repository를 편의상 `src/` 아래에 두더라도 root의 `COLCON_IGNORE` 때문에 colcon은 무시합니다.
-
-## 3. Dependency 설치
-
-SDK dependency:
+Compiler와 CAN 진단 도구를 포함한 SDK dependency는 2절에서 SDK 문서를 따라 설치하므로, 여기서는
+wrapper에 필요한 것만 설치합니다.
 
 ```bash
 sudo apt update
-sudo apt install -y \
-  build-essential \
-  cmake \
-  libeigen3-dev \
-  libspdlog-dev \
-  can-utils \
-  ros-dev-tools \
-  ros-humble-ros2controlcli
+sudo apt install -y ros-dev-tools ros-humble-ros2controlcli
 ```
 
 ROS package dependency를 설치합니다.
@@ -61,48 +32,43 @@ rosdep update
 rosdep install \
   --from-paths src/aidin-hand2-ros2 \
   --ignore-src \
-  --recursive \
   --rosdistro humble \
-  --skip-keys "aidin_hand2" \
   -y
 ```
 
-`aidin_hand2`는 rosdep key가 아니라 아래에서 설치하는 CMake package입니다.
+## 2. SDK build와 설치
 
-`ros-humble-ros2controlcli`는 이 문서의 `ros2 control ...` 진단·전환 명령에 필요합니다. 현재 wrapper package metadata가 CLI 자체를 runtime dependency로 선언하지 않으므로 명시적으로 설치합니다.
+Wrapper는 설치된 SDK를 `find_package`로 찾으므로 SDK를 먼저 install해야 합니다. build·install·제거
+절차는 SDK 문서의
+[SDK build & install](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/06_sdk_build_and_install.md)에
+있습니다. 그 문서의 1절부터 3절까지 완료한 뒤 돌아오십시오.
 
-## 4. SDK build와 설치
+SDK는 plain CMake package이므로 colcon workspace 밖에서 따로 build합니다. 편의상 `src/` 아래에
+clone해도 SDK repository root의 `COLCON_IGNORE` 때문에 colcon이 무시합니다.
 
-SDK repository root에서 build하고 install합니다. Wrapper는 web bridge를 쓰지 않으므로 꺼서 build 시간을 줄입니다.
+> [!IMPORTANT]
+> configure에서 thumb ball screw의 lead를 하드웨어에 맞게 선택해야 하고, 맞지 않는 쪽으로 빌드하면
+> thumb의 actuator 두 개가 **두 배 또는 절반으로 움직입니다.** 선택 방법은 SDK 문서의
+> [2. Build](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/06_sdk_build_and_install.md#2-build)에
+> 있습니다.
 
-```bash
-cd <aidin-hand2-sdk clone 경로>
-
-cmake -S cpp -B cpp/build \
-  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  -DAIDIN_HAND2_BUILD_WEB_BRIDGE=OFF
-
-cmake --build cpp/build -j"$(nproc)"
-ctest --test-dir cpp/build --output-on-failure
-sudo cmake --install cpp/build
-```
-
-Package config를 확인합니다.
+설치 결과를 확인합니다. `<prefix>`는 install한 prefix이고, 지정하지 않았다면 `/usr/local`입니다.
 
 ```bash
-test -f /usr/local/lib/cmake/aidin_hand2/aidin_hand2Config.cmake
+grep -m1 'set(PACKAGE_VERSION "' <prefix>/lib/cmake/aidin_hand2/aidin_hand2ConfigVersion.cmake
 ```
 
-`/usr/local`은 CMake 기본 탐색 경로이므로 `CMAKE_PREFIX_PATH` 설정이 필요 없습니다.
+출력된 version이 [`aidin_hand2.repos`](../../aidin_hand2.repos)의 `version` 필드와 minor까지 같으면
+됩니다. wrapper가 `SameMinorVersion` 정책으로 찾으므로 patch는 달라도 됩니다.
 
-Sudo를 쓰지 않으려면 사용자 prefix에 install하고 그 경로를 새 terminal마다 `CMAKE_PREFIX_PATH`에 넣습니다. 자동화할 때는 workspace-specific setup script에 넣고 global shell profile에 hard-code하지 않는 편이 version 관리에 안전합니다.
+`/usr/local`에 install했다면 `ldconfig -p | grep aidin_hand2`에 `libaidin_hand2`와
+`libaidin_hand2_kinematics` 두 항목도 나옵니다. `/usr/local`은 CMake 기본 탐색 경로이므로
+`CMAKE_PREFIX_PATH` 설정이 필요 없습니다. 사용자 prefix에 install했다면 아래 wrapper build를
+실행하는 shell에서 그 경로를 `CMAKE_PREFIX_PATH`에 넣습니다.
 
-```bash
-cmake --install cpp/build --prefix "$HOME/.local"
-export CMAKE_PREFIX_PATH="$HOME/.local${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
-```
+## 3. Wrapper build
 
-## 5. Wrapper build
+Workspace root에서 ROS 2 환경을 source한 뒤 6개 package를 build합니다.
 
 ```bash
 cd ~/your_ws
@@ -110,7 +76,6 @@ source /opt/ros/humble/setup.bash
 
 colcon build \
   --symlink-install \
-  --event-handlers console_cohesion+ \
   --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
 ```
 
@@ -133,6 +98,8 @@ aidin_hand2_msgs
 ```
 
 > [!NOTE]
-> 이 repository에는 현재 automated ROS 2 test가 없습니다. `colcon test`가 통과하더라도 wrapper behavior를 검증하는 test case가 있다는 뜻은 아닙니다. 아래 mock smoke test를 별도로 수행하십시오.
+> 이 repository에는 현재 automated ROS 2 test가 없습니다. `colcon test`가 통과하더라도 wrapper
+> behavior를 검증하는 test case가 있다는 뜻은 아니므로, 실물 없이 동작을 확인하려면 다음 문서의
+> mock smoke test를 수행하십시오.
 
 다음 단계는 [첫 bringup](02_first_bringup.md)입니다.

@@ -23,6 +23,27 @@ ip -details -statistics link show can0
 
 Launch command, 최종 config YAML, `/rosout`, hand diagnostics와 발생 시각을 보존합니다.
 
+### `ament_cmake`를 찾지 못함
+
+첫 build에서 가장 흔한 실패입니다.
+
+```text
+Could not find a package configuration file provided by "ament_cmake"
+```
+
+ROS 2 환경을 source하지 않은 shell에서 `colcon build`를 실행한 경우입니다. `AMENT_PREFIX_PATH`가
+비어 있어 colcon이 CMake에 넘길 경로가 없고, 모든 ament package를 찾지 못합니다.
+
+```bash
+printenv ROS_DISTRO        # humble 이 나와야 합니다. 비어 있으면 source 안 된 것
+```
+
+```bash
+source /opt/ros/humble/setup.bash
+```
+
+shell마다 필요합니다. 새 terminal을 열거나 terminal을 재시작하면 다시 실행하십시오.
+
 ## 2. `find_package(aidin_hand2)` 실패
 
 대표 증상:
@@ -44,6 +65,7 @@ SDK를 install한 뒤 wrapper를 build합니다.
 ```bash
 cd <aidin-hand2-sdk clone 경로>
 sudo cmake --install cpp/build
+sudo ldconfig
 
 cd ~/your_ws
 colcon build --symlink-install
@@ -51,19 +73,34 @@ colcon build --symlink-install
 
 사용자 prefix(`--prefix "$HOME/.local"`)에 install했다면 그 경로를 `CMAKE_PREFIX_PATH`에 export한 shell에서 build해야 합니다. `/usr/local`은 CMake 기본 탐색 경로라 export가 필요 없습니다. SDK build tree(`cpp/build`) 자체를 prefix로 넣지 말고 install prefix를 사용하십시오.
 
-## 3. `rosdep`이 `aidin_hand2`에서 실패
-
-SDK는 rosdep package가 아닙니다.
+`find` 결과에 경로가 **두 곳 이상** 나오면 prefix 혼재가 원인일 수 있습니다. `find_package`가 어느
+쪽을 찾을지 정해지지 않으므로, 남길 하나만 두고 나머지는 지우십시오. 어느 prefix에 어느 버전이
+있는지는 이렇게 확인합니다.
 
 ```bash
-rosdep install \
-  --from-paths src/aidin-hand2-ros2 \
-  --ignore-src \
-  --recursive \
-  --rosdistro humble \
-  --skip-keys "aidin_hand2" \
-  -y
+grep -m1 'set(PACKAGE_VERSION "' <prefix>/lib/cmake/aidin_hand2/aidin_hand2ConfigVersion.cmake
 ```
+
+Build는 통과했는데 실행 시점에 `libaidin_hand2_kinematics.so.<version> not found`가 나오면
+`ldconfig`를 실행하지 않은 경우입니다. 실제로 링크된 경로는 이렇게 확인합니다.
+
+```bash
+ldd build/aidin_hand2_hardware/libaidin_hand2_hardware.so | grep aidin_hand2
+```
+
+두 줄이 같은 prefix를 가리켜야 합니다. 서로 다르면 두 릴리스가 섞인 상태입니다.
+
+## 3. `rosdep` 실행 실패
+
+`sources.cache` 관련 오류는 `rosdep`이 초기화되지 않은 경우입니다.
+
+```bash
+sudo rosdep init      # 이미 했다면 already exists 로 끝납니다
+rosdep update
+```
+
+`Cannot locate rosdep definition for [<이름>]`은 그 이름이 rosdep key도 ROS package도 아니라는
+뜻입니다. `--skip-keys "<이름>"`으로 제외합니다.
 
 ## 4. Package 또는 launch를 찾지 못함
 

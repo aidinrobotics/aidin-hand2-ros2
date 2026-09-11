@@ -268,10 +268,10 @@ drive가 실제 수신·적용했다는 확인은 아닙니다. `transmit_succee
 
 | Service | 성공 message | 계약 |
 |---|---|---|
-| `/left_hand_control/run` | `running` | Drive enable 또는 stop 뒤 재개 |
-| `/left_hand_control/stop` | `stopped` | Blocking quick stop |
+| `/left_hand_control/run` | `running` | Drive enable 확인까지 blocking, 최대 4000 ms |
+| `/left_hand_control/stop` | `stopped` | Quick stop 도달 확인까지 blocking, 최대 500 ms |
 | `/left_hand_control/home` | `homing started — poll diagnostics 'homing_state'` | `start_homing()` non-blocking trigger |
-| `/left_hand_control/reconnect` | `reconnected — call ~/run to resume control` | 통신만 복구, 별도 `run` 필요 |
+| `/left_hand_control/reconnect` | `reconnected — call ~/run to resume control` | lifecycle이 `Faulted`일 때만, 통신만 복구 |
 
 Service node는 hardware component와 별도 single-thread executor를 사용합니다. `home` 성공은
 시작 접수만 뜻하며 완료는 `HandDiagnostics.homing_state`로 확인합니다.
@@ -290,6 +290,10 @@ ros2 service call /left_hand_control/reconnect std_srvs/srv/Trigger "{}"
 - `stop`은 blocking quick stop입니다.
 - `home`은 non-blocking trigger입니다. 완료는 diagnostics의 `homing_state=Succeeded`로 확인합니다.
 - `reconnect`는 통신만 복구합니다. 성공 뒤 `run`을 별도로 호출합니다.
+- `reconnect`는 lifecycle이 `Faulted`일 때만 성공합니다. 다른 상태에서 호출하면 `success` 필드가
+  false이고 `message` 필드가 `Cannot reconnect hand: not faulted — reconnect() recovers from
+  Faulted only`입니다.
+- 실패 응답의 `message` 필드는 SDK 예외 문구를 그대로 전달합니다.
 
 ### Tuning parameter
 

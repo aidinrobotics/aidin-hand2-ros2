@@ -13,7 +13,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(realtime_tools REQUIRED)
 find_package(aidin_hand2_msgs REQUIRED)
-find_package(aidin_hand2 0.4 REQUIRED)  # 0.x treats a minor bump as breaking
+find_package(aidin_hand2 0.5 REQUIRED)  # 0.x treats a minor bump as breaking
 
 add_library(${PROJECT_NAME} SHARED
   src/joint_position_controller.cpp
