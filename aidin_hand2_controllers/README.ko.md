@@ -6,8 +6,8 @@
 [Bringup](../docs/ko/04_bringup.md)에서 joint position command로 동작을 확인하십시오.
 controller 설정은 [7. Configuration](#7-configuration), message 필드는 [Topics](../aidin_hand2_msgs/README.ko.md)에 있습니다.
 
-`{side}`는 `left` 또는 `right`입니다. `~/command`의 `~`는 controller 이름을 나타냅니다.
-왼손 joint position controller의 입력 topic은 `/left_joint_position_controller/command`입니다.
+`{side}`는 `left` 또는 `right`입니다. `~/cmd`의 `~`는 controller 이름을 나타냅니다.
+왼손 joint position controller의 입력 topic은 `/left_joint_position_controller/cmd`입니다.
 
 ## Contents
 
@@ -48,7 +48,7 @@ joint impedance의 gain은 [6. Runtime settings](../aidin_hand2_hardware/README.
 > [!IMPORTANT]
 > actuator 계열 controller에는 도달 범위 보정이 적용되지 않습니다. actuator position의 목표는
 > `hand_state.actuator_position`에서 읽은 현재 값 근처에서 시작하십시오. effort의 단위와 상한은
-> [2.4 ActuatorEffortCommand](../aidin_hand2_msgs/README.ko.md#24-actuatoreffortcommand)에 있습니다.
+> [2. Command message](../aidin_hand2_msgs/README.ko.md#2-command-message)에 있습니다.
 
 > [!NOTE]
 > joint impedance controller는 SDK에서 개발 중이므로 사용하지 마십시오. 이후 버전에서 동작이 바뀔 수 있습니다.
@@ -70,20 +70,20 @@ wrapper의 broadcaster에는 `hand_side`를 지정합니다. 발행 주기는 `u
 
 ## 2. Send a command
 
-외부 node에서 사용할 때는 활성화된 controller의 `~/command` topic에 message를 보냅니다.
-message 하나는 길이 16인 배열이며, 순서는
-[4. Joint and actuator order](../aidin_hand2_msgs/README.ko.md#4-joint-and-actuator-order)에 있습니다.
+외부 node에서 사용할 때는 활성화된 controller의 `~/cmd` topic에 `sensor_msgs/JointState`를 보냅니다.
+`name` 필드로 축을 지정하고 순서는 자유입니다. 이름과 controller가 읽는 필드는
+[2. Command message](../aidin_hand2_msgs/README.ko.md#2-command-message)에 있습니다.
 
-| Controller name | Message type |
+| Controller name | Field read |
 |---|---|
-| `{side}_joint_position_controller` | `aidin_hand2_msgs/msg/JointPositionCommand` |
-| `{side}_joint_impedance_controller` | `aidin_hand2_msgs/msg/JointImpedanceCommand` |
-| `{side}_actuator_position_controller` | `aidin_hand2_msgs/msg/ActuatorPositionCommand` |
-| `{side}_actuator_effort_controller` | `aidin_hand2_msgs/msg/ActuatorEffortCommand` |
+| `{side}_joint_position_controller` | `position` [rad] |
+| `{side}_joint_impedance_controller` | `position` [rad] |
+| `{side}_actuator_position_controller` | `position` [encoder count] |
+| `{side}_actuator_effort_controller` | `effort` [정격 전류의 0.1%] |
 
 로봇 핸드에서는 controller가 `active`이고, `lifecycle`이 `Running`이며, `homing_state`가
 `Succeeded`인지 확인한 뒤 전송합니다. mock에서는 homing 없이 보낼 수 있습니다.
-처음 보낼 때와 controller를 바꾼 뒤에는 16개 목표값을 모두 유한한 값으로 지정하십시오.
+처음 보낼 때와 controller를 바꾼 뒤에는 16개 이름을 모두 담아 보내십시오.
 
 실제 topic 전송 명령은 [3. Send a command](../docs/ko/05_control_guide.md#3-send-a-command)에,
 service 호출과 상태 확인은 같은 문서의 [Prepare the robot hand](../docs/ko/05_control_guide.md#2-prepare-the-robot-hand)에 있습니다.
@@ -193,7 +193,7 @@ mock은 controller 연결과 목표값 전달을 확인하는 용도입니다. �
 사용자 node가 상위 controller의 입력 topic에 목표값을 보내는 경로도 가능합니다.
 입력 topic과 message 타입은 상위 controller가 정의합니다. 제공된 skeleton에는 목표 입력 subscriber가
 없으므로 이 경로를 사용하려면 직접 구현해야 합니다.
-chained mode에서는 command controller가 `~/command` topic 대신 상위 controller의 입력을 사용합니다.
+chained mode에서는 command controller가 `~/cmd` topic 대신 상위 controller의 입력을 사용합니다.
 
 연결할 reference 이름과 구현·실행 예제는
 [Chainable controller examples](../aidin_hand2_examples/EXAMPLE.md)에 있습니다.

@@ -93,8 +93,9 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field homing_st
 
 직접 topic을 사용할 때는 대상 controller가 `active`이고 chained mode가 아니어야 합니다.
 로봇 핸드는 `lifecycle=Running`, `homing_state=Succeeded`도 확인합니다. mock에는 homing이 없습니다.
-명령은 길이 16인 배열이며, 최초 입력과 controller 전환 후 첫 입력은 16개 모두 유한한 값이어야 합니다.
-배열 순서는 [Joint and actuator order](../../aidin_hand2_msgs/README.ko.md#4-joint-and-actuator-order)에 있습니다.
+명령은 `sensor_msgs/JointState`이고 `name` 필드로 축을 지정합니다. 최초 입력과 controller 전환 후 첫
+입력은 16개 이름을 모두 담아야 합니다. 이름과 읽는 필드는
+[Command message](../../aidin_hand2_msgs/README.ko.md#2-command-message)에 있습니다.
 
 기본 launch는 joint position controller를 활성화합니다. 다른 제어 방식의 예제를 실행하기 전에는
 [Switch controllers](../../aidin_hand2_controllers/README.ko.md#3-switch-controllers)로 해당 controller를
@@ -102,18 +103,31 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field homing_st
 
 ### 3.1 Joint position
 
-다음은 왼손 index finger의 joint1을 0.10 rad, joint2를 0.20 rad로 보내는 예입니다.
+다음은 SDK 예제 `09_joint_position.cpp`의 grasp 자세를 왼손에 보내는 예입니다.
 
 ```bash
 ros2 topic pub --once \
-  /left_joint_position_controller/command \
-  aidin_hand2_msgs/msg/JointPositionCommand \
-  "{target_position_rad: [
-      0.0, 0.0, 0.0, 0.0,
-      0.10, 0.20, 0.0,
-      0.0, 0.0, 0.0,
-      0.0, 0.0, 0.0,
-      0.0, 0.0, 0.0]}"
+  /left_joint_position_controller/cmd \
+  sensor_msgs/msg/JointState \
+  "{name: [left_thumb_joint0, left_thumb_joint1, left_thumb_joint2, left_thumb_joint3,
+           left_index_joint1, left_index_joint2, left_index_joint3,
+           left_middle_joint1, left_middle_joint2, left_middle_joint3,
+           left_ring_joint1, left_ring_joint2, left_ring_joint3,
+           left_baby_joint1, left_baby_joint2, left_baby_joint3],
+    position: [0.20, 0.35, 0.10, 0.25,
+               0.08, 0.45, 0.30,
+               0.04, 0.55, 0.40,
+               -0.04, 0.65, 0.50,
+               -0.08, 0.75, 0.60]}"
+```
+
+첫 message 뒤에는 바꿀 축만 보낼 수 있습니다. 다음은 index finger의 joint2만 0.90 rad로 바꾸는 예입니다.
+
+```bash
+ros2 topic pub --once \
+  /left_joint_position_controller/cmd \
+  sensor_msgs/msg/JointState \
+  "{name: [left_index_joint2], position: [0.90]}"
 ```
 
 ### 3.2 Actuator position
@@ -123,14 +137,18 @@ ros2 topic pub --once \
 
 ```bash
 ros2 topic pub --once \
-  /left_actuator_position_controller/command \
-  aidin_hand2_msgs/msg/ActuatorPositionCommand \
-  "{target_position_cnt: [
-      <cnt_0>, <cnt_1>, <cnt_2>, <cnt_3>,
-      <cnt_4>, <cnt_5>, <cnt_6>,
-      <cnt_7>, <cnt_8>, <cnt_9>,
-      <cnt_10>, <cnt_11>, <cnt_12>,
-      <cnt_13>, <cnt_14>, <cnt_15>]}"
+  /left_actuator_position_controller/cmd \
+  sensor_msgs/msg/JointState \
+  "{name: [left_thumb_actuator0, left_thumb_actuator1, left_thumb_actuator2, left_thumb_actuator3,
+           left_index_actuator1, left_index_actuator2, left_index_actuator3,
+           left_middle_actuator1, left_middle_actuator2, left_middle_actuator3,
+           left_ring_actuator1, left_ring_actuator2, left_ring_actuator3,
+           left_baby_actuator1, left_baby_actuator2, left_baby_actuator3],
+    position: [<cnt_0>, <cnt_1>, <cnt_2>, <cnt_3>,
+               <cnt_4>, <cnt_5>, <cnt_6>,
+               <cnt_7>, <cnt_8>, <cnt_9>,
+               <cnt_10>, <cnt_11>, <cnt_12>,
+               <cnt_13>, <cnt_14>, <cnt_15>]}"
 ```
 
 ### 3.3 Actuator effort
@@ -142,14 +160,18 @@ SDK가 절댓값을 actuator별 `max_effort` 값으로 제한한 뒤 전송합�
 
 ```bash
 ros2 topic pub --once \
-  /left_actuator_effort_controller/command \
-  aidin_hand2_msgs/msg/ActuatorEffortCommand \
-  "{target_effort_pct: [
-      300.0, 300.0, 300.0, 300.0,
-      300.0, 300.0, 300.0,
-      300.0, 300.0, 300.0,
-      300.0, 300.0, 300.0,
-      300.0, 300.0, 300.0]}"
+  /left_actuator_effort_controller/cmd \
+  sensor_msgs/msg/JointState \
+  "{name: [left_thumb_actuator0, left_thumb_actuator1, left_thumb_actuator2, left_thumb_actuator3,
+           left_index_actuator1, left_index_actuator2, left_index_actuator3,
+           left_middle_actuator1, left_middle_actuator2, left_middle_actuator3,
+           left_ring_actuator1, left_ring_actuator2, left_ring_actuator3,
+           left_baby_actuator1, left_baby_actuator2, left_baby_actuator3],
+    effort: [300.0, 300.0, 300.0, 300.0,
+             300.0, 300.0, 300.0,
+             300.0, 300.0, 300.0,
+             300.0, 300.0, 300.0,
+             300.0, 300.0, 300.0]}"
 ```
 
 joint impedance 제어는 SDK에서 개발 중이므로 사용하지 마십시오.
@@ -158,7 +180,7 @@ joint impedance 제어는 SDK에서 개발 중이므로 사용하지 마십시�
 
 사용자 node는 상위 controller가 제공하는 topic에 목표값을 보낼 수도 있습니다.
 상위 controller가 이를 처리해 하위 command controller의 reference interface에 전달합니다.
-이때 하위 controller는 chained mode이므로 자신의 `~/command` topic 입력을 받지 않습니다.
+이때 하위 controller는 chained mode이므로 자신의 `~/cmd` topic 입력을 받지 않습니다.
 
 상위 controller의 topic 이름과 message 타입은 해당 controller의 구현에 따릅니다.
 제공된 [상위 controller skeleton](../../aidin_hand2_examples/README.ko.md)은 목표 입력 subscriber가
@@ -174,10 +196,10 @@ topic 이름은 controller 이름 아래에 있습니다. 발행 주기는 `aidi
 
 | Topic | Type | Direction | Rate | Backend |
 |---|---|---|---|---|
-| `/{side}_joint_position_controller/command` | `aidin_hand2_msgs/JointPositionCommand` | 구독 | — | real · mock |
-| `/{side}_joint_impedance_controller/command` | `aidin_hand2_msgs/JointImpedanceCommand` | 구독 | — | real · mock |
-| `/{side}_actuator_position_controller/command` | `aidin_hand2_msgs/ActuatorPositionCommand` | 구독 | — | real · mock |
-| `/{side}_actuator_effort_controller/command` | `aidin_hand2_msgs/ActuatorEffortCommand` | 구독 | — | real · mock |
+| `/{side}_joint_position_controller/cmd` | `sensor_msgs/JointState` | 구독 | — | real · mock |
+| `/{side}_joint_impedance_controller/cmd` | `sensor_msgs/JointState` | 구독 | — | real · mock |
+| `/{side}_actuator_position_controller/cmd` | `sensor_msgs/JointState` | 구독 | — | real · mock |
+| `/{side}_actuator_effort_controller/cmd` | `sensor_msgs/JointState` | 구독 | — | real · mock |
 | `/joint_states` | `sensor_msgs/JointState` | 발행 | 100 Hz. mock은 `controllers_mock.yaml`이 지정하지 않아 500 Hz | real · mock |
 | `/{side}_hand_state_broadcaster/hand_state` | `aidin_hand2_msgs/HandState` | 발행 | 100 Hz | real |
 | `/{side}_diagnostics_broadcaster/hand_diagnostics` | `aidin_hand2_msgs/HandDiagnostics` | 발행 | 20 Hz | real |
@@ -248,13 +270,13 @@ SDK가 `Faulted`로 정지하면 broadcaster가 마지막 관측값을 같은 �
 
 ### 4.4 QoS
 
-현재 command controller 4종의 `~/command` 구독과 `HandStateBroadcaster`·`DiagnosticsBroadcaster`의
+현재 command controller 4종의 `~/cmd` 구독과 `HandStateBroadcaster`·`DiagnosticsBroadcaster`의
 발행은 `rclcpp::SystemDefaultsQoS()`를 사용합니다. 상위 controller skeleton의 `HandState` 구독도
 같습니다. 이 설정은 history·depth·reliability 등을 RMW 기본값에 맡기므로 실행 환경에서 실제 값을 확인합니다.
 `/joint_states`는 별도로 설치된 `joint_state_broadcaster`의 설정을 확인하십시오.
 
 ```bash
-ros2 topic info /left_joint_position_controller/command --verbose
+ros2 topic info /left_joint_position_controller/cmd --verbose
 ros2 topic info /left_hand_state_broadcaster/hand_state --verbose
 ```
 

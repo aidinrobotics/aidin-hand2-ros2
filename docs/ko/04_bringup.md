@@ -68,22 +68,26 @@ ros2 control list_controllers
 
 ### 1.3 Send a command
 
-`JointPositionCommand` 하나에 active joint 16개의 목표 각도[rad]를 모두 담아 전송합니다. 다음은
-왼손 index finger의 joint1을 0.10 rad, joint2를 0.20 rad로 보내는 예입니다.
+`sensor_msgs/JointState` 하나에 active joint 16개의 이름과 목표 각도[rad]를 모두 담아 전송합니다. 다음은
+SDK 예제 `09_joint_position.cpp`의 grasp 자세를 왼손에 보내는 예입니다.
 
 ```bash
 ros2 topic pub --once \
-  /left_joint_position_controller/command \
-  aidin_hand2_msgs/msg/JointPositionCommand \
-  "{target_position_rad: [
-      0.0, 0.0, 0.0, 0.0,
-      0.10, 0.20, 0.0,
-      0.0, 0.0, 0.0,
-      0.0, 0.0, 0.0,
-      0.0, 0.0, 0.0]}"
+  /left_joint_position_controller/cmd \
+  sensor_msgs/msg/JointState \
+  "{name: [left_thumb_joint0, left_thumb_joint1, left_thumb_joint2, left_thumb_joint3,
+           left_index_joint1, left_index_joint2, left_index_joint3,
+           left_middle_joint1, left_middle_joint2, left_middle_joint3,
+           left_ring_joint1, left_ring_joint2, left_ring_joint3,
+           left_baby_joint1, left_baby_joint2, left_baby_joint3],
+    position: [0.20, 0.35, 0.10, 0.25,
+               0.08, 0.45, 0.30,
+               0.04, 0.55, 0.40,
+               -0.04, 0.65, 0.50,
+               -0.08, 0.75, 0.60]}"
 ```
 
-RViz에서 왼손 index finger가 굽고, `/joint_states` topic에 반영됩니다. 반영된 값을 읽습니다.
+RViz에서 왼손이 grasp 자세로 굽고, `/joint_states` topic에 반영됩니다. 반영된 값을 읽습니다.
 
 ```bash
 ros2 topic echo /joint_states --once
@@ -208,24 +212,28 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field homing_st
 
 ```bash
 ros2 topic pub --once \
-  /left_joint_position_controller/command \
-  aidin_hand2_msgs/msg/JointPositionCommand \
-  "{target_position_rad: [
-      0.0, 0.0, 0.0, 0.0,
-      0.10, 0.20, 0.0,
-      0.0, 0.0, 0.0,
-      0.0, 0.0, 0.0,
-      0.0, 0.0, 0.0]}"
+  /left_joint_position_controller/cmd \
+  sensor_msgs/msg/JointState \
+  "{name: [left_thumb_joint0, left_thumb_joint1, left_thumb_joint2, left_thumb_joint3,
+           left_index_joint1, left_index_joint2, left_index_joint3,
+           left_middle_joint1, left_middle_joint2, left_middle_joint3,
+           left_ring_joint1, left_ring_joint2, left_ring_joint3,
+           left_baby_joint1, left_baby_joint2, left_baby_joint3],
+    position: [0.20, 0.35, 0.10, 0.25,
+               0.08, 0.45, 0.30,
+               0.04, 0.55, 0.40,
+               -0.04, 0.65, 0.50,
+               -0.08, 0.75, 0.60]}"
 ```
 
-왼손 index finger가 굽습니다. 적용된 command는 `hand_state` topic의 `command_state` 필드로 확인합니다.
+왼손이 grasp 자세로 굽습니다. 적용된 command는 `hand_state` topic의 `command_state` 필드로 확인합니다.
 
 ```bash
 ros2 topic echo /left_hand_state_broadcaster/hand_state --once --field command_state
 ```
 
 `controller_input_mode`가 `1`(joint position), `selected_source`가 `1`(controller)이고
-`joint_position_input.target_position_rad`에 도달 범위 보정 후의 목표값이 있습니다.
+`joint_position_input_rad`에 도달 범위 보정 후의 목표값이 있습니다.
 실제 joint 각도는 `joint_position`에서 확인합니다. 값의 뜻은
 [3.2 CommandState](../../aidin_hand2_msgs/README.ko.md#32-commandstate)에, 전송값에 적용되는 effort 상한은
 [6.1 Max effort](../../aidin_hand2_hardware/README.ko.md#61-max-effort)에 있습니다.

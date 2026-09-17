@@ -28,7 +28,7 @@ AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. con
 상위 controller의 topic 이름과 message 타입은 해당 구현에 따릅니다.
 제공된 `aidin_hand2_examples` skeleton에는 목표 입력 subscriber가 없으므로 직접 추가해야 합니다.
 상태는 `/joint_states`, `~/hand_state`, `~/hand_diagnostics`로 읽습니다. `~`는 해당 topic이나 service를
-제공하는 node 이름입니다. 예를 들어 `~/command`는 `/left_joint_position_controller/command`가 됩니다.
+제공하는 node 이름입니다. 예를 들어 `~/cmd`는 `/left_joint_position_controller/cmd`가 됩니다.
 effort 상한과 filter·gain은 ROS parameter로 설정합니다.
 
 ## Getting started

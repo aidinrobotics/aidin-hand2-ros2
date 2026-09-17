@@ -28,8 +28,8 @@ controller does not accept input on its own command topic.
 The upper controller defines its input topic and message type. The supplied `aidin_hand2_examples`
 skeletons do not implement a target subscriber; add one for topic input.
 Read state through `/joint_states`, `~/hand_state` and `~/hand_diagnostics`. The `~` denotes the name of
-the node providing a topic or service; for example, `~/command` becomes
-`/left_joint_position_controller/command`. ROS parameters configure effort limits, filters and gains.
+the node providing a topic or service; for example, `~/cmd` becomes
+`/left_joint_position_controller/cmd`. ROS parameters configure effort limits, filters and gains.
 
 ## Getting started
 

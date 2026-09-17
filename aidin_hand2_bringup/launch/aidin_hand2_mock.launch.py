@@ -1,13 +1,13 @@
 """AIDIN Hand Gen2 on mock hardware, no CAN and no homing.
 
-The path is ~/command -> joint_position_controller -> mock hardware -> /joint_states -> rviz.
+The path is ~/cmd -> joint_position_controller -> mock hardware -> /joint_states -> rviz.
 
   ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py                        # both hands
   ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py use_right_hand:=false  # left only
   ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py use_left_hand:=false   # right only
 
-The command topic is /<side>_joint_position_controller/command, taking 16 values as
-aidin_hand2_msgs/JointPositionCommand.
+The command topic is /<side>_joint_position_controller/cmd, a sensor_msgs/JointState whose name
+entries select the joints.
 
 aidin_hand2_controllers.launch.py is not included here, it also spawns the hand state and
 diagnostics broadcasters, which controllers_mock.yaml leaves out.
