@@ -59,14 +59,6 @@
   <!-- Mock only -->
   <xacro:arg name="use_mock" default="false"/>
 
-  <!-- Isaac only -->
-  <xacro:arg name="use_isaac" default="false"/>
-  <xacro:arg name="isaac_topic_prefix"       default="/isaac"/>
-  <xacro:arg name="isaac_joint_state_topic"  default="joint_states"/>
-  <xacro:arg name="isaac_joint_command_topic" default="hand_command"/>
-  <xacro:arg name="isaac_tactile_prefix"     default="tactile"/>
-  <xacro:arg name="isaac_state_timeout"      default="0.1"/>
-
   <!-- ======================== ros2_control system ======================= -->
 
   <!-- One ros2_control system per hand -->
@@ -86,13 +78,7 @@
       auto_reconnect="$(arg auto_reconnect)"
       auto_reconnect_timeout_ms="$(arg auto_reconnect_timeout_ms)"
       auto_reconnect_home="$(arg auto_reconnect_home)"
-      use_mock="$(arg use_mock)"
-      use_isaac="$(arg use_isaac)"
-      isaac_topic_prefix="$(arg isaac_topic_prefix)"
-      isaac_joint_state_topic="$(arg isaac_joint_state_topic)"
-      isaac_joint_command_topic="$(arg isaac_joint_command_topic)"
-      isaac_tactile_prefix="$(arg isaac_tactile_prefix)"
-      isaac_state_timeout="$(arg isaac_state_timeout)"/>
+      use_mock="$(arg use_mock)"/>
   </xacro:if>
   <xacro:if value="$(arg use_right_hand)">
     <xacro:aidin_hand2_ros2_control
@@ -108,12 +94,6 @@
       auto_reconnect="$(arg auto_reconnect)"
       auto_reconnect_timeout_ms="$(arg auto_reconnect_timeout_ms)"
       auto_reconnect_home="$(arg auto_reconnect_home)"
-      use_mock="$(arg use_mock)"
-      use_isaac="$(arg use_isaac)"
-      isaac_topic_prefix="$(arg isaac_topic_prefix)"
-      isaac_joint_state_topic="$(arg isaac_joint_state_topic)"
-      isaac_joint_command_topic="$(arg isaac_joint_command_topic)"
-      isaac_tactile_prefix="$(arg isaac_tactile_prefix)"
-      isaac_state_timeout="$(arg isaac_state_timeout)"/>
+      use_mock="$(arg use_mock)"/>
   </xacro:if>
 </robot>

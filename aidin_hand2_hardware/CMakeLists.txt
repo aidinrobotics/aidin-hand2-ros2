@@ -12,15 +12,12 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(rcl_interfaces REQUIRED)
 find_package(std_srvs REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
 # C++ SDK, not a ROS package. Point at it with CMAKE_PREFIX_PATH or aidin_hand2_DIR
 find_package(aidin_hand2 0.5 REQUIRED)  # 0.x treats a minor bump as breaking
 
 add_library(${PROJECT_NAME} SHARED
   src/aidin_hand2_system_interface.cpp
   src/aidin_hand2_mock_system_interface.cpp
-  src/aidin_hand2_isaac_system_interface.cpp
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -35,8 +32,6 @@ ament_target_dependencies(${PROJECT_NAME}
   rclcpp_lifecycle
   rcl_interfaces
   std_srvs
-  std_msgs
-  sensor_msgs
 )
 
 pluginlib_export_plugin_description_file(hardware_interface plugin/aidin_hand2_hardware_plugin.xml)

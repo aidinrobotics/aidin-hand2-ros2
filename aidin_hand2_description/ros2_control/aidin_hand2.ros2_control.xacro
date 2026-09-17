@@ -67,13 +67,6 @@
     auto_reconnect_timeout_ms  0 = no limit
     auto_reconnect_home        homing before run on recovery
     use_mock                   kinematic mock, no tactile and no diagnostics
-    use_isaac                  Isaac Sim over ROS 2 topics, taking priority over use_mock,
-                               with the same state contract as the real hardware
-    isaac_topic_prefix         the three topic names below hang off this prefix
-    isaac_joint_state_topic    Isaac to hardware, sensor_msgs/JointState
-    isaac_joint_command_topic  hardware to Isaac, sensor_msgs/JointState
-    isaac_tactile_prefix       <prefix>/<side>_<finger>_sensor, std_msgs/Float64MultiArray
-    isaac_state_timeout        seconds without a new state before the link counts as lost
   -->
   <xacro:macro name="aidin_hand2_ros2_control"
                params="name prefix hand_side
@@ -86,25 +79,17 @@
                        auto_reconnect:=^|false
                        auto_reconnect_timeout_ms:=^|0
                        auto_reconnect_home:=^|false
-                       use_mock:=^|false
-                       use_isaac:=^|false
-                       isaac_topic_prefix:=^|'/isaac'
-                       isaac_joint_state_topic:=^|'joint_states'
-                       isaac_joint_command_topic:=^|'hand_command'
-                       isaac_tactile_prefix:=^|'tactile'
-                       isaac_state_timeout:=^|0.1">
+                       use_mock:=^|false">
 
     <!-- Takes both the 'true'/'false' string from launch and the python bool -->
-    <xacro:property name="hand2_isaac" value="${str(use_isaac).lower() in ['true', '1']}"/>
-    <xacro:property name="hand2_mock"
-                    value="${str(use_mock).lower() in ['true', '1'] and not hand2_isaac}"/>
+    <xacro:property name="hand2_mock" value="${str(use_mock).lower() in ['true', '1']}"/>
 
     <ros2_control name="${name}" type="system">
 
       <!-- ====================== Hardware interface ====================== -->
 
       <hardware>
-        <xacro:unless value="${hand2_isaac or hand2_mock}">
+        <xacro:unless value="${hand2_mock}">
           <plugin>aidin_hand2_hardware/AidinHand2SystemInterface</plugin>
           <param name="hand_side">${hand_side}</param>
           <param name="can_interface">${can_interface}</param>
@@ -121,16 +106,6 @@
           <plugin>aidin_hand2_hardware/AidinHand2MockSystemInterface</plugin>
           <param name="hand_side">${hand_side}</param>
           <param name="max_effort">${max_effort}</param>
-        </xacro:if>
-        <xacro:if value="${hand2_isaac}">
-          <plugin>aidin_hand2_hardware/AidinHand2IsaacSystemInterface</plugin>
-          <param name="hand_side">${hand_side}</param>
-          <param name="max_effort">${max_effort}</param>
-          <param name="topic_prefix">${isaac_topic_prefix}</param>
-          <param name="state_timeout">${isaac_state_timeout}</param>
-          <param name="joint_state_topic">${isaac_joint_state_topic}</param>
-          <param name="joint_command_topic">${isaac_joint_command_topic}</param>
-          <param name="tactile_prefix">${isaac_tactile_prefix}</param>
         </xacro:if>
       </hardware>
 

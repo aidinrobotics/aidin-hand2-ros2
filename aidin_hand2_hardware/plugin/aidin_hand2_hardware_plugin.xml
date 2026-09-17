@@ -9,9 +9,4 @@
          base_class_type="hardware_interface::SystemInterface">
     <description>Kinematic mock SystemInterface that runs without hardware, for controller checks and rviz.</description>
   </class>
-  <class name="aidin_hand2_hardware/AidinHand2IsaacSystemInterface"
-         type="aidin_hand2_hardware::AidinHand2IsaacSystemInterface"
-         base_class_type="hardware_interface::SystemInterface">
-    <description>Isaac Sim SystemInterface over ROS 2 topics, with the same interface contracts as the real hardware.</description>
-  </class>
 </library>
