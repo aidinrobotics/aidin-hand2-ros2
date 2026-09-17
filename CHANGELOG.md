@@ -7,6 +7,34 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Real-time kernel setup and CAN-FD setup are part of this repository's documentation.** They
+  carry the same procedure as the SDK documents, so a reader who installs only the wrapper does
+  not switch repositories. The last chapter of the CAN-FD document names the interface through the
+  launch argument and the xacro macro instead of `HandConfig`.
+
+### Changed
+
+- **The documentation is organized by ROS 2 interface kind.** Installation, Bringup and
+  Integration are procedures in the order a reader does them. Controllers, Topics, Services,
+  Parameters and Launch files each describe one kind of interface. The Interface matrix and
+  Troubleshooting are appendices. The former Interface reference, Bringup example and Operations
+  documents are folded into these. The startup gate, supervisor policy and production checklist
+  sections are gone, because they described the reader's system rather than the wrapper. The facts
+  they carried, that there is no command age watchdog and no composite ready flag, are stated with
+  the topics.
+- **The Interface matrix matches the code again.** It still listed the 98 command interfaces, the
+  `speed_rad_s` and gain command interfaces and the 385 state interfaces that 0.4.0 removed. The
+  contract is 65 command interfaces on every backend, 352 state interfaces on the robot hand and
+  Isaac Sim, and 69 on the mock.
+- **Stale statements are corrected.** The default `cutoff_freq` is 10 Hz, not 60. The mock launch
+  starts RViz by default. A controller fills its references with NaN at activation and seeds
+  nothing from state. The README no longer points at SDK documents that do not exist.
+- `README.ko.md` uses the same English headings as `README.md` and the SDK's Korean README.
+- `aidin_hand2.repos` pins SDK v0.5.2, the release that the linked SDK documents describe. v0.5.1
+  had no kinematics choice at configure time.
+
 ## [0.5.0] - 2026-09-10
 
 Requires SDK 0.5.x, whose lifecycle now reports what the hand reached rather than what was asked

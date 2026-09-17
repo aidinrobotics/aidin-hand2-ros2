@@ -9,13 +9,14 @@ your algorithm or JTC
   -> command controller reference
   -> the existing command controller
   -> complete hardware command port + command_lock
-  -> real or mock hardware
+  -> the robot hand, the mock or Isaac Sim
 ```
 
 ## What is provided
 
 The four are the same template, so the sources live together in `src/upper_controllers/` and only
-the parameters are split per controller.
+the parameters are split per controller. The interface names they claim and export are in
+[Controllers](../docs/ko/06_controllers.md) 4.2 and the [Interface matrix](../docs/ko/11_interface_matrix.md) 7.4.
 
 | Upper skeleton (plugin class) | Source | Config | Command controller below |
 |---|---|---|---|
@@ -54,7 +55,7 @@ The skeleton is a safe structural template, not an algorithm example.
   controller below only once every one of them is finite. A partly finite input is rejected as an
   error.
 - With no input at all, the command controller below writes NaN, meaning no command this cycle,
-  and the hardware sends nothing. The hand holds the pose of its last command.
+  and the hardware sends nothing. The robot hand holds the pose of its last command.
 
 So activating the file as it stands produces no new target. To write a real upper controller, read
 `hand_state_` where each file says `Write the algorithm here` and fill the whole matching
@@ -101,8 +102,8 @@ ros2 control list_controllers
 ```
 
 Once `left_joint_position_upper` claims the reference below it, `left_joint_position_controller`
-enters chained mode. The skeleton generates no value, so the hand holds the activation seed of the
-controller below.
+enters chained mode. The skeleton generates no value, so the robot hand holds the pose of its last
+command.
 
 To try a skeleton of another mode, deactivate the current upper controller first, switch the two
 command controllers atomically, and bring the new upper controller up last. Two command
@@ -124,7 +125,7 @@ ros2 control unload_controller left_joint_position_upper
 - Write only a complete command into the realtime buffer from a subscriber callback.
 - Keep the `HandState` subscriber callback free of computation, writing only the latest message
   into the realtime buffer.
-- Reject NaN, Inf and negative speed or gain in the update.
+- Reject NaN and Inf in the update.
 - Leave the references NaN on activate and generate no target.
 - Switch modes by command controller, never by claiming hardware command interfaces piecemeal.
-- Use the same controller and config on real and mock hardware.
+- Use the same controller and config on the robot hand, the mock and Isaac Sim.
