@@ -12,6 +12,7 @@ find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(realtime_tools REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(aidin_hand2_msgs REQUIRED)
 find_package(aidin_hand2 0.5 REQUIRED)  # 0.x treats a minor bump as breaking
 
@@ -36,6 +37,7 @@ ament_target_dependencies(${PROJECT_NAME}
   rclcpp
   rclcpp_lifecycle
   realtime_tools
+  sensor_msgs
   aidin_hand2_msgs
 )
 
@@ -57,6 +59,7 @@ ament_export_dependencies(
   rclcpp
   rclcpp_lifecycle
   realtime_tools
+  sensor_msgs
   aidin_hand2_msgs
 )
 ament_package()

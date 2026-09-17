@@ -19,8 +19,8 @@
 //                          target_effort_pct.{finger}_actuator{n}        (rated %)
 //   reference interface: {side}_actuator_effort_controller/
 //                          {side}_{finger}_actuator{n}/effort_pct        (rated %)
-//   command topic      : /{side}_actuator_effort_controller/command
-//                        (aidin_hand2_msgs/ActuatorEffortCommand)
+//   command topic      : /{side}_actuator_effort_controller/cmd
+//                        (sensor_msgs/JointState, name matched, effort read)
 //
 //   The input moves to the command interface unchanged, no target is generated and no state
 //   is read
@@ -132,12 +132,20 @@ void ActuatorEffortController::subscribe()
   if (command_subscriber_) {
     return;
   }
-  command_subscriber_ =
-    get_node()->create_subscription<aidin_hand2_msgs::msg::ActuatorEffortCommand>(
-      "~/command", rclcpp::SystemDefaultsQoS(),
-      [this](const std::shared_ptr<aidin_hand2_msgs::msg::ActuatorEffortCommand> message) {
-        command_buffer_.writeFromNonRT(message);
-      });
+  command_subscriber_ = get_node()->create_subscription<sensor_msgs::msg::JointState>(
+    "~/cmd", rclcpp::SystemDefaultsQoS(),
+    [this](const std::shared_ptr<sensor_msgs::msg::JointState> message) {
+      JointStateCommand<ah2::kActuatorCount> command;
+      if (!resolve_joint_state_command(
+            *message, actuator_names_, JointStateField::kEffort, command.values)) {
+        RCLCPP_WARN_THROTTLE(
+          get_node()->get_logger(), *get_node()->get_clock(), 5000,
+          "ActuatorEffort command dropped — name and effort differ in length, or a name repeats");
+        return;
+      }
+      command.sequence = ++command_sequence_;
+      command_buffer_.writeFromNonRT(command);
+    });
 }
 
 void ActuatorEffortController::unsubscribe()
@@ -147,9 +155,8 @@ void ActuatorEffortController::unsubscribe()
 
 void ActuatorEffortController::drop_buffered_command()
 {
-  command_buffer_.writeFromNonRT(
-    std::shared_ptr<aidin_hand2_msgs::msg::ActuatorEffortCommand>());
-  consumed_command_ = nullptr;
+  command_buffer_.writeFromNonRT(JointStateCommand<ah2::kActuatorCount>{});
+  consumed_sequence_ = 0;
 }
 
 // -------------------------- Interface configuration -------------------------
@@ -201,13 +208,13 @@ bool ActuatorEffortController::on_set_chained_mode(bool chained_mode)
 controller_interface::return_type
 ActuatorEffortController::update_reference_from_subscribers()
 {
-  const auto message = *command_buffer_.readFromRT();
-  if (!message || message.get() == consumed_command_) {
+  const auto & command = *command_buffer_.readFromRT();
+  if (command.sequence == 0 || command.sequence == consumed_sequence_) {
     return controller_interface::return_type::OK;
   }
-  consumed_command_ = message.get();
+  consumed_sequence_ = command.sequence;
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
-    reference_interfaces_[i] = message->target_effort_pct[i];
+    reference_interfaces_[i] = command.values[i];
   }
   return controller_interface::return_type::OK;
 }

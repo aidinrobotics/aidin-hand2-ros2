@@ -1,18 +1,21 @@
 #ifndef AIDIN_HAND2_CONTROLLERS__ACTUATOR_POSITION_CONTROLLER_HPP_
 #define AIDIN_HAND2_CONTROLLERS__ACTUATOR_POSITION_CONTROLLER_HPP_
 
-#include <memory>
+#include <cstdint>
 #include <string>
 #include <vector>
 
-#include "aidin_hand2_msgs/msg/actuator_position_command.hpp"
+#include <aidin_hand2/types/description.hpp>
+
+#include "aidin_hand2_controllers/joint_state_command.hpp"
 #include "controller_interface/chainable_controller_interface.hpp"
 #include "realtime_tools/realtime_buffer.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
 
 namespace aidin_hand2_controllers
 {
 
-// Chainable controller moving an ActuatorPosition typed command to the hardware command interface
+// Chainable controller moving a JointState matched by name to the hardware command interface
 //
 // Standalone takes the command topic, chained takes the exported reference, never both
 // update_reference_from_subscribers runs first in a cycle, then update_and_write_commands
@@ -46,13 +49,13 @@ private:
   // command_lock, then the 16 target positions
   std::vector<std::string> command_interface_names_;
 
-  // Message already moved to the references, nullptr for none consumed yet
-  const void * consumed_command_{nullptr};
+  // Sequence of the last message moved to the references, 0 for none consumed yet
+  std::uint64_t command_sequence_{0};
+  std::uint64_t consumed_sequence_{0};
 
   realtime_tools::RealtimeBuffer<
-    std::shared_ptr<aidin_hand2_msgs::msg::ActuatorPositionCommand>> command_buffer_;
-  rclcpp::Subscription<aidin_hand2_msgs::msg::ActuatorPositionCommand>::SharedPtr
-    command_subscriber_;
+    JointStateCommand<aidin_hand2::kActuatorCount>> command_buffer_;
+  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr command_subscriber_;
 };
 
 }  // namespace aidin_hand2_controllers
