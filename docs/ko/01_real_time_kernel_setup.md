@@ -3,9 +3,9 @@
 SDK의 500 Hz 제어·통신 루프와 `controller_manager`의 update 루프를 실시간으로 스케줄링하려면
 `PREEMPT_RT` kernel과, root가 아닌 user가 real-time priority(`SCHED_FIFO`)로 실행하고 메모리를 잠글
 수 있는 permission이 필요합니다. 이 문서는 Ubuntu(x86_64 / arm64)에서 PREEMPT_RT kernel을 source에서
-빌드하고 permission을 부여합니다. SDK 문서의
+빌드하고 실행 권한을 설정합니다. mock 실행에는 이 설정이 필요하지 않습니다. SDK 문서의
 [Real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/04_real_time_kernel_setup.md)과
-같은 내용이며, wrapper만 설치하는 독자가 SDK 저장소를 오가지 않도록 여기에도 둡니다.
+같은 내용입니다.
 
 ## Contents
 
@@ -18,8 +18,8 @@ SDK의 500 Hz 제어·통신 루프와 `controller_manager`의 update 루프를 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.6 Build & install](#16-build--install)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.7 Boot into the kernel](#17-boot-into-the-kernel)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.8 Verify the kernel](#18-verify-the-kernel)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.9 Remove the kernel](#19-remove-the-kernel)<br>
-&nbsp;&nbsp;[**2. Real-time settings**](#2-real-time-settings)
+&nbsp;&nbsp;[**2. Real-time settings**](#2-real-time-settings)<br>
+&nbsp;&nbsp;[**3. Remove the custom kernel**](#3-remove-the-custom-kernel)
 
 ## 1. Build the RT kernel
 
@@ -29,7 +29,7 @@ SDK의 500 Hz 제어·통신 루프와 `controller_manager`의 update 루프를 
 sudo apt update
 sudo apt install -y build-essential bc bison flex gawk \
   libssl-dev libelf-dev libncurses-dev dwarves \
-  fakeroot rsync cpio kmod zstd gnupg dirmngr
+  fakeroot rsync cpio kmod zstd gnupg dirmngr curl xz-utils
 ```
 
 > [!NOTE]
@@ -161,6 +161,10 @@ sudo IGNORE_PREEMPT_RT_PRESENCE=1 dpkg -i ../linux-image-*.deb ../linux-headers-
 options for Ubuntu**에서 방금 빌드한 version을 선택하십시오 — 그대로 재부팅하면 기존 kernel로
 부팅되어 다음 절의 검증을 통과하지 못합니다.
 
+> [!WARNING]
+> Secure Boot가 켜져 있으면 unsigned 자체 빌드 kernel은 부팅이 거부됩니다("Invalid
+> Signature"). UEFI/BIOS에서 Secure Boot를 해제한 뒤 다시 부팅하십시오.
+
 ```bash
 sudo reboot
 ```
@@ -168,27 +172,13 @@ sudo reboot
 이 kernel을 계속 쓸 것이라면, 매번 GRUB에서 고르지 않도록 기본 부팅 kernel로
 고정하는 것을 권장합니다(`/etc/default/grub`의 `GRUB_DEFAULT` 설정 후 `sudo update-grub`).
 
-> [!WARNING]
-> Secure Boot가 켜져 있으면 unsigned 자체 빌드 kernel은 부팅이 거부됩니다("Invalid
-> Signature"). UEFI/BIOS에서 Secure Boot를 해제한 뒤 다시 부팅하십시오.
-
 ### 1.8 Verify the kernel
 
-재부팅 후 RT kernel이 실행 중인지 확인:
+재부팅 후 RT kernel이 실행 중인지 확인합니다.
 
 ```bash
 uname -a                   # 빌드한 version과 PREEMPT_RT 표기
 cat /sys/kernel/realtime   # RT kernel이면 1 (없으면 RT 아님)
-```
-
-### 1.9 Remove the kernel
-
-문제가 있어 되돌리려면 설치한 kernel 패키지를 제거하고 재부팅합니다(version은 `uname -r` 또는
-`dpkg -l 'linux-image-*'`로 확인).
-
-```bash
-sudo dpkg -r linux-image-"${ver}"* linux-headers-"${ver}"*
-sudo reboot
 ```
 
 ## 2. Real-time settings
@@ -217,7 +207,22 @@ ulimit -r      # rtprio  → 99
 ulimit -l      # memlock → unlimited
 ```
 
----
+## 3. Remove the custom kernel
 
-이어서 [CAN-FD setup](02_can_fd_setup.md)에서 interface를 올린 뒤,
-[Installation](03_installation.md)에서 SDK와 wrapper를 빌드하십시오.
+문제가 있어 되돌릴 때만 수행합니다. 먼저 GRUB에서 기존 Ubuntu kernel을 선택해 부팅하십시오.
+`uname -r`로 현재 kernel이 제거할 대상과 다른지 확인하고 설치된 package 이름을 조회합니다.
+
+```bash
+uname -r
+dpkg -l 'linux-image-*' 'linux-headers-*'
+```
+
+제거할 kernel의 정확한 release를 지정합니다. 다음 값은 예시이며 위 목록의 package 이름에 맞게
+바꾸십시오. 현재 실행 중인 kernel과 다시 부팅할 기존 kernel은 제거하지 않습니다.
+
+```bash
+kernel_release=6.12.100-rt20  # ← 직접 입력: 제거할 kernel release
+sudo dpkg -r "linux-image-${kernel_release}" "linux-headers-${kernel_release}"
+```
+
+설정을 마쳤다면 [CAN-FD setup](02_can_fd_setup.md)에서 통신을 준비하십시오.

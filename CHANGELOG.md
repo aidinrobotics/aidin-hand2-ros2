@@ -18,22 +18,37 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 - **The documentation is organized by ROS 2 interface kind.** Installation, Bringup and
   Integration are procedures in the order a reader does them. Controllers, Topics, Services,
-  Parameters and Launch files each describe one kind of interface. The Interface matrix and
-  Troubleshooting are appendices. The former Interface reference, Bringup example and Operations
+  Parameters and Launch files each describe one kind of interface. Troubleshooting is the
+  appendix. The former Interface reference, Bringup example and Operations
   documents are folded into these. The startup gate, supervisor policy and production checklist
   sections are gone, because they described the reader's system rather than the wrapper. The facts
   they carried, that there is no command age watchdog and no composite ready flag, are stated with
   the topics.
-- **The Interface matrix matches the code again.** It still listed the 98 command interfaces, the
-  `speed_rad_s` and gain command interfaces and the 385 state interfaces that 0.4.0 removed. The
-  contract is 65 command interfaces on every backend, 352 state interfaces on the robot hand and
-  Isaac Sim, and 69 on the mock.
 - **Stale statements are corrected.** The default `cutoff_freq` is 10 Hz, not 60. The mock launch
   starts RViz by default. A controller fills its references with NaN at activation and seeds
   nothing from state. The README no longer points at SDK documents that do not exist.
 - `README.ko.md` uses the same English headings as `README.md` and the SDK's Korean README.
 - `aidin_hand2.repos` pins SDK v0.5.2, the release that the linked SDK documents describe. v0.5.1
   had no kinematics choice at configure time.
+
+### Removed
+
+- **Breaking: the Isaac Sim backend is removed.** The `AidinHand2IsaacSystemInterface` plugin,
+  `aidin_hand2_isaac.launch.py`, `controllers_isaac.yaml` and the `use_isaac` and `isaac_*`
+  arguments of the xacro macro are gone, so drop those arguments from your URDF and your launch
+  commands. The robot hand and the mock remain, and `use_mock` selects between them. We plan to add
+  the backend again once the wrapper framework is stable.
+- **The Interface matrix document.** The wrapper exposes its interfaces at the controller level. A
+  command enters through a command controller's `~/command` topic or its reference interfaces, and
+  the hardware rejects any claim of a command port that is not the whole port together with
+  `command_lock`. State is read from the topics of the three broadcasters, whose message fields are
+  in the Topics document. No user path therefore reads the 65 hardware command interfaces or the 352
+  state interfaces by name, and the document that enumerated them also still listed the interfaces
+  that 0.4.0 removed. The interface groups, their counts per backend and a diagram of who exports and
+  who claims each kind are in the Controllers document, section 1.3, and the reference interface
+  names are in section 4.2. A controller of your own that claims a state interface directly gets the
+  names from those patterns, the joint and actuator order in section 2 and
+  `ros2 control list_hardware_interfaces` on the running system.
 
 ## [0.5.0] - 2026-09-10
 

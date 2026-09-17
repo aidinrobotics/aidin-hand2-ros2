@@ -1,5 +1,8 @@
 # aidin_hand2_examples
 
+The [package guide (Korean)](README.ko.md) covers the source files,
+configuration and how to start using a skeleton.
+
 | Kind | Source | Config |
 |---|---|---|
 | Upper controller skeleton, one per command controller | `src/upper_controllers/` | `config/upper_controllers/` |

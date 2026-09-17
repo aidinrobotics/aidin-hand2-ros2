@@ -2,8 +2,8 @@
 
 SDK는 USB CAN-FD adapter를 통해 Linux SocketCAN으로 AIDIN Hand Gen2와 통신합니다(nominal
 1 Mbit/s, data phase 5 Mbit/s). 이 문서는 **PEAK PCAN-USB FD**와 **CANable 2.0 Pro**(candleLight
-firmware) 두 adapter를 다룹니다. 둘 중 사용하는 adapter를 찾아 CAN-FD로 bring-up하고, wrapper가
-해당 interface를 사용하도록 지정하는 것까지 다룹니다. 1절은 SDK 문서의
+firmware) 두 adapter를 다룹니다. 사용하는 adapter를 찾아 CAN-FD로 설정하고,
+수신 frame으로 연결된 로봇 핸드의 좌우를 확인합니다. 설정 절차는 SDK 문서의
 [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_can_fd_setup.md)과
 같은 내용입니다.
 
@@ -14,9 +14,16 @@ firmware) 두 adapter를 다룹니다. 둘 중 사용하는 adapter를 찾아 CA
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.2 Find the interface](#12-find-the-interface)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.3 Bring up that interface](#13-bring-up-that-interface)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.4 Verify the link](#14-verify-the-link)<br>
-&nbsp;&nbsp;[**2. Use the interface in the wrapper**](#2-use-the-interface-in-the-wrapper)
+&nbsp;&nbsp;[**2. Check the receive rate**](#2-check-the-receive-rate)
 
 ## 1. Bring up the interface
+
+사용할 도구를 설치합니다. `can-utils`는 `candump`를, `ethtool`은 adapter 정보 조회 명령을 제공합니다.
+
+```bash
+sudo apt update
+sudo apt install -y can-utils ethtool gawk
+```
 
 adapter의 kernel driver를 확인하고, AIDIN Hand Gen2가 연결된 interface를 찾아 CAN-FD로 올린 뒤,
 들어오는 frame으로 각 interface가 어느 side인지 확인합니다.
@@ -54,11 +61,11 @@ done
 
 ### 1.3 Bring up that interface
 
-[1.2](#12-find-the-interface)에서 찾은 interface를 AIDIN Hand Gen2의 bitrate로, CAN-FD로
+[1.2 Find the interface](#12-find-the-interface)에서 찾은 interface를 AIDIN Hand Gen2의 bitrate로, CAN-FD로
 올립니다. 이 단계에서는 side를 알 필요가 없습니다. 찾은 interface를 모두 올린 뒤
-[1.4](#14-verify-the-link)에서 판별합니다. 아래는 `can0`과 `can1` 두 개인 경우입니다.
+[1.4 Verify the link](#14-verify-the-link)에서 판별합니다. 아래는 `can0`과 `can1` 두 개인 경우입니다.
 
-`can0`:
+`can0`을 CAN-FD로 설정합니다.
 
 ```bash
 sudo ip link set can0 down 2>/dev/null || true
@@ -70,7 +77,7 @@ sudo ip link set can0 up
 sudo ip link set can0 txqueuelen 1000
 ```
 
-`can1`:
+두 번째 adapter도 사용한다면 `can1`을 설정합니다.
 
 ```bash
 sudo ip link set can1 down 2>/dev/null || true
@@ -115,8 +122,8 @@ can <FD> state ERROR-ACTIVE (berr-counter tx 0 rx 0) restart-ms 100
 `state`가 `BUS-OFF`·`ERROR-PASSIVE`이거나 `berr-counter`가 계속 오르면 배선·termination·bitrate를
 점검합니다.
 
-AIDIN Hand Gen2가 연결·전원 On이면 state frame이 주기적으로 들어옵니다. `candump`로 실제 frame을
-봅니다.
+AIDIN Hand Gen2가 연결·전원 On이면 state frame이 주기적으로 들어옵니다. `candump`로 frame을
+확인하고 `Ctrl-C`로 종료합니다.
 
 ```bash
 candump "$CAN"
@@ -128,8 +135,18 @@ candump "$CAN"
 AIDIN Hand Gen2가 연결되지 않았거나 전원이 꺼져 있으면 frame이 없고 RX packet은 0으로 유지됩니다
 — link 설정 자체는 정상입니다. 연결하고 전원을 켠 뒤 다시 확인하십시오.
 
-각 state frame은 500 Hz로 들어옵니다. ID별 수신 rate를 실시간으로 보려면 아래를 실행합니다
-(Ctrl-C로 종료).
+> [!NOTE]
+> `can0`·`can1` 같은 이름은 부팅 순서와 hotplug에 따라 정해지므로, adapter를 다시 꽂거나
+> 재부팅하면 왼손·오른손과 이름의 대응이 바뀔 수 있습니다. 대응이 바뀐 뒤에는 `candump`로
+> 다시 확인하십시오.
+
+## 2. Check the receive rate
+
+기본 수신 확인을 마친 뒤 frame별 주기를 더 확인하려면 다음 명령을 사용합니다.
+앞 절에서 지정한 `CAN` 변수를 같은 터미널에서 사용합니다.
+
+각 state frame은 500 Hz로 들어옵니다. 다음 명령으로 ID별 수신 주파수를 확인하고 `Ctrl-C`로 종료합니다.
+
 ```bash
 candump -t a "$CAN" | gawk '
 BEGIN { win = 1.0; refresh = 1/60 }
@@ -149,34 +166,8 @@ BEGIN { win = 1.0; refresh = 1/60 }
 }'
 ```
 
-state 네 줄(왼손 `0x221`~`0x224`, 오른손 `0x121`~`0x124`)이 각각 500Hz 안팎이면 정상입니다.
+state 네 줄(왼손 `0x221`~`0x224`, 오른손 `0x121`~`0x124`)이 각각 500 Hz 안팎이면 정상입니다.
 
-> [!NOTE]
-> `can0`·`can1` 같은 이름은 부팅 순서와 hotplug에 따라 정해지므로, adapter를 다시 꽂거나
-> 재부팅하면 왼손·오른손과 이름의 대응이 바뀔 수 있습니다. 대응이 바뀐 뒤에는 `candump`로
-> 다시 확인하십시오.
-
-## 2. Use the interface in the wrapper
-
-wrapper는 interface 이름을 `ros2_control` 매크로의 `can_interface` parameter로 받고, side는
-`hand_side` parameter로 받습니다. 1절에서 확인한 이름과 side를 씁니다.
-
-단독 launch를 쓸 때는 launch 인자로 전달합니다. 왼손이 `can0`에 붙어 있는 경우입니다.
-
-```bash
-ros2 launch aidin_hand2_bringup aidin_hand2.launch.py \
-  use_right_hand:=false left_hand_interface:=can0 auto_home:=false
-```
-
-자기 URDF에 통합할 때는 매크로 호출에 씁니다.
-
-```xml
-<xacro:aidin_hand2_ros2_control
-  name="left_hand_control" prefix="left_" hand_side="left"
-  can_interface="can0" auto_home="false"/>
-```
-
-`can_interface="auto"`로 지정하면 SDK가 side의 CAN ID로 채널을 탐색합니다. adapter를 다시 꽂을 때마다
-이름이 바뀌는 환경에서 씁니다.
-
-이어서 [Installation](03_installation.md)에서 SDK와 wrapper를 빌드하십시오.
+설정한 interface 이름과 확인한 좌우 구분을 기록하십시오.
+wrapper 설치 전이라면 [Installation](03_installation.md)으로, 설치를 마쳤다면
+[2. Robot hand](04_bringup.md#2-robot-hand)로 진행합니다.

@@ -102,13 +102,13 @@ never a second copy of the table.
 ```
     can_interface              one CAN bus per hand, tactile included
     disabled_actuators         comma separated index list such as "0,1,2,3", empty = all on
-    isaac_state_timeout        seconds without a new state before the link counts as lost
+    auto_reconnect_timeout_ms  0 = no limit
 ```
 
 - The list order matches the declaration order, and both stay in step with the call sites
 - No comment between the declarations themselves, the list above them carries everything
 - Arguments that apply to one backend are separated by a light comment, not a banner:
-  `<!-- Isaac only -->`
+  `<!-- Mock only -->`
 - Every argument reaches the hardware the same way. The URDF holds the default and the macro
   always emits the `<param>`, so a hardware member initialiser is only the fallback for a URDF
   written without this macro. Do not add a `<xacro:if>` that emits a parameter only when it is
@@ -174,8 +174,7 @@ constexpr std::array<const char *, ah2::kActuatorCount> kActuatorBaseNames = {
 - Spell array order out in full so it cannot be read the wrong way:
   `order = thumb_actuator0..3, then index_actuator1..3, middle_actuator1..3, ring_actuator1..3,
   baby_actuator1..3`
-- `bridge` belongs to the Isaac interface only, which bridges the simulator over ROS 2 topics.
-  The real interface uses `service node`, the mock has no node
+- The real interface uses `service node`, the mock has no node
 - **`SDK` belongs to `aidin_hand2_hardware`**, the package that meets it. Elsewhere name the
   concrete thing instead: "tuned on the hardware node", not "belongs to the SDK ControllerConfig".
   An internal type name such as `ControllerConfig` goes with it
@@ -230,7 +229,7 @@ Remaining, in order:
 1. `aidin_hand2_description` — `ros2_control/aidin_hand2.ros2_control.xacro`,
    `urdf/aidin_hand2.urdf.xacro`, `_left`, `_right`, `launch/description.launch.py`, `package.xml`
 2. `aidin_hand2_bringup` — `config/hand_bringup.yaml` and `launch/aidin_hand2.launch.py` first,
-   then the controllers, mock and isaac config/launch pairs, `gui_bridge.launch.py`, `package.xml`
+   then the controllers and mock config/launch pairs, `gui_bridge.launch.py`, `package.xml`
 3. `aidin_hand2_examples` — the four upper controllers, `plugin/*.xml`, `CMakeLists.txt`,
    `package.xml`
 4. Markdown — `docs/en` mirroring `docs/ko`, the three package READMEs and `EXAMPLE.md`,
@@ -239,7 +238,7 @@ Remaining, in order:
 
 Stale claims found and corrected so far, worth watching for elsewhere:
 
-- "98 command interface resources" in the mock and isaac interfaces. The contract is
+- "98 command interface resources" in the mock interface. The contract is
   `command_lock` 1 + 16 x 4 = **65**
 - `actuator_position_controller.cpp` and `actuator_effort_controller.cpp` claimed that
   activation seeds the references from state, and `actuator_position_controller.cpp` listed a

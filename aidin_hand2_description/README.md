@@ -9,5 +9,5 @@ Robot description of the AIDIN Hand Gen2, for ROS 2 and simulation.
   prefixed `left_` or `right_`.
 - `launch/description.launch.py` shows the URDF in RViz without hardware.
 
-The macro parameters are in [Parameters](../docs/ko/09_parameters.md), and how to call the macros
-from your own URDF is in [Integration](../docs/ko/05_integration.md).
+The [package guide (Korean)](README.ko.md) covers file locations,
+macro calls and parameters, and the RViz launch arguments.

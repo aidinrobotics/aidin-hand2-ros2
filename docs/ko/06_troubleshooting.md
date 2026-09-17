@@ -1,7 +1,8 @@
 # Troubleshooting
 
-문제는 증상이 나타나는 층 순서로 분리합니다. 층은 build, launch, controller, hardware component, 통신의
-다섯이고, 장은 층 하나이고 절은 증상 하나입니다. 각 절은 증상, 원인, 조치 순서입니다.
+빌드·실행·제어 중 나타나는 증상과 오류 메시지로 원인을 찾아 조치합니다.
+목차에서 해당 증상을 선택하십시오. 실행 중 문제의 상태를 수집하는 방법은
+[1. Collect the basics](#1-collect-the-basics)에 있습니다.
 
 ## Contents
 
@@ -37,7 +38,9 @@
 
 ## 1. Collect the basics
 
-어느 층의 문제든 먼저 기본 정보를 수집합니다. 문제가 난 시각과 실행한 launch 명령도 함께 남깁니다.
+launch가 실행 중일 때 다음 명령 중 문제와 관련된 정보를 수집합니다.
+빌드에 실패했거나 해당 node가 실행되지 않았다면 실행 상태 조회 명령은 건너뜁니다.
+문제가 난 시각과 실행한 launch 명령도 함께 남깁니다.
 
 > [!WARNING]
 > AIDIN Hand Gen2가 의도하지 않게 움직이면 log 수집보다 전원 차단을 먼저 하십시오. `Ctrl-C`와 네트워크
@@ -51,7 +54,6 @@ ros2 doctor --report
 ros2 pkg prefix aidin_hand2_bringup
 ros2 control list_hardware_components
 ros2 control list_controllers
-ros2 control list_hardware_interfaces
 ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once
 ip -details -statistics link show can0
 ```
@@ -97,7 +99,7 @@ find /usr/local ~/.local -name aidin_hand2Config.cmake -print 2>/dev/null
 printf '%s\n' "$CMAKE_PREFIX_PATH" | tr ':' '\n'
 ```
 
-- 출력이 없으면 [Installation](03_installation.md) 3장대로 SDK를 install합니다.
+- 출력이 없으면 [2. Install the SDK](03_installation.md#2-install-the-sdk)대로 SDK를 install합니다.
 - `~/.local` 아래에만 있으면 build하는 shell에서 `CMAKE_PREFIX_PATH`에 `$HOME/.local`을 넣습니다.
   SDK build tree(`cpp/build`)를 prefix로 넣지 마십시오.
 - 두 곳 이상 나오면 prefix가 혼재한 상태입니다. `find_package`가 어느 쪽을 찾을지 정해지지 않으므로
@@ -131,12 +133,18 @@ launch 층의 증상은 overlay, plugin load, hardware component configure에서
 libaidin_hand2.so.0.5: cannot open shared object file: No such file or directory
 ```
 
-build는 통과했는데 launch에서 hardware plugin을 load하지 못하는 경우입니다. `/usr/local`에 install한 뒤
-`sudo ldconfig`를 실행하지 않아 loader 캐시에 라이브러리가 없습니다.
+빌드는 통과했는데 실행할 때 SDK 라이브러리를 찾지 못하는 경우입니다.
+`/usr/local`에 설치했다면 라이브러리 등록을 확인합니다.
 
 ```bash
 sudo ldconfig
-ldconfig -p | grep aidin_hand2          # libaidin_hand2.so.0.5가 나와야 합니다
+ldconfig -p | grep aidin_hand2          # libaidin_hand2.so로 시작하는 줄이 나와야 합니다
+```
+
+SDK를 `~/.local`에 설치했다면 실행 터미널에서 경로를 설정합니다. 다른 사용자 경로라면 바꾸십시오.
+
+```bash
+export LD_LIBRARY_PATH="$HOME/.local/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 ```
 
 wrapper가 실제로 어느 파일에 링크되었는지는 `ldd`로 확인합니다.
@@ -195,14 +203,6 @@ missing hardware parameter: can_interface
 hand_side must be 'left' or 'right', got '<value>'
 auto_home must be True/False, got '<value>'
 invalid numeric hardware parameter: <text>
-```
-
-isaac backend의 `on_init` 문구는 다음 셋입니다.
-
-```text
-hand_side must be 'left' or 'right' (got '<value>')
-state_timeout must be a number (got '<value>')
-max_effort must be a number (got '<value>')
 ```
 
 CAN 층은 [6. Communication](#6-communication)으로 확인하고, 문구별 조치는 SDK 문서의
@@ -266,18 +266,19 @@ controller 층의 증상은 mode 전환, command topic, controller parameter에�
 rejected mode switch: command interfaces must be one complete mode port plus command_lock
 ```
 
-hardware component는 `command_lock`과 한 mode의 port 16개 전부를 함께 claim하는 전환만 받아들입니다. 두
-command controller가 동시에 active가 되려 했거나, 이전 controller를 deactivate하지 않은 경우입니다.
+로봇 핸드마다 command controller 하나만 활성화할 수 있습니다. 현재 활성화된 controller와
+대상 controller를 확인하고, 기존 controller의 비활성화와 대상 controller의 활성화를 함께 요청합니다.
+다음은 joint position이 `active`이고 actuator position이 이미 `inactive`로 load된 경우입니다.
 
 ```bash
 ros2 control list_controllers
 ros2 control switch_controllers --strict \
   --deactivate left_joint_position_controller \
-  --activate left_joint_impedance_controller
+  --activate left_actuator_position_controller
 ```
 
 새 controller가 `unconfigured`나 `finalized`이면 spawner log를 확인합니다. 전환 규칙은
-[Controllers](06_controllers.md) 5장에 있습니다.
+[3. Switch controllers](../../aidin_hand2_controllers/README.ko.md#3-switch-controllers)에 있습니다.
 
 ### 4.2 A command is published but nothing moves
 
@@ -300,9 +301,10 @@ ros2 topic echo /left_hand_state_broadcaster/hand_state --once --field command_s
 | `command_state.selected_source` | `1` |
 
 `lifecycle` 값이 `Stopped`이면 `~/run` service를, `Faulted`이면 `~/reconnect` service를, `homing_state` 값이
-`Succeeded`가 아니면 `~/home` service를 호출합니다. `selected_source` 값이 `3`이면 homing 중, `2`면 quick
+`NotRun` 또는 `Failed`이면 원인을 확인한 뒤 `~/home`을 호출합니다.
+`InProgress`이면 완료를 기다립니다. `selected_source` 값이 `3`이면 homing 중, `2`면 quick
 stop입니다. wrapper는 `lifecycle` 값이 `Running`이 아니거나 `homing_state` 값이 `Succeeded`가 아니면
-command를 error 없이 건너뜁니다. 조건은 [Controllers](06_controllers.md) 6.2절에 있습니다.
+command를 error 없이 건너뜁니다. 조건은 [4.1 When commands are applied](../../aidin_hand2_controllers/README.ko.md#41-when-commands-are-applied)에 있습니다.
 
 ### 4.3 Part of a command is ignored
 
@@ -337,22 +339,22 @@ controller의 `hand_side` parameter에 `prefix`를 준 경우입니다. `control
 
 ### 4.5 Joints move too fast
 
-joint position command의 filter는 hardware node의 parameter가 결정합니다. 기본 `cutoff_freq` 값 10 Hz가
-발행 주기의 절반보다 높으면 발행 사이의 계단이 그대로 전송됩니다.
+먼저 보내는 목표 각도의 변화량과 발행 주기를 확인합니다. joint position의 filter 설정도 확인합니다.
 
 ```bash
+ros2 param get /left_hand_control joint_position_controller.filter_enabled
 ros2 param get /left_hand_control joint_position_controller.cutoff_freq
-ros2 param set /left_hand_control joint_position_controller.cutoff_freq 5.0
 ```
 
-`filter_enabled` 값이 `false`면 filter 없이 목표가 즉시 반영됩니다. parameter는
-[Parameters](09_parameters.md) 2.2절에 있습니다.
+`filter_enabled`가 `false`이면 filter 없이 목표가 반영됩니다. filter는 이동 속도의 상한을
+보장하지 않으므로 속도 제한이 필요하면 상위 application이 시간에 따른 목표를 생성해야 합니다.
+설정의 의미는 [6.2 Joint position controller](../../aidin_hand2_hardware/README.ko.md#62-joint-position-controller)에 있습니다.
 
 ### 4.6 Broadcasters missing on mock
 
-mock에서 `HandStateBroadcaster`와 `DiagnosticsBroadcaster`가 없는 것은 정상입니다. mock은 tactile,
-diagnostics, command echo state interface를 export하지 않으므로 두 broadcaster가 claim할 대상이 없습니다.
-mock이 올리는 controller는 [Launch files](10_launch_files.md) 3장에 있습니다.
+mock은 `/joint_states`만 발행합니다. `HandStateBroadcaster`와 `DiagnosticsBroadcaster`는
+제공하지 않으므로 두 broadcaster를 추가로 실행하지 않습니다. mock의 지원 범위는
+[5. Mock behavior](../../aidin_hand2_controllers/README.ko.md#5-mock-behavior)에 있습니다.
 
 ## 5. Hardware component
 
@@ -366,8 +368,8 @@ waiting for service to become available...
 
 `/left_hand_control/home` service가 없는 원인은 다음 중 하나입니다.
 
-- mock이나 isaac backend입니다. service는 로봇 핸드 backend에만 있습니다.
-- hardware component가 configure되지 않았습니다. service node는 `on_configure`에서 시작됩니다.
+- mock backend입니다. service는 로봇 핸드 backend에만 있습니다.
+- 로봇 핸드 연결에 실패했습니다. launch log와 hardware component 상태를 확인합니다.
 - 자기 URDF에서 매크로의 `name` parameter를 바꿨습니다. service는 `/<name>/home`입니다.
 - `ROS_DOMAIN_ID`가 다릅니다.
 
@@ -382,13 +384,13 @@ printenv ROS_DOMAIN_ID
 ### 5.2 home succeeds but homing_state is not Succeeded
 
 `~/home` service의 성공은 시작 접수이고 완료가 아닙니다. 완료는 `homing_state` 값이 `Succeeded`로 바뀌는
-것으로 확인하며, 제한 시간과 완료 조건은 [3. home](07_services.md#3-home)에 있습니다.
+것으로 확인하며, 제한 시간과 완료 조건은 [3. home](../../aidin_hand2_hardware/README.ko.md#3-home)에 있습니다.
 
 ```bash
 ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field homing_state
 ```
 
-- `InProgress`가 계속되면 finger가 막혀 hard stop에 닿지 못하는 상태입니다.
+- `InProgress`이면 진행 중입니다. 제한 시간을 넘기면 `control_cycles`의 증가 여부와 오류 log를 확인합니다.
 - `Failed`면 `actuator_fault_name` 필드에서 fault가 있는 actuator를 확인하고 원인을 제거한 뒤 `~/home`
   service를 다시 호출합니다.
 - `NotRun`으로 돌아갔다면 직전에 `~/reconnect` service를 호출한 경우입니다. `~/run` service 뒤 `~/home`
@@ -396,16 +398,15 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field homing_st
 
 ### 5.3 Topics keep publishing but the robot hand has stopped
 
-broadcaster는 state interface의 마지막 값을 같은 주기로 반복 발행하므로 topic이 계속 와도 SDK가 정지한
+broadcaster는 마지막 관측값을 같은 주기로 반복 발행하므로 topic이 계속 와도 SDK가 정지한
 상태일 수 있습니다. 값의 변화로 판단합니다.
 
 ```bash
-ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field lifecycle
-ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field control_cycles
+ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics
 ```
 
-`lifecycle` 값이 `Faulted`이면 통신 오류나 제어·통신 루프 예외로 정지한 것이고, `control_cycles` 값이
-`Faulted`로 전이한 시점부터 멈춥니다. 복구 절차는 [Services](07_services.md) 4장에 있습니다. `auto_reconnect=true`이면 복구
+`Ctrl-C`로 관측을 끝냅니다. `lifecycle` 값이 `Faulted`이면 통신 오류나 제어·통신 루프 예외로 정지한 것이고, `control_cycles` 값이
+`Faulted`로 전이한 시점부터 멈춥니다. 복구 절차는 [Services](../../aidin_hand2_hardware/README.ko.md) 4장에 있습니다. `auto_reconnect=true`이면 복구
 중에도 마지막 state가 반복 발행됩니다.
 
 ### 5.4 reconnect fails
@@ -414,16 +415,16 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field control_c
 success: False
 ```
 
-`~/reconnect` service는 `lifecycle` 값이 `Faulted`일 때만 성공합니다. 통신이 살아 있는 상태에서 연결을
-다시 수립하려면 hardware component를 inactive → active로 전이합니다.
+`~/reconnect`는 `lifecycle`이 `Faulted`일 때만 사용합니다. `Stopped`에서 제어를 재개하려면
+`~/run`을 호출합니다. 현재 상태는 다음으로 확인합니다.
 
 ```bash
-ros2 control set_hardware_component_state left_hand_control inactive
-ros2 control set_hardware_component_state left_hand_control active
+ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once --field lifecycle
 ```
 
-`Faulted`인데도 실패하면 300 ms 안에 첫 state frame이 오지 않은 것입니다. 전원과 CAN을
-[6. Communication](#6-communication)으로 확인한 뒤 다시 호출합니다.
+`Faulted`인데도 실패하면 service 응답의 `message`와 `/rosout`을 확인합니다.
+첫 state 수신 시간 초과라면 [6. Communication](#6-communication)으로 전원과 CAN을 확인한 뒤
+다시 호출합니다. 복구 순서는 [4.1 Manual recovery](../../aidin_hand2_hardware/README.ko.md#41-manual-recovery)에 있습니다.
 
 ### 5.5 stop fails
 
@@ -441,7 +442,7 @@ SCHED_FIFO not applied (need privileges) — continuing without realtime schedul
 ```
 
 SDK가 제어·통신 루프를 `SCHED_FIFO` priority 90으로 올리지 못한 경우입니다. 동작은 계속되지만
-`deadline_misses` 값이 늘어납니다. [Real-time kernel setup](01_real_time_kernel_setup.md) 2장의 `realtime`
+`deadline_misses` 값이 늘어날 수 있습니다. [Real-time kernel setup](01_real_time_kernel_setup.md) 2장의 `realtime`
 group과 limit을 확인합니다.
 
 ```bash
@@ -472,7 +473,7 @@ candump -n 5 can0
 
 지원을 요청할 때 다음을 함께 보냅니다.
 
-- wrapper와 SDK의 git commit, `ros2 pkg list | grep aidin_hand2_`의 version
+- `aidin-hand2-ros2`와 `aidin-hand2-sdk`의 git commit, `ros2 pkg list | grep aidin_hand2_`의 package 목록
 - Ubuntu, ROS 2 distribution, `uname -a`
 - launch 명령과 config YAML
 - `ros2 doctor --report`
