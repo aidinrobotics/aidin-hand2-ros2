@@ -24,9 +24,14 @@ launch는 계속 실행하고, 명령은 ROS와 workspace 환경을 적용한 �
 ## 1. Lifecycle
 
 lifecycle은 로봇 핸드가 연결되어 있는지, 제어 중인지, 정지했는지 나타내는 상태입니다.
-`hand_diagnostics.lifecycle`은 SDK가 보고하는 통신·제어 상태입니다.
-`ros2 control`이 보여 주는 hardware component의 `active`와는 별개입니다.
-component가 `active`여도 service로 정지했거나 통신 오류가 발생했다면 command를 적용하지 않습니다.
+`hand_diagnostics.lifecycle` 필드가 SDK가 보고하는 값이고, 상태와 전이는 다음과 같습니다.
+
+![AIDIN Hand Gen2 ROS 2 lifecycle](../assets/aidin_hand2_ros2_lifecycle.webp)
+
+`~/run`·`~/stop`·`~/reconnect`는 hardware node가 제공하는 service입니다. `configure`·`activate`·
+`deactivate`·`cleanup`은 ros2_control이 hardware component를 올리고 내릴 때 수행하는 전이이며
+launch와 종료가 실행합니다. 두 경로가 같은 전이를 일으키므로 상자 안에는 그때의 hardware component
+상태를 함께 적었습니다.
 
 | State | Meaning | Next action |
 |---|---|---|
@@ -36,13 +41,23 @@ component가 `active`여도 service로 정지했거나 통신 오류가 발생�
 | `Stopped` | quick stop이 확인된 무토크 상태 | 제어를 재개하려면 `~/run`을 호출합니다 |
 | `Faulted` | 통신 오류나 제어·통신 루프 예외로 제어가 종료된 상태 | 원인을 확인하고 [4. reconnect](../../aidin_hand2_hardware/README.ko.md#4-reconnect)로 복구합니다 |
 
-기본 launch는 연결과 제어 시작을 함께 수행하므로 정상 실행 후에는 `Running`입니다.
-command 적용에는 `homing_state`가 `Succeeded`라는 조건도 필요합니다.
+기본 launch는 `configure`와 `activate`를 함께 수행하므로 정상 실행 후에는 `Running`입니다.
 
-`ros2 control list_controllers`의 `active`는 controller가 실행 중이라는 뜻입니다.
-로봇 핸드의 제어 가능 여부는 `hand_diagnostics`를 함께 읽어 판단합니다.
-`homing_state`는 원점 설정 상태로 lifecycle과 별도로 확인하며,
-`NotRun` → `InProgress` → `Succeeded` 순서로 진행합니다. 실패하면 `Failed`입니다.
+`active`는 명령 출력에서 두 곳에 나타나고 뜻이 다릅니다. 제어가 가능한지 판단하려면 다음 넷을 함께
+읽습니다.
+
+| 값 | 의미 | 확인 방법 |
+|---|---|---|
+| controller의 `active` | 그 controller의 update가 매 cycle 실행되고 interface를 점유합니다 | `ros2 control list_controllers` |
+| hardware component의 `active` | drive에 토크가 걸려 움직일 수 있습니다. 활성화될 때 SDK에 `run`을 요청합니다 | `ros2 control list_hardware_components` |
+| `lifecycle` | 로봇 핸드가 실제로 제어 중인지 SDK가 보고합니다 | `hand_diagnostics.lifecycle` |
+| `homing_state` | 원점 설정 상태입니다. lifecycle과 별개 축입니다 | `hand_diagnostics.homing_state` |
+
+command가 적용되려면 command controller가 `active`이고 `lifecycle`이 `Running`이며 `homing_state`가
+`Succeeded`여야 합니다. 통신 오류로 `Faulted`가 되어도 hardware component는 활성화된 채로 남으므로
+hardware component 상태만으로는 판단할 수 없습니다. `homing_state`는 `NotRun` → `InProgress` →
+`Succeeded` 순서로 진행하며 실패하면 `Failed`입니다.
+
 mock은 이 lifecycle·homing 상태와 service를 제공하지 않으므로 3장으로 진행합니다.
 
 ## 2. Prepare the robot hand

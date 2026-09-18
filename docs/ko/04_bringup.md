@@ -53,6 +53,16 @@ ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py
 
 ### 1.2 Check the controllers
 
+이 launch는 ros2_control 위에서 작동하고, 실행되는 요소는 hardware component와 controller 둘입니다.
+hardware component는 SDK와 통신하며 로봇 핸드의 상태를 읽고 목표값을 쓰고, 이름은
+`{side}_hand_control`입니다. controller는 그 위에서 매 cycle 실행되어 목표값을 만들거나 관측값을
+topic으로 발행합니다.
+
+둘 다 ROS 2 managed node의 상태인 `unconfigured`·`inactive`·`active`를 가집니다. controller가 `active`면
+매 cycle 실행되고, hardware component가 `active`면 drive에 토크가 걸려 움직일 수 있습니다. command
+controller 넷은 같은 command interface를 점유하므로 로봇 핸드마다 하나만 `active`가 될 수 있습니다.
+mock launch는 joint position 하나만 올리고, 로봇 핸드 launch는 나머지 셋을 `inactive`로 함께 올려 둡니다.
+
 다른 터미널에서 hardware component와 controller 상태를 확인합니다.
 
 ```bash

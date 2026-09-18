@@ -109,7 +109,7 @@ Canonical signing certificate 경로를 비운 뒤(그대로 두면 빌드가 �
 `olddefconfig`로 새 옵션을 기본값으로 채웁니다.
 
 > [!NOTE]
-> `cp`는 **지금 부팅해서 돌고 있는** kernel의 config를 복사합니다. 이미 직접 빌드한 kernel로
+> `cp`는 **지금 부팅해서 작동 중인** kernel의 config를 복사합니다. 이미 직접 빌드한 kernel로
 > 부팅한 상태라면 Ubuntu 기본 config가 아니라 그 kernel의 config를 물려받으니, 시작점이
 > 의도한 config가 맞는지 확인하십시오.
 
@@ -127,7 +127,7 @@ CAN driver가 config에 남아 있는지 확인합니다.
 grep -E 'CONFIG_CAN=|CONFIG_CAN_DEV|CONFIG_CAN_RAW|CONFIG_CAN_PEAK_USB|CONFIG_CAN_GS_USB' .config
 ```
 
-누락됐다면 SocketCAN 코어와 어댑터 driver를 켜고 `olddefconfig`를 다시 돌립니다. 우리가 쓰는
+누락됐다면 SocketCAN 코어와 어댑터 driver를 켜고 `olddefconfig`를 다시 실행합니다. 우리가 쓰는
 어댑터는 PEAK PCAN-USB FD(driver `peak_usb`)와 candleLight 기반 CANable Pro 2.0(driver
 `gs_usb`)이므로 driver 2개를 함께 켭니다.
 

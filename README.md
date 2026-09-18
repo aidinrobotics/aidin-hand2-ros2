@@ -45,6 +45,29 @@ The `~` denotes the name of the node providing a topic or service; for example, 
 `/left_joint_position_controller/cmd`. Effort limits, filters and gains are ROS parameters of the
 hardware node.
 
+## Terms
+
+The ros2_control terms this documentation uses throughout. If they are new to you, read them here
+first. The full definitions are in the [ros2_control documentation](https://control.ros.org/humble/index.html).
+
+| Term | Meaning |
+|---|---|
+| controller_manager | The node that loads, unloads and runs controllers every cycle. The launch files start it |
+| hardware component | The plugin that talks to the hardware, reads state and writes targets. The kinds are System, Actuator and Sensor; the wrapper provides one System per robot hand, which calls the SDK and is named `{side}_hand_control` |
+| hardware node | The node the hardware component starts. It offers the `~/run`, `~/stop`, `~/home` and `~/reconnect` services and the effort, filter and gain parameters |
+| controller | Runs every cycle on top of the hardware component to produce targets or publish observations |
+| broadcaster | A controller that produces no target and only publishes observations |
+| `unconfigured` · `inactive` · `active` | The ROS 2 managed node states, held separately by controllers and by hardware components. An `active` controller runs every cycle; an `active` hardware component has torque on the drives so the hand can move. `inactive` means loaded but neither, and `unconfigured` comes before it |
+| command interface | Where a controller writes a target. Only one controller can claim it at a time |
+| state interface | Where observations are read. Several readers can share one |
+| reference interface | The input a command controller opens to an upper controller. A target written here is used instead of the controller's own topic |
+| chained mode | The state in which a command controller takes its target from its reference interfaces |
+| spawner | The executable that loads a controller into the controller_manager. The launch files run one per controller |
+
+`active` applies to both controllers and hardware components, and neither is the lifecycle the SDK
+reports. The table that separates the three is in
+[1. Lifecycle](docs/ko/05_control_guide.md#1-lifecycle).
+
 ## Getting started
 
 Choose a path below. Installation and mock execution do not require the robot hand or a CAN adapter.

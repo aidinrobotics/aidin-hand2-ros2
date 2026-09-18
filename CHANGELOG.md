@@ -9,6 +9,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **The documentation defines the ros2_control terms it uses and draws the lifecycle.** A reader
+  met `active`, `hardware component` and `chained mode` for the first time in a Bringup check step,
+  with no definition anywhere and one link to the ros2_control site. Both READMEs now carry a Terms
+  table, Bringup says what a hardware component and a controller are before the first check, and
+  the Lifecycle chapter carries a state diagram that puts the ROS services on the arrows, the
+  ros2_control transitions beside them and the hardware component state inside each box. A table in
+  that chapter separates the three values called `active`: the controller's, the hardware
+  component's and the lifecycle the SDK reports.
 - **Real-time kernel setup and CAN-FD setup are part of this repository's documentation.** They
   carry the same procedure as the SDK documents, so a reader who installs only the wrapper does
   not switch repositories. The last chapter of the CAN-FD document names the interface through the

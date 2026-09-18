@@ -31,7 +31,7 @@ AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. con
 
 어느 경로든 한 손에 active인 command controller는 하나입니다.
 
-user controller는 controller_manager 안에서 돌기 때문에 actuator 위치·joint 각도·tactile 같은 상태를
+user controller는 controller_manager 안에서 작동하기 때문에 actuator 위치·joint 각도·tactile 같은 상태를
 topic이 아니라 state interface로 같은 cycle 안에서 읽을 수 있습니다. 상태 관측과 목표값 계산이 500 Hz
 cycle 하나에서 닫히므로 topic 왕복이 없는 제어 루프가 됩니다. `aidin_hand2_examples`의 skeleton이 이
 틀이고, 알고리즘 자리에는 입력에 0을 곱하는 한 줄이 들어 있습니다. 읽을 수 있는 state interface
@@ -40,6 +40,28 @@ cycle 하나에서 닫히므로 topic 왕복이 없는 제어 루프가 됩니�
 user node는 상태를 `/joint_states`, `~/hand_state`, `~/hand_diagnostics` topic으로 읽습니다. `~`는 해당
 topic이나 service를 제공하는 node 이름입니다. 예를 들어 `~/cmd`는 `/left_joint_position_controller/cmd`가 됩니다.
 effort 상한과 filter·gain은 hardware node의 ROS parameter로 설정합니다.
+
+## Terms
+
+문서 전체가 쓰는 ros2_control 용어입니다. 처음 보신다면 여기서 뜻을 확인하고 읽으십시오. 자세한
+정의는 [ros2_control 문서](https://control.ros.org/humble/index.html)에 있습니다.
+
+| 용어 | 뜻 |
+|---|---|
+| controller_manager | controller를 올리고 내리고 매 cycle 실행하는 node입니다. 이 wrapper에서는 launch가 띄웁니다 |
+| hardware component | 하드웨어와 통신하며 상태를 읽고 목표값을 쓰는 plugin입니다. 종류는 System·Actuator·Sensor 셋이며, wrapper는 SDK를 호출하는 System을 로봇 핸드마다 하나씩 제공하고 이름은 `{side}_hand_control`입니다 |
+| hardware node | hardware component가 띄우는 node입니다. `~/run`·`~/stop`·`~/home`·`~/reconnect` service와 effort·filter·gain parameter를 제공합니다 |
+| controller | hardware component 위에서 매 cycle 실행되어 목표값을 만들거나 관측값을 발행합니다 |
+| broadcaster | 목표값을 만들지 않고 관측값만 topic으로 발행하는 controller입니다 |
+| `unconfigured` · `inactive` · `active` | ROS 2 managed node의 상태 이름이고 controller와 hardware component가 각각 가집니다. controller가 `active`면 매 cycle 실행되고, hardware component가 `active`면 drive에 토크가 걸려 움직일 수 있습니다. `inactive`는 올라와 있지만 그렇지 않은 상태이며 `unconfigured`는 그 앞 단계입니다 |
+| command interface | controller가 목표값을 쓰는 자리입니다. 한 번에 하나의 controller만 점유할 수 있습니다 |
+| state interface | 관측값을 읽는 자리입니다. 여럿이 함께 읽을 수 있습니다 |
+| reference interface | command controller가 상위 controller에게 열어 주는 입력입니다. 여기에 목표값이 들어오면 자기 topic 대신 이 값을 씁니다 |
+| chained mode | command controller가 reference interface의 값을 쓰는 상태입니다 |
+| spawner | controller를 controller_manager에 올리는 실행 파일입니다. launch가 controller마다 하나씩 실행합니다 |
+
+`active`는 controller와 hardware component 양쪽에 쓰이고, SDK가 보고하는 lifecycle과도 다릅니다. 셋을
+구별하는 표는 [1. Lifecycle](docs/ko/05_control_guide.md#1-lifecycle)에 있습니다.
 
 ## Getting started
 
