@@ -302,3 +302,12 @@ of it. Glove teleop is gone. The URDF joint limits were wrong and are corrected.
 ## [0.1.0]
 
 - Initial release.
+
+[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.6.0-humble...develop
+[0.6.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.4.0-humble...v0.6.0-humble
+[0.4.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.3.2-humble...v0.4.0-humble
+[0.3.2]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.3.1-humble...v0.3.2-humble
+[0.3.1]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.3.0-humble...v0.3.1-humble
+[0.3.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.2.0-humble...v0.3.0-humble
+[0.2.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.1.0...v0.2.0-humble
+[0.1.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/releases/tag/v0.1.0
