@@ -2,31 +2,31 @@
   <class name="aidin_hand2_controllers/JointPositionController"
          type="aidin_hand2_controllers::JointPositionController"
          base_class_type="controller_interface::ChainableControllerInterface">
-    <description>active joint 목표(rad)를 hardware joint position command interface 로 지령. chainable.</description>
+    <description>Chainable controller commanding the active joint target in rad.</description>
   </class>
   <class name="aidin_hand2_controllers/ActuatorPositionController"
          type="aidin_hand2_controllers::ActuatorPositionController"
          base_class_type="controller_interface::ChainableControllerInterface">
-    <description>actuator 위치(encoder count)를 직접 지령 (expert/raw). chainable.</description>
+    <description>Chainable controller commanding the actuator position in encoder counts, a raw interface.</description>
   </class>
   <class name="aidin_hand2_controllers/ActuatorEffortController"
          type="aidin_hand2_controllers::ActuatorEffortController"
          base_class_type="controller_interface::ChainableControllerInterface">
-    <description>actuator effort(rated current %)를 직접 지령 (expert/raw). chainable.</description>
+    <description>Chainable controller commanding the actuator effort in rated current percent, a raw interface.</description>
   </class>
   <class name="aidin_hand2_controllers/JointImpedanceController"
          type="aidin_hand2_controllers::JointImpedanceController"
          base_class_type="controller_interface::ChainableControllerInterface">
-    <description>joint impedance — 평형 자세(rad) + gain 파라미터. chainable.</description>
+    <description>Chainable controller commanding the joint equilibrium target in rad, the gains being tuned on the hardware node.</description>
   </class>
   <class name="aidin_hand2_controllers/HandStateBroadcaster"
          type="aidin_hand2_controllers::HandStateBroadcaster"
          base_class_type="controller_interface::ControllerInterface">
-    <description>학습 관측 snapshot(joint·actuator·tactile) 을 ~/hand_state 로 발행.</description>
+    <description>Broadcasts the observation snapshot of joint, actuator and tactile state on ~/hand_state.</description>
   </class>
   <class name="aidin_hand2_controllers/DiagnosticsBroadcaster"
          type="aidin_hand2_controllers::DiagnosticsBroadcaster"
          base_class_type="controller_interface::ControllerInterface">
-    <description>SDK Diagnostics + actuator fault/enabled 를 /diagnostics 로 발행.</description>
+    <description>Broadcasts lifecycle, homing, timing counters and per-actuator health on ~/hand_diagnostics.</description>
   </class>
 </library>

@@ -8,10 +8,6 @@ find_package(std_msgs REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/HandState.msg"
   "msg/HandDiagnostics.msg"
-  "msg/JointPositionCommand.msg"
-  "msg/JointImpedanceCommand.msg"
-  "msg/ActuatorPositionCommand.msg"
-  "msg/ActuatorEffortCommand.msg"
   "msg/CommandState.msg"
   DEPENDENCIES std_msgs
 )

@@ -1,3 +1,6 @@
+// Copyright (c) AIDIN ROBOTICS Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 #include "aidin_hand2_controllers/diagnostics_broadcaster.hpp"
 
 #include <array>
@@ -5,31 +8,34 @@
 #include <string>
 #include <vector>
 
-#include <aidin_hand2/types/state.hpp>
+#include <aidin_hand2/types/description.hpp>
 #include <aidin_hand2/types/state.hpp>
 
-#include "diagnostic_msgs/msg/diagnostic_status.hpp"
-#include "diagnostic_msgs/msg/key_value.hpp"
+// --------------------------- State interface name ---------------------------
+//   side       ∈ {left, right}
+//   finger     ∈ {thumb, index, middle, ring, baby}
+//   n          : thumb = 0..3, otherwise 1..3
+//
+//   state interface : {side}_diagnostics/{field}                        (7 fields)
+//                     {side}_diagnostics/enabled_{finger}_actuator{n}   (0 or 1)
+//                     {side}_diagnostics/fault_{finger}_actuator{n}     (ActuatorFault bits)
+//   published topic : ~/hand_diagnostics
+//                     (aidin_hand2_msgs/HandDiagnostics)
+//
+//   The claim is 7 hand-wide fields, then enabled x16, then fault x16, 39 resources
+//   The claim order is the interface order the hardware exports, and the offsets below
+//   index the claim
+//   lifecycle and homing_state arrive as an ordinal and go out as a name
+//   An empty fault name is a healthy actuator
 
 namespace aidin_hand2_controllers
 {
 
-namespace
-{
-// state_interfaces_ 순서 — HW export_state_interfaces 의 diagnostics gpio 순서와 일치.
-// claim 순서: hand 전역 필드 → actuator enabled(16) → actuator fault(16).
-// lifecycle(index 0)은 double(HandLifecycle ordinal) — 여기서 to_string 으로 이름화한다.
-const std::array<const char *, 7> kDiagnosticsFields = {
-  "lifecycle",
-  "nan_command_count",
-  "control_cycles",
-  "deadline_misses",
-  "last_period_ms",
-  "last_compute_ms",
-  "homing_state"};
+namespace ah2 = aidin_hand2;
 
-// actuator 이름 (prefix 없음) — DiagnosticStatus key 로도 사용.
-const std::array<const char *, 16> kActuatorBaseNames = {
+// Interface names without the prefix
+// The position in the list is the actuator index
+constexpr std::array<const char *, ah2::kActuatorCount> kActuatorBaseNames = {
   "thumb_actuator0",
   "thumb_actuator1",
   "thumb_actuator2",
@@ -45,26 +51,56 @@ const std::array<const char *, 16> kActuatorBaseNames = {
   "ring_actuator3",
   "baby_actuator1",
   "baby_actuator2",
-  "baby_actuator3"};
+  "baby_actuator3",
+};
 
-// enabled·fault 블록 시작 인덱스 — claim 순서에서 파생(필드 개수가 바뀌어도 자동 추종).
-constexpr std::size_t kEnabledOffset = kDiagnosticsFields.size();
-constexpr std::size_t kFaultOffset = kEnabledOffset + kActuatorBaseNames.size();
+// Hand-wide fields, in the interface order the hardware exports
+constexpr std::array<const char *, 7> kDiagnosticsFields = {
+  "lifecycle",
+  "nan_command_count",
+  "control_cycles",
+  "deadline_misses",
+  "last_period_ms",
+  "last_compute_ms",
+  "homing_state",
+};
 
-std::string bool_string(double value) { return value != 0.0 ? "true" : "false"; }
+constexpr char kDiagnosticsComponent[] = "diagnostics";
+constexpr char kEnabledPrefix[] = "enabled_";
+constexpr char kFaultPrefix[] = "fault_";
 
-// diagnostics state interface 의 lifecycle 값(double = HandLifecycle ordinal) → 이름.
-std::string lifecycle_string(double value)
+namespace
 {
-  return aidin_hand2::to_string(static_cast<aidin_hand2::HandLifecycle>(static_cast<int>(value)));
+// Index into kDiagnosticsFields, and into the claimed state interfaces
+constexpr std::size_t kLifecycleIndex = 0;
+constexpr std::size_t kNanCommandCountIndex = 1;
+constexpr std::size_t kControlCyclesIndex = 2;
+constexpr std::size_t kDeadlineMissesIndex = 3;
+constexpr std::size_t kLastPeriodMsIndex = 4;
+constexpr std::size_t kLastComputeMsIndex = 5;
+constexpr std::size_t kHomingStateIndex = 6;
+
+// The per-actuator blocks follow the hand-wide fields
+constexpr std::size_t kEnabledOffset = kDiagnosticsFields.size();
+constexpr std::size_t kFaultOffset = kEnabledOffset + ah2::kActuatorCount;
+
+std::string lifecycle_name(double ordinal)
+{
+  return ah2::to_string(static_cast<ah2::HandLifecycle>(static_cast<int>(ordinal)));
 }
 
-// homing_state 값(double = HomingState ordinal) → 이름.
-std::string homing_state_string(double value)
+std::string homing_state_name(double ordinal)
 {
-  return aidin_hand2::to_string(static_cast<aidin_hand2::HomingState>(static_cast<int>(value)));
+  return ah2::to_string(static_cast<ah2::HomingState>(static_cast<int>(ordinal)));
+}
+
+ah2::ActuatorFault actuator_fault(double bits)
+{
+  return static_cast<ah2::ActuatorFault>(static_cast<std::uint16_t>(bits));
 }
 }  // namespace
+
+// --------------------------------- Lifecycle --------------------------------
 
 controller_interface::CallbackReturn DiagnosticsBroadcaster::on_init()
 {
@@ -77,48 +113,18 @@ controller_interface::CallbackReturn DiagnosticsBroadcaster::on_configure(
 {
   hand_side_ = get_node()->get_parameter("hand_side").as_string();
   if (hand_side_ != "left" && hand_side_ != "right") {
-    RCLCPP_ERROR(get_node()->get_logger(), "hand_side must be 'left' or 'right' (got '%s')",
-                 hand_side_.c_str());
+    RCLCPP_ERROR(
+      get_node()->get_logger(), "hand_side must be 'left' or 'right', got '%s'",
+      hand_side_.c_str());
     return controller_interface::CallbackReturn::ERROR;
   }
-  auto diagnostic_array_publisher =
-    get_node()->create_publisher<diagnostic_msgs::msg::DiagnosticArray>(
-      "/diagnostics", rclcpp::SystemDefaultsQoS());
+
+  auto publisher = get_node()->create_publisher<aidin_hand2_msgs::msg::HandDiagnostics>(
+    "~/hand_diagnostics", rclcpp::SystemDefaultsQoS());
   publisher_ =
-    std::make_shared<realtime_tools::RealtimePublisher<diagnostic_msgs::msg::DiagnosticArray>>(
-      diagnostic_array_publisher);
-
-  auto hand_diagnostics_publisher =
-    get_node()->create_publisher<aidin_hand2_msgs::msg::HandDiagnostics>(
-      "~/hand_diagnostics", rclcpp::SystemDefaultsQoS());
-  hand_diagnostics_publisher_ =
     std::make_shared<realtime_tools::RealtimePublisher<aidin_hand2_msgs::msg::HandDiagnostics>>(
-      hand_diagnostics_publisher);
+      publisher);
   return controller_interface::CallbackReturn::SUCCESS;
-}
-
-controller_interface::InterfaceConfiguration
-DiagnosticsBroadcaster::command_interface_configuration() const
-{
-  return {controller_interface::interface_configuration_type::NONE, {}};
-}
-
-controller_interface::InterfaceConfiguration
-DiagnosticsBroadcaster::state_interface_configuration() const
-{
-  const std::string prefix = hand_side_ + "_";
-  const std::string diagnostics = prefix + "diagnostics/";
-  std::vector<std::string> names;
-  for (const auto * field : kDiagnosticsFields) {
-    names.push_back(diagnostics + field);
-  }
-  for (const auto * actuator : kActuatorBaseNames) {
-    names.push_back(diagnostics + "enabled_" + actuator);
-  }
-  for (const auto * actuator : kActuatorBaseNames) {
-    names.push_back(diagnostics + "fault_" + actuator);
-  }
-  return {controller_interface::interface_configuration_type::INDIVIDUAL, names};
 }
 
 controller_interface::CallbackReturn DiagnosticsBroadcaster::on_activate(
@@ -133,92 +139,64 @@ controller_interface::CallbackReturn DiagnosticsBroadcaster::on_deactivate(
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
+// -------------------------- Interface configuration -------------------------
+
+controller_interface::InterfaceConfiguration
+DiagnosticsBroadcaster::command_interface_configuration() const
+{
+  return {controller_interface::interface_configuration_type::NONE, {}};
+}
+
+controller_interface::InterfaceConfiguration
+DiagnosticsBroadcaster::state_interface_configuration() const
+{
+  const std::string diagnostics = hand_side_ + "_" + kDiagnosticsComponent + "/";
+  std::vector<std::string> names;
+  names.reserve(kFaultOffset + ah2::kActuatorCount);
+  for (const char * field : kDiagnosticsFields) {
+    names.push_back(diagnostics + field);
+  }
+  for (const char * actuator : kActuatorBaseNames) {
+    names.push_back(diagnostics + kEnabledPrefix + actuator);
+  }
+  for (const char * actuator : kActuatorBaseNames) {
+    names.push_back(diagnostics + kFaultPrefix + actuator);
+  }
+  return {controller_interface::interface_configuration_type::INDIVIDUAL, names};
+}
+
+// ---------------------------------- Update ----------------------------------
+
+// Publishes on every call, a cycle that cannot take the publisher lock is skipped
+// The rate is the standard per-controller update_rate parameter
 controller_interface::return_type DiagnosticsBroadcaster::update(
   const rclcpp::Time & time, const rclcpp::Duration &)
 {
-  // 매 호출 발행 — rate 조절은 yaml 의 표준 per-controller update_rate 파라미터로.
-  if (publisher_ && publisher_->trylock()) {
-    auto & array = publisher_->msg_;
-    array.header.stamp = time;
-    array.status.clear();
-
-    diagnostic_msgs::msg::DiagnosticStatus status;
-    status.name = hand_side_ + "_hand";
-    status.hardware_id = hand_side_;
-
-    const auto add = [&status](const std::string & key, const std::string & value) {
-      diagnostic_msgs::msg::KeyValue pair;
-      pair.key = key;
-      pair.value = value;
-      status.values.push_back(pair);
-    };
-
-    // SDK Diagnostics 7 필드 — lifecycle(이름) · count 3 · ms 2 · homing_state(이름).
-    add(kDiagnosticsFields[0], lifecycle_string(state_interfaces_[0].get_value()));
-    for (std::size_t i = 1; i < 4; ++i) {
-      add(kDiagnosticsFields[i],
-          std::to_string(static_cast<long long>(state_interfaces_[i].get_value())));
-    }
-    for (std::size_t i = 4; i < 6; ++i) {
-      add(kDiagnosticsFields[i], std::to_string(state_interfaces_[i].get_value()));
-    }
-    add(kDiagnosticsFields[6], homing_state_string(state_interfaces_[6].get_value()));
-
-    // per-actuator: enabled 는 항상, fault 는 fault 상태일 때만 (이름).
-    bool any_fault = false;
-    for (std::size_t i = 0; i < 16; ++i) {
-      const std::string base = kActuatorBaseNames[i];
-      add(base + ".enabled", bool_string(state_interfaces_[kEnabledOffset + i].get_value()));
-      const auto fault = static_cast<aidin_hand2::ActuatorFault>(
-        static_cast<std::uint16_t>(state_interfaces_[kFaultOffset + i].get_value()));
-      if (fault != aidin_hand2::ActuatorFault::None) {
-        add(base + ".fault", aidin_hand2::to_string(fault));
-        any_fault = true;
-      }
-    }
-
-    // DiagnosticStatus.level — lifecycle 과 actuator fault 로 그 자리에서 판정한다(별도 요약 필드
-    // 없음). 복구 필요(Faulted) = ERROR, 정상 운영인데 fault 있음 = WARN(일부 mask 후 동작),
-    // 그 외 = OK.
-    const auto lifecycle =
-      static_cast<aidin_hand2::HandLifecycle>(static_cast<int>(state_interfaces_[0].get_value()));
-    const bool recovery_needed = lifecycle == aidin_hand2::HandLifecycle::Faulted;
-    if (recovery_needed) {
-      status.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-      status.message = "recovery needed";
-    } else if (any_fault) {
-      status.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
-      status.message = "actuator fault (degraded)";
-    } else {
-      status.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-      status.message = "OK";
-    }
-
-    array.status.push_back(status);
-    publisher_->unlockAndPublish();
+  if (!publisher_ || !publisher_->trylock()) {
+    return controller_interface::return_type::OK;
   }
 
-  // 커스텀 HandDiagnostics — 같은 값을 고정 필드로 (Topic Monitor·프로그램 구독용).
-  if (hand_diagnostics_publisher_ && hand_diagnostics_publisher_->trylock()) {
-    auto & message = hand_diagnostics_publisher_->msg_;
-    message.header.stamp = time;
-    message.hand_side = hand_side_;
-    message.lifecycle = lifecycle_string(state_interfaces_[0].get_value());
-    message.nan_command_count = static_cast<std::uint64_t>(state_interfaces_[1].get_value());
-    message.control_cycles = static_cast<std::uint64_t>(state_interfaces_[2].get_value());
-    message.deadline_misses = static_cast<std::uint64_t>(state_interfaces_[3].get_value());
-    message.last_period_ms = state_interfaces_[4].get_value();
-    message.last_compute_ms = state_interfaces_[5].get_value();
-    message.homing_state = homing_state_string(state_interfaces_[6].get_value());
-    for (std::size_t i = 0; i < 16; ++i) {
-      message.actuator_enabled[i] = state_interfaces_[kEnabledOffset + i].get_value() != 0.0;
-      const auto fault = static_cast<aidin_hand2::ActuatorFault>(
-        static_cast<std::uint16_t>(state_interfaces_[kFaultOffset + i].get_value()));
-      message.actuator_fault_name[i] = aidin_hand2::to_string(fault);  // None → ""
-    }
-    hand_diagnostics_publisher_->unlockAndPublish();
+  auto & message = publisher_->msg_;
+  message.header.stamp = time;
+  message.hand_side = hand_side_;
+  message.lifecycle = lifecycle_name(state_interfaces_[kLifecycleIndex].get_value());
+  message.nan_command_count =
+    static_cast<std::uint64_t>(state_interfaces_[kNanCommandCountIndex].get_value());
+  message.control_cycles =
+    static_cast<std::uint64_t>(state_interfaces_[kControlCyclesIndex].get_value());
+  message.deadline_misses =
+    static_cast<std::uint64_t>(state_interfaces_[kDeadlineMissesIndex].get_value());
+  message.last_period_ms = state_interfaces_[kLastPeriodMsIndex].get_value();
+  message.last_compute_ms = state_interfaces_[kLastComputeMsIndex].get_value();
+  message.homing_state = homing_state_name(state_interfaces_[kHomingStateIndex].get_value());
+
+  for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+    message.actuator_enabled[i] = state_interfaces_[kEnabledOffset + i].get_value() != 0.0;
+    message.actuator_fault_name[i] =
+      ah2::to_string(actuator_fault(state_interfaces_[kFaultOffset + i].get_value()));
   }
 
+  publisher_->unlockAndPublish();
   return controller_interface::return_type::OK;
 }
 

@@ -1,13 +1,19 @@
-"""AIDIN Hand Gen2 mock 기동 — 실 CAN 없이 kinematics(clamp→IK→FK) 로 도는 검증/시각화 스택.
+# Copyright (c) AIDIN ROBOTICS Inc.
+# SPDX-License-Identifier: Apache-2.0
 
-실 하드웨어·homing 없이 joint_position_controller 만으로 손을 움직여 rviz 로 확인한다.
-데이터 흐름: (glove_teleop 또는 typed ~/command) → joint_position_controller
-  → mock hardware(clamp→IK→FK) → /joint_states → rviz.
+"""AIDIN Hand Gen2 on mock hardware, no CAN and no homing.
 
-  ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py                 # rviz + 왼손 mock
-  ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py use_glove:=true # + MANUS 글러브 텔레오퍼
+The path is ~/cmd -> joint_position_controller -> mock hardware -> /joint_states -> rviz.
 
-글러브 텔레오퍼는 use_glove:=true 이고 manus_data_publisher 가 /manus_glove_0 발행 중일 때만.
+  ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py                        # both hands
+  ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py use_right_hand:=false  # left only
+  ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py use_left_hand:=false   # right only
+
+The command topic is /<side>_joint_position_controller/cmd, a sensor_msgs/JointState whose name
+entries select the joints.
+
+aidin_hand2_controllers.launch.py is not included here, it also spawns the hand state and
+diagnostics broadcasters, which controllers_mock.yaml leaves out.
 """
 import os
 
@@ -19,25 +25,37 @@ from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
+# Seconds the spawner waits for the controller_manager
+_SPAWNER_TIMEOUT = "30"
+
+
+def _spawn(controller_name, condition=None, param_file=None):
+    args = [controller_name,
+            "--controller-manager", "/controller_manager",
+            "--controller-manager-timeout", _SPAWNER_TIMEOUT]
+    if param_file is not None:
+        args += ["--param-file", param_file]
+    return Node(package="controller_manager", executable="spawner",
+                arguments=args, output="screen", condition=condition)
+
 
 def generate_launch_description():
     description_share = get_package_share_directory("aidin_hand2_description")
     bringup_share = get_package_share_directory("aidin_hand2_bringup")
-    examples_share = get_package_share_directory("aidin_hand2_examples")
     xacro_file = os.path.join(description_share, "urdf", "aidin_hand2.urdf.xacro")
     controllers_yaml = os.path.join(bringup_share, "config", "controllers_mock.yaml")
     rviz_config = os.path.join(description_share, "rviz", "view_robot.rviz")
-    glove_yaml = os.path.join(
-        examples_share, "config", "glove_teleop", "glove_teleop_controller.yaml")
 
-    use_glove = LaunchConfiguration("use_glove")
+    use_left_hand = LaunchConfiguration("use_left_hand")
+    use_right_hand = LaunchConfiguration("use_right_hand")
     use_rviz = LaunchConfiguration("use_rviz")
 
-    # mock hardware — use_mock:=true. 실 CAN·homing 인자는 mock 이 무시하므로 넘기지 않는다.
+    # The CAN and homing arguments are left out, the mock ignores them
     robot_description = ParameterValue(
         Command([
             "xacro ", xacro_file,
-            " use_left_hand:=true use_right_hand:=false",
+            " use_left_hand:=", use_left_hand,
+            " use_right_hand:=", use_right_hand,
             " use_mock:=true",
         ]),
         value_type=str,
@@ -57,46 +75,25 @@ def generate_launch_description():
         output="screen",
     )
 
-    # mock 은 broadcaster/actuator/impedance 불필요 — joint_state_broadcaster + joint_position 만.
-    joint_state_broadcaster = Node(
-        package="controller_manager", executable="spawner",
-        arguments=["joint_state_broadcaster", "--controller-manager", "/controller_manager"],
-        output="screen",
-    )
-    joint_position_controller = Node(
-        package="controller_manager", executable="spawner",
-        arguments=["left_joint_position_controller", "--controller-manager", "/controller_manager"],
-        output="screen",
-    )
-
-    # 글러브 텔레오퍼 (옵션) — joint_position_controller 의 reference 를 claim 하는 chain 최상위.
-    glove_teleop = Node(
-        package="controller_manager", executable="spawner",
-        arguments=[
-            "left_glove_teleop_controller",
-            "--controller-manager", "/controller_manager",
-            "--param-file", glove_yaml,
-        ],
-        condition=IfCondition(use_glove),
-        output="screen",
-    )
-
-    rviz = Node(
-        package="rviz2", executable="rviz2",
-        arguments=["-d", rviz_config],
-        condition=IfCondition(use_rviz),
-        output="screen",
-    )
-
     return LaunchDescription([
-        DeclareLaunchArgument("use_glove", default_value="false",
-                              description="MANUS 글러브 텔레오퍼 controller spawn (manus_data_publisher 필요)."),
+        DeclareLaunchArgument("use_left_hand", default_value="true",
+                              description="Start the left mock hand."),
+        DeclareLaunchArgument("use_right_hand", default_value="true",
+                              description="Start the right mock hand."),
         DeclareLaunchArgument("use_rviz", default_value="true",
-                              description="rviz2 로 mock 손 시각화."),
+                              description="Show the mock hand in rviz2."),
+
         control_node,
         robot_state_publisher,
-        joint_state_broadcaster,
-        joint_position_controller,
-        glove_teleop,
-        rviz,
+
+        # One for the whole robot, spawned once
+        _spawn("joint_state_broadcaster"),
+
+        # One joint_position_controller per hand, nothing else
+        _spawn("left_joint_position_controller", IfCondition(use_left_hand)),
+        _spawn("right_joint_position_controller", IfCondition(use_right_hand)),
+
+        Node(package="rviz2", executable="rviz2",
+             arguments=["-d", rviz_config],
+             condition=IfCondition(use_rviz), output="screen"),
     ])

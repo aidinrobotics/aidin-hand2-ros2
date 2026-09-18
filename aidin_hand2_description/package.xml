@@ -2,10 +2,10 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>aidin_hand2_description</name>
-  <version>0.4.0</version>
-  <description>AIDIN Hand Gen2 의 URDF, xacro macro, mesh (ROS2 + 시뮬레이션용).</description>
+  <version>0.6.0</version>
+  <description>AIDIN Hand Gen2 URDF, xacro macros and meshes.</description>
   <maintainer email="jinh.lee@aidinrobotics.co.kr">jinh.lee</maintainer>
-  <license>TODO</license>
+  <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

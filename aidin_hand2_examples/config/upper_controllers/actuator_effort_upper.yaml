@@ -1,7 +1,5 @@
-# ActuatorEffort 상위 controller skeleton 파라미터.
-# 하위 ActuatorEffortController 의 reference(effort_pct ×16)를 claim 합니다.
-# command_lock 때문에 다른 mode 의 basic controller 와 동시에 active 로 만들 수 없으므로,
-# 이 디렉터리의 네 yaml 중 하나만 선택해 spawn 합니다.
+# Skeleton claiming the ActuatorEffortController reference, effort_pct x16
+# Only one of the four in this directory can be active at a time
 controller_manager:
   ros__parameters:
     left_actuator_effort_upper:
@@ -11,4 +9,5 @@ left_actuator_effort_upper:
   ros__parameters:
     hand_side: left
     target_controller: left_actuator_effort_controller
-    hand_state_topic: /left_hand_state_broadcaster/hand_state
+    # The mock exports no tactile state interface, set true on the robot hand to read tactile
+    read_tactile: false

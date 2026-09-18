@@ -1,3 +1,6 @@
+// Copyright (c) AIDIN ROBOTICS Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 #ifndef AIDIN_HAND2_HARDWARE__AIDIN_HAND2_MOCK_SYSTEM_INTERFACE_HPP_
 #define AIDIN_HAND2_HARDWARE__AIDIN_HAND2_MOCK_SYSTEM_INTERFACE_HPP_
 
@@ -14,7 +17,7 @@
 namespace aidin_hand2_hardware
 {
 
-// 실제 hardware와 같은 98개 command interface 계약을 제공하는 deterministic kinematic mock.
+// Kinematic mock, same command interface contract as the real hardware
 class AidinHand2MockSystemInterface : public hardware_interface::SystemInterface
 {
 public:
@@ -46,7 +49,7 @@ private:
   std::array<double, aidin_hand2::kActuatorCount> actuator_position_target_cnt_{};
   std::array<double, aidin_hand2::kActuatorCount> actuator_effort_target_pct_{};
 
-  // 직전까지 받은 목표 — command interface 의 NaN(명령 없음·미점유)을 메워 완전한 목표로 유지한다.
+  // Previous target, filling NaN command entries
   std::array<double, aidin_hand2::kActiveJointCount> held_joint_target_rad_{};
   std::array<double, aidin_hand2::kActuatorCount> held_actuator_target_cnt_{};
 

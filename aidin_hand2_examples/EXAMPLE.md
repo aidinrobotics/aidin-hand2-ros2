@@ -1,90 +1,109 @@
 # Chainable controller examples
 
-이 파일은 기존 basic controller 위에 사용자 controller를 연결하는 기준 예제입니다.
-basic controller의 class/plugin 이름은 그대로 유지되며, hardware command port로 가기 직전의
-adapter 역할을 합니다.
+This is the reference example for putting your own controller on top of an existing command
+controller. The upper controller sends targets through the reference interfaces of the command
+controller. These examples can run on the mock without the robot hand.
 
 ```text
-사용자 알고리즘 또는 JTC
-  → basic controller reference
-  → 기존 basic controller
-  → complete hardware command port + command_lock
-  → real/mock hardware
+your algorithm or JTC
+  -> command controller reference
+  -> the existing command controller
+  -> the robot hand or the mock
 ```
 
-## 제공 파일
+## What is provided
 
-성격이 같은 템플릿이라 source는 `src/upper_controllers/` 한 곳에 모으고, 파라미터는 controller별로
-나눠 둡니다.
+The four are the same template, so the sources live together in `src/upper_controllers/` and only
+the parameters are split per controller. Each skeleton claims the 16 references of the command
+controller named by its `target_controller` parameter as its command interfaces,
+`{target_controller}/{side}_<name>/<suffix>`, and exports the same suffixes under its own name,
+`{upper_controller}/{side}_<name>/<suffix>`. The suffixes are those of the command controller
+references listed in [Reference shape](#reference-shape). Each skeleton subscribes its own `~/cmd`
+as `sensor_msgs/JointState` with the same name matching as the command controllers, and reads the
+robot hand's state through state interfaces, in the same cycle, without a topic.
 
-| 상위 skeleton (plugin class) | source | config | 연결할 basic controller |
+| Upper skeleton (plugin class) | Source | Config | Command controller below |
 |---|---|---|---|
 | `aidin_hand2_examples/JointPositionUpperController` | `src/upper_controllers/joint_position_upper_controller.cpp` | `config/upper_controllers/joint_position_upper.yaml` | `JointPositionController` |
 | `aidin_hand2_examples/JointImpedanceUpperController` | `src/upper_controllers/joint_impedance_upper_controller.cpp` | `config/upper_controllers/joint_impedance_upper.yaml` | `JointImpedanceController` |
 | `aidin_hand2_examples/ActuatorPositionUpperController` | `src/upper_controllers/actuator_position_upper_controller.cpp` | `config/upper_controllers/actuator_position_upper.yaml` | `ActuatorPositionController` |
 | `aidin_hand2_examples/ActuatorEffortUpperController` | `src/upper_controllers/actuator_effort_upper_controller.cpp` | `config/upper_controllers/actuator_effort_upper.yaml` | `ActuatorEffortController` |
 
-네 파일은 독립적으로 복사해 수정할 수 있는 템플릿이며 claim/export하는 reference shape만
-각 basic controller에 맞게 다릅니다. `command_lock` 때문에 서로 다른 mode의 basic controller 둘을
-동시에 active로 만들 수 없으므로, config 네 개 중 하나만 선택해 spawn합니다.
+Each file is a template you can copy and edit on its own, and they differ only in the reference
+shape they claim and export. Two command controllers of different modes cannot be active at the
+same time for one robot hand, so use one matching upper controller and command controller pair.
 
-## HandState 입력
+## State input
 
-네 템플릿 모두 `hand_state_topic`을 구독하고 realtime buffer를 거쳐 최신
-`aidin_hand2_msgs::msg::HandState` 전체를 멤버 `hand_state_`에 복사합니다. 따라서 다음 데이터가
-모두 한 변수에 보존됩니다.
+All four claim the robot hand's state interfaces in `state_interface_configuration()` and
+`read_state()` copies them into member arrays at the top of `update_and_write_commands()`. The
+members sit in one commented block at the end of each file, in the SDK index order:
 
-- header stamp와 hand side
-- joint position 21개
-- actuator position/velocity/current 각 16개
-- finger/palm tactile 전체
-- nested `CommandState`
+| Member | Size | Unit | State interface |
+|---|---|---|---|
+| `joint_position_rad_` | 21 | rad | `{side}_{joint}/position`, passive `joint4` included |
+| `actuator_position_cnt_` | 16 | encoder count | `{side}_{actuator}/position_cnt` |
+| `actuator_velocity_rpm_` | 16 | rpm | `{side}_{actuator}/velocity_rpm` |
+| `actuator_current_ma_` | 16 | mA | `{side}_{actuator}/current_ma` |
+| `tactile_finger_` | 5 × 17 | raw value | `{side}_{finger}_sensor/tactile_1..17` |
+| `tactile_palm1_upper_` · `tactile_palm1_lower_` | 20 · 20 | raw value | `{side}_palm_sensor/palm1_upper_1..20` · `palm1_lower_1..20` |
+| `tactile_palm2_` | 18 | raw value | `{side}_palm_sensor/palm2_1..18` |
 
-`has_hand_state_`가 true일 때만 유효한 상태가 도착한 것입니다. 이 복사는 chained mode에서도
-항상 실행되도록 `update_and_write_commands()` 맨 앞에 있습니다. 기본 topic은
-`/<side>_hand_state_broadcaster/hand_state`이며 YAML에서 바꿀 수 있습니다.
+The tactile interfaces are claimed only when the `read_tactile` parameter is true, because the mock
+exports none and a controller whose state interface is missing fails to activate. With
+`read_tactile: false` the tactile members stay NaN. State interfaces are shared, so claiming them
+takes nothing away from the broadcasters.
 
-## 의도적으로 아무 값도 만들지 않는 동작
+## Scaling by zero, on purpose
 
-skeleton은 알고리즘 예제가 아니라 안전한 구조 템플릿입니다.
+The skeleton is a structural template, not an algorithm example. `update_and_write_commands()` is
+split into three commented blocks:
 
-- `on_activate()`는 자기 export reference를 NaN으로 초기화합니다.
-- `update_reference_from_subscribers()`는 명령 입력을 만들지 않습니다.
-- `update_and_write_commands()`는 HandState 전체를 저장한 뒤 reference 전체가 유한할 때만
-  한 묶음으로 하위 controller에 전달합니다. 일부만 유한한 입력은 오류로 거부합니다.
-- 아무 입력도 없으면 하위 basic controller가 NaN(= 이번 cycle 명령 없음)을 그대로 내보내고
-  hardware는 SDK로 아무것도 보내지 않습니다. 손은 직전 명령 자세를 유지합니다.
+- **READ** — `read_state()` refreshes the state members.
+- **WRITE** — the algorithm. The template multiplies the input in `reference_interfaces_` by zero,
+  so any command drives the target to zero. Replace this block.
+- **FORWARD** — the target goes to the command controller below only when all 16 values are
+  finite; a partly finite target is dropped with a warning. With no input the cycle writes nothing
+  and the SDK keeps the last command.
 
-즉 파일을 그대로 활성화해도 새 target을 만들지 않습니다. 실제 상위 controller를 만들 때
-각 파일의 `TODO(user algorithm)` 위치에서 `hand_state_`를 읽고, 한 update에서 대응
-reference 전체를 유한한 값으로 갱신하십시오.
+The input arrives in `reference_interfaces_` either from the skeleton's own `~/cmd` topic
+(standalone) or from a controller chained above it. `on_activate()` fills the references with NaN,
+and a consumed input is reset to NaN.
 
 ## Reference shape
 
-`target_controller`가 `left_joint_position_controller`일 때 전체 resource 이름 예시는
-`left_joint_position_controller/left_thumb_joint0/position`입니다.
+With `target_controller` set to `left_joint_position_controller`, a full resource name looks like
+`left_joint_position_controller/left_thumb_joint0/position`.
 
-| mode | suffix |
+For a configurable target, use the full names below. `{side}` is `left` or `right`; joint and
+actuator names and array order are in [Joint and actuator order](../aidin_hand2_msgs/README.ko.md#4-joint-and-actuator-order).
+
+| Command controller | Reference name |
 |---|---|
-| JointPosition | `left_<active_joint>/position` ×16 |
-| JointImpedance | `left_<active_joint>/position` ×16 |
-| ActuatorPosition | `left_<actuator>/position_cnt` ×16 |
-| ActuatorEffort | `left_<actuator>/effort_pct` ×16 |
+| JointPositionController | `{target_controller}/{side}_{joint}/position` ×16 |
+| JointImpedanceController | `{target_controller}/{side}_{joint}/position` ×16 |
+| ActuatorPositionController | `{target_controller}/{side}_{actuator}/position_cnt` ×16 |
+| ActuatorEffortController | `{target_controller}/{side}_{actuator}/effort_pct` ×16 |
 
-오른손은 `hand_side: right`와 오른손 basic controller 이름을 사용합니다.
+The right hand takes `hand_side: right` and the right hand command controller names.
+Joint impedance control is under development; do not use the impedance skeleton for robot hand control.
 
-## Skeleton 실행
+## Running a skeleton
 
-mock을 먼저 띄우면 joint position basic controller가 active입니다.
+Complete [Installation](../docs/ko/03_installation.md) and source the ROS 2 and workspace environments
+in each terminal. Bring up the mock first, which leaves the joint position command controller active.
+The mock exports the joint and actuator state interfaces but no tactile, so keep `read_tactile: false`
+there; the tactile members stay NaN.
 
 ```bash
 ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py use_rviz:=false
 ```
 
-다른 terminal:
+In another terminal:
 
 ```bash
-source install/setup.bash
+source /opt/ros/humble/setup.bash
+source ~/your_ws/install/setup.bash
 EXAMPLE_SHARE="$(ros2 pkg prefix aidin_hand2_examples)/share/aidin_hand2_examples"
 
 ros2 run controller_manager spawner left_joint_position_upper \
@@ -99,15 +118,26 @@ ros2 control switch_controllers --strict \
 ros2 control list_controllers
 ```
 
-`left_joint_position_upper`가 하위 reference를 claim하면
-`left_joint_position_controller`는 chained mode가 됩니다. skeleton이 값을 만들지 않으므로
-손은 하위 activation seed를 유지합니다.
+Once `left_joint_position_upper` claims the reference below it, `left_joint_position_controller`
+enters chained mode and stops accepting command topic input. Publish a command to the skeleton
+instead; the template scales it by zero, so the mock moves to the zero pose whatever the values.
 
-다른 mode skeleton을 시험하려면 기존 상위를 먼저 내리고, 기존 basic controller와 새 basic
-controller를 원자 전환한 뒤, 새 상위를 마지막에 올립니다. `command_lock` 때문에 서로 다른 mode의
-basic controller 둘을 동시에 active로 만들 수 없습니다.
+```bash
+ros2 topic pub --once /left_joint_position_upper/cmd sensor_msgs/msg/JointState \
+  "{name: [left_thumb_joint0, left_thumb_joint1, left_thumb_joint2, left_thumb_joint3,
+           left_index_joint1, left_index_joint2, left_index_joint3,
+           left_middle_joint1, left_middle_joint2, left_middle_joint3,
+           left_ring_joint1, left_ring_joint2, left_ring_joint3,
+           left_baby_joint1, left_baby_joint2, left_baby_joint3],
+    position: [0.20, 0.35, 0.10, 0.25, 0.08, 0.45, 0.30, 0.04, 0.55, 0.40,
+               -0.04, 0.65, 0.50, -0.08, 0.75, 0.60]}"
+```
 
-내릴 때는 항상 상위부터 내립니다.
+To try a skeleton of another mode, deactivate the current upper controller first, switch the two
+command controllers atomically, and bring the new upper controller up last. Two command
+controllers of different modes cannot be active at the same time for one robot hand.
+
+Always take the upper controller down first.
 
 ```bash
 ros2 control switch_controllers --strict \
@@ -115,13 +145,13 @@ ros2 control switch_controllers --strict \
 ros2 control unload_controller left_joint_position_upper
 ```
 
-## 구현 체크리스트
+## Implementation checklist
 
-- `command_interface_configuration()`에서 lower reference 이름을 정확히 claim합니다.
-- 자신도 같은 shape의 reference를 export하면 한 단계 더 위로 chain할 수 있습니다.
-- subscriber callback은 realtime buffer에 완전한 command만 기록합니다.
-- `HandState` subscriber callback은 계산하지 않고 realtime buffer에 최신 message만 기록합니다.
-- update에서 NaN/Inf와 음수 speed/gain을 거부합니다.
-- activate 시 reference를 NaN으로 두고 목표를 만들지 않습니다.
-- mode 전환은 basic controller 단위로 하고 hardware command interface를 직접 부분 claim하지 않습니다.
-- real과 mock에서 동일한 controller/config를 사용합니다.
+- Claim the exact reference names of the controller below in `command_interface_configuration()`.
+- Export references of the same shape to allow one more chain step above.
+- Resolve the `JointState` by name in the subscriber callback and hand the update a fixed-size array.
+- Read state through state interfaces, not a topic, so observation and target stay in one cycle.
+- Reject NaN and Inf in the update.
+- Leave the references NaN on activate.
+- Deactivate the upper controller before switching command controllers.
+- Use the same controller and config on the robot hand and the mock, `read_tactile` aside.

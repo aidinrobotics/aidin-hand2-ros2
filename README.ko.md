@@ -1,158 +1,121 @@
-<div align="right"><sub><a href="README.md">English</a></sub></div>
+<div align="center">
 
-# AIDIN Hand Gen2 ROS 2 &nbsp;[![version](https://img.shields.io/badge/version-0.4.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.4.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#지원-범위)
+<a href="https://www.aidinrobotics.co.kr/"><img height="240" src="docs/assets/aidin_hand2_logo.webp" alt="AIDIN Hand Gen2 — AIDIN Robotics"></a>
 
-AIDIN Hand Gen2 C++ SDK를 `ros2_control`에 연결하는 thin wrapper입니다. CAN-FD protocol, drive state machine, kinematics와 500 Hz hand control loop는 SDK가 소유하며 이 repository는 hardware plugin, controller, message, URDF와 launch를 제공합니다.
+<h1>AIDIN Hand Gen2 ROS 2</h1>
 
-## 구조
+AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. controller에 목표값을 보내고,
+상태 topic으로 결과를 확인하며, service로 homing·정지·복구를 요청할 수 있습니다.
+로봇 핸드 없이 실행할 수 있는 mock과 기존 로봇에 통합하기 위한 URDF·launch 설정을 제공합니다.
 
-```mermaid
-%%{init: {"flowchart": {"curve": "linear"}}}%%
-flowchart LR
-    Upper["<b>상위 controller</b><br/>chainable (optional)"]
-    Basic["<b>Basic controller</b><br/>command 4 &nbsp;·&nbsp; broadcaster 2"]
-    HW["<b>SystemInterface</b><br/>real &nbsp;·&nbsp; isaac &nbsp;·&nbsp; mock"]
-    SDK["<b>SDK</b><br/>Control loop &nbsp;·&nbsp; CAN-FD"]
-    Upper --> Basic --> HW --> SDK
-```
+[![version](https://img.shields.io/badge/version-0.6.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.6.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
 
-새 controller 계층을 추가하지 않습니다. 기존 네 basic controller가 ROS topic 또는 상위 controller reference를 SDK의 완전한 typed command로 바꾸는 command-port adapter입니다.
+[Install](docs/ko/03_installation.md) | [Documentation](#documentation) | [Changelog](CHANGELOG.md) | [Official Site](https://www.aidinrobotics.co.kr/) | [English](README.md) | 한국어
 
-Standalone에서는 각 controller의 `~/command`에 한 cycle의 target을 모두 담아 보냅니다. 네 mode 모두 16개 배열 하나가 한 message이고 partial update는 허용하지 않습니다. Effort 상한과 controller tuning(JointPosition filter·JointImpedance gain)은 command가 아니라 hardware node parameter입니다.
+</div>
 
-## 지원 범위
+## Architecture
 
-| 항목 | 대상 |
+[ros2_control](https://control.ros.org/humble/index.html)을 기반으로 로봇 핸드 제어를 위한 controller와 상태 관측을 위한 broadcaster를 제공합니다.
+
+![AIDIN Hand Gen2 ROS 2 architecture](docs/assets/aidin_hand2_ros2_architecture.webp)
+
+사용자 node가 command를 보내는 경로는 둘입니다.
+
+- command controller의 `~/cmd` topic에 `sensor_msgs/JointState` message를 직접 보냅니다. 이름 대조 규칙과
+  읽는 필드·단위는 [2. Command message](aidin_hand2_msgs/README.ko.md#2-command-message)에 있습니다.
+- user controller를 만들어 직접 정의한 topic과 message로 보냅니다. user controller는 command를
+  처리해 목표값을 command controller의 reference interface에 쓰고, 그동안 command controller는 chained
+  mode가 되어 자기 `~/cmd` topic을 읽지 않습니다. reference 이름과 mode 전환 순서는
+  [6. Chaining](aidin_hand2_controllers/README.ko.md#6-chaining)에 있습니다.
+
+어느 경로든 한 손에 active인 command controller는 하나입니다.
+
+user controller는 controller_manager 안에서 작동하기 때문에 actuator 위치·joint 각도·tactile 같은 상태를
+topic이 아니라 state interface로 같은 cycle 안에서 읽을 수 있습니다. 상태 관측과 목표값 계산이 500 Hz
+cycle 하나에서 닫히므로 topic 왕복이 없는 제어 루프가 됩니다. `aidin_hand2_examples` package의 skeleton이 이
+틀이고, 알고리즘 자리에는 입력에 0을 곱하는 한 줄이 들어 있습니다. 읽을 수 있는 state interface
+목록과 실행 절차는 [Chainable controller examples](aidin_hand2_examples/EXAMPLE.md)에 있습니다.
+
+user node는 상태를 `/joint_states`, `~/hand_state`, `~/hand_diagnostics` topic으로 읽습니다. `~`는 해당
+topic이나 service를 제공하는 node 이름입니다. 예를 들어 `~/cmd` topic은 `/left_joint_position_controller/cmd`가 됩니다.
+effort 상한과 filter·gain은 hardware node의 ROS parameter로 설정합니다.
+
+## Terms
+
+문서 전체가 쓰는 ros2_control 용어입니다. 처음 보신다면 여기서 뜻을 확인하고 읽으십시오. 자세한
+정의는 [ros2_control 문서](https://control.ros.org/humble/index.html)에 있습니다.
+
+| 용어 | 뜻 |
 |---|---|
-| OS | Ubuntu 22.04 |
+| controller_manager | controller를 올리고 내리고 매 cycle 실행하는 node입니다. 이 wrapper에서는 launch가 띄웁니다 |
+| hardware component | 하드웨어와 통신하며 상태를 읽고 목표값을 쓰는 plugin입니다. 종류는 System·Actuator·Sensor 셋이며, wrapper는 SDK를 호출하는 System을 로봇 핸드마다 하나씩 제공하고 이름은 `{side}_hand_control`입니다 |
+| hardware node | hardware component가 띄우는 node입니다. `~/run`·`~/stop`·`~/home`·`~/reconnect` service와 effort·filter·gain parameter를 제공합니다 |
+| controller | hardware component 위에서 매 cycle 실행되어 목표값을 만들거나 관측값을 발행합니다 |
+| broadcaster | 목표값을 만들지 않고 관측값만 topic으로 발행하는 controller입니다 |
+| `unconfigured` · `inactive` · `active` | ROS 2 managed node의 상태 이름이고 controller와 hardware component가 각각 가집니다. controller가 `active`면 매 cycle 실행되고, hardware component가 `active`면 drive에 토크가 걸려 움직일 수 있습니다. `inactive`는 올라와 있지만 그렇지 않은 상태이며 `unconfigured`는 그 앞 단계입니다 |
+| command interface | controller가 목표값을 쓰는 자리입니다. 한 번에 하나의 controller만 점유할 수 있습니다 |
+| state interface | 관측값을 읽는 자리입니다. 여럿이 함께 읽을 수 있습니다 |
+| reference interface | command controller가 상위 controller에게 열어 주는 입력입니다. 여기에 목표값이 들어오면 자기 topic 대신 이 값을 씁니다 |
+| chained mode | command controller가 reference interface의 값을 쓰는 상태입니다 |
+| spawner | controller를 controller_manager에 올리는 실행 파일입니다. launch가 controller마다 하나씩 실행합니다 |
+
+`active` 상태는 controller와 hardware component 양쪽에 쓰이고, SDK가 보고하는 lifecycle과도 다릅니다. 셋을
+구별하는 표는 [1. Lifecycle](docs/ko/05_control_guide.md#1-lifecycle)에 있습니다.
+
+## Getting started
+
+목적에 맞는 경로로 시작하십시오. 설치와 mock 실행에는 로봇 핸드나 CAN adapter가 필요하지 않습니다.
+
+| Goal | Reading order |
+|---|---|
+| 로봇 핸드 없이 확인 | [Installation](docs/ko/03_installation.md) → [1. Mock](docs/ko/04_bringup.md#1-mock) |
+| 로봇 핸드 구동 | [Installation](docs/ko/03_installation.md) → [Real-time kernel setup](docs/ko/01_real_time_kernel_setup.md)·[CAN-FD setup](docs/ko/02_can_fd_setup.md) → [2. Robot hand](docs/ko/04_bringup.md#2-robot-hand) |
+| 실행 중인 로봇 핸드 제어 | [Control guide](docs/ko/05_control_guide.md) — 상태 확인 → homing → 목표 전송 → 관측·정지 |
+| 기존 로봇에 통합 | 단독 [Bringup](docs/ko/04_bringup.md) 확인 → [Add to your robot](aidin_hand2_bringup/README.ko.md#7-add-to-your-robot) |
+
+## System requirements
+
+아래는 wrapper의 빌드·실행이 검증된 구성입니다.
+
+| Component | Requirement |
+|---|---|
+| Operating System | Ubuntu 22.04 |
 | ROS 2 | Humble |
 | Control framework | `ros2_control` |
-| SDK | `aidin_hand2` 0.4.x — [`aidin_hand2.repos`](aidin_hand2.repos) 참조 |
-| CAN interface | USB CAN-FD adapter (SocketCAN), nominal 1 Mbit/s / data phase 5 Mbit/s |
+| SDK | `aidin_hand2` 0.6.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
+| CAN interface | 로봇 핸드 구동 시 USB CAN-FD adapter (SocketCAN), nominal 1 Mbit/s, data phase 5 Mbit/s |
 
-실물 host의 PREEMPT_RT와 boot-time CAN-FD 설정은 SDK의 [real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/04_real_time_kernel_setup.md)과 [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_can_fd_setup.md)을 먼저 완료하십시오.
+## Documentation
 
-## Package
+설치·첫 실행·제어는 공통 안내를 따라 진행하십시오. package별 README는 설정과 상세 참조를 제공합니다.
 
-| Package | 역할 |
+### User guides
+
+- [Installation](docs/ko/03_installation.md) — SDK 설치와 wrapper 빌드
+- [Real-time kernel setup](docs/ko/01_real_time_kernel_setup.md) — PREEMPT_RT kernel과 실시간 실행 권한
+- [CAN-FD setup](docs/ko/02_can_fd_setup.md) — CAN interface 설정과 수신 확인
+- [Bringup](docs/ko/04_bringup.md) — mock·로봇 핸드의 첫 실행, homing, 첫 command, 정지
+- [Control guide](docs/ko/05_control_guide.md) — lifecycle, topic 목표 전송, service 호출, 관측·정지·복구, QoS
+- [Troubleshooting](docs/ko/06_troubleshooting.md) — 빌드·실행·제어·통신 문제 해결
+
+### Packages
+
+| Package | Guide |
 |---|---|
-| `aidin_hand2_hardware` | 실제·Isaac Sim·mock `SystemInterface`, SDK lifecycle mapping |
-| `aidin_hand2_controllers` | 4개 command controller, 2개 broadcaster |
-| `aidin_hand2_msgs` | 4개 typed command, `CommandState`, `HandState`, `HandDiagnostics` |
-| `aidin_hand2_description` | URDF, xacro, mesh, ros2_control description |
-| `aidin_hand2_bringup` | 실제·Isaac Sim·mock launch와 controller config |
-| `aidin_hand2_examples` | 4개 chainable 상위 controller skeleton, optional MANUS glove teleop controller |
+| [aidin_hand2_bringup](aidin_hand2_bringup/README.ko.md) | launch 인자·기본값, 설정 파일, 기존 로봇에 추가하는 순서 |
+| [aidin_hand2_description](aidin_hand2_description/README.ko.md) | URDF·xacro 파일 위치, 매크로 호출·인자, RViz 시각화 |
+| [aidin_hand2_controllers](aidin_hand2_controllers/README.ko.md) | controller 선택·입력·전환, chaining, controller YAML·설정값 |
+| [aidin_hand2_hardware](aidin_hand2_hardware/README.ko.md) | homing·정지·복구 service, effort·filter·gain 변경과 초기 설정 |
+| [aidin_hand2_msgs](aidin_hand2_msgs/README.ko.md) | command·상태 message 필드·단위, joint·actuator 배열 순서 |
+| [aidin_hand2_examples](aidin_hand2_examples/README.ko.md) | user controller skeleton, 소스·설정 파일, 알고리즘 연결 |
 
-## 빌드
-
-SDK를 먼저 build하고 install합니다. 검증된 revision은 `aidin_hand2.repos`에 고정돼 있습니다.
-
-```bash
-vcs import .. < aidin_hand2.repos
-```
-
-```bash
-cd <aidin-hand2-sdk clone 경로>
-cmake -S cpp -B cpp/build -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build cpp/build -j"$(nproc)"
-sudo cmake --install cpp/build
-```
-
-Sudo를 쓰지 않으려면 사용자 prefix에 install하고 그 경로를 `CMAKE_PREFIX_PATH`에 넣습니다.
-
-```bash
-cmake --install cpp/build --prefix "$HOME/.local"
-export CMAKE_PREFIX_PATH="$HOME/.local${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
-```
-
-ROS 2 environment를 적용하고 workspace root에서 wrapper를 build합니다. `/usr/local`에 install했다면 CMake 기본 탐색 경로이므로 `CMAKE_PREFIX_PATH` 설정이 필요 없습니다.
-
-```bash
-cd ~/your_ws
-source /opt/ros/humble/setup.bash
-
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
-source install/setup.bash
-```
-
-## 빠른 시작
-
-`aidin_hand2_bringup`은 손을 단독 실행하는 예제입니다. 하드웨어 확인용이며 통합 경로가
-아닙니다. 실물보다 먼저 mock을 실행합니다.
-
-```bash
-ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py
-ros2 control list_controllers
-```
-
-실물은 homing 없이 시작하고, 작업 공간을 확인한 뒤에만 homing을 trigger합니다.
-자세한 절차는 [첫 bringup](docs/ko/02_first_bringup.md)에 있습니다.
-
-```bash
-ros2 launch aidin_hand2_bringup aidin_hand2.launch.py auto_home:=false
-```
-
-## 통합
-
-손을 자기 로봇에 붙일 때는 launch를 쓰지 않고 xacro 매크로 두 개를 자기 URDF에 include합니다.
-하나는 링크·mesh를 넣고 다른 하나는 `ros2_control` system을 선언합니다. 기하 매크로는 side별로
-나뉘고(`aidin_hand2_left` / `aidin_hand2_right`), `ros2_control` 매크로는 `hand_side`로 받습니다.
-`can_interface`와 identity 3개가 필수이고 나머지는 SDK 기본값을 따릅니다.
-
-```xml
-<xacro:include filename="$(find aidin_hand2_description)/urdf/aidin_hand2_left.urdf.xacro"/>
-<xacro:include filename="$(find aidin_hand2_description)/ros2_control/aidin_hand2.ros2_control.xacro"/>
-
-<xacro:aidin_hand2_left prefix="left_" parent="your_tool_link">
-  <origin xyz="0 0 0" rpy="0 0 0"/>
-</xacro:aidin_hand2_left>
-
-<xacro:aidin_hand2_ros2_control
-  name="left_hand" prefix="left_" hand_side="left"
-  can_interface="can0" auto_home="false"/>
-```
-
-Controller는 자기 `controllers.yaml`에 선언합니다. Command controller는 mode별 interface를
-claim하므로 한 순간 하나만 active여야 하고, 명령은 각 controller의 `~/command` topic 또는
-chaining 시 reference interface로 보냅니다.
-
-전체 파라미터 계약과 두 명령 경로는 [ros2_control 설정](docs/ko/03_setup.md)에 있습니다.
-
-## 문서
-
-### 시작하기
-
-- [설치](docs/ko/01_installation.md) — 사전 조건, 의존성, SDK·wrapper build
-- [첫 bringup](docs/ko/02_first_bringup.md) — mock, 실물, homing, 첫 command, 종료
-
-### 사용
-
-- [ros2_control 설정](docs/ko/03_setup.md) — xacro 매크로 계약과 controller 선언
-- [Interface](docs/ko/04_interfaces.md) — Topic·service·reference interface와 명령 예시
-- [Bringup 예제](docs/ko/05_bringup_example.md) — 단독 실행 launch와 argument
-- [Chainable 예제](aidin_hand2_examples/EXAMPLE.md) — 상위 controller skeleton
-
-### 운영
-
-- [운영과 복구](docs/ko/06_operations.md) — Lifecycle, auto reconnect, RT, monitoring, 복구
-- [문제 해결](docs/ko/07_troubleshooting.md) — Build, launch, controller, stale state, CAN 진단
-
-### 부록
-
-- [Interface matrix](docs/ko/08_interface_matrix.md) — 전체 interface 이름 목록
-
-## 관련 repository
+## Related repositories
 
 - [aidin-hand2-sdk](https://github.com/aidinrobotics/aidin-hand2-sdk) — C++ SDK
-- Web GUI (pending) — browser GUI와 WebSocket bridge
 
-### 함께 봐야 하는 SDK 문서
+SDK 문서 중 wrapper 사용자가 함께 보는 것은 셋입니다.
 
-Host 준비, kinematics, 안전 계약은 SDK가 소유하며 이 wrapper는 반복하지 않습니다.
-
-- [Real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/04_real_time_kernel_setup.md) — PREEMPT_RT, 실물 전 필수
-- [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/05_can_fd_setup.md) — Interface bring-up과 boot 자동화
-- [SDK build·install](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/06_sdk_build_and_install.md) — 이 wrapper가 소비하는 build
-- [Workspace limits](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/14_workspace_limits.md) — 결합 workspace 경계와 명령 clamp
-- [안전과 fault 대응](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/13_safety.md) — 명령 지속성과 통신 두절 동작
-- [문제 해결](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_troubleshooting.md) — 연결·RT·homing·CAN 오류
+- [C++ guide](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/07_cpp_usage_guide.md) — wrapper가 드러내는 lifecycle·homing·command의 뜻
+- [Workspace limits](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/14_workspace_limits.md) — joint 목표가 투영되는 도달 범위
+- [Error messages](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_error_messages.md) — 실패한 service가 돌려주는 문구

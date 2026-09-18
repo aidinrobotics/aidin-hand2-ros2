@@ -1,162 +1,127 @@
-<div align="right"><sub><a href="README.ko.md">한국어</a></sub></div>
+<div align="center">
 
-# AIDIN Hand Gen2 ROS 2 &nbsp;[![version](https://img.shields.io/badge/version-0.4.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.4.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
+<a href="https://www.aidinrobotics.co.kr/"><img height="240" src="docs/assets/aidin_hand2_logo.webp" alt="AIDIN Hand Gen2 — AIDIN Robotics"></a>
 
-A thin `ros2_control` wrapper around the AIDIN Hand Gen2 C++ SDK. The SDK owns the CAN-FD protocol, drive state machine, kinematics, and the 500 Hz control loop; this repository provides the hardware plugin, controllers, messages, URDF, and launch files.
+<h1>AIDIN Hand Gen2 ROS 2</h1>
+
+A `ros2_control` wrapper for controlling AIDIN Hand Gen2 from ROS 2. Send targets to a controller,
+read state topics, and use services for homing, stopping and recovery. The wrapper provides a mock
+that runs without the robot hand, plus URDF and launch configuration for integration into your robot.
+
+[![version](https://img.shields.io/badge/version-0.6.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.6.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
+
+[Install](docs/ko/03_installation.md) | [Documentation](#documentation) | [Changelog](CHANGELOG.md) | [Official Site](https://www.aidinrobotics.co.kr/) | English | [한국어](README.ko.md)
+
+</div>
 
 ## Architecture
 
-```mermaid
-%%{init: {"flowchart": {"curve": "linear"}}}%%
-flowchart LR
-    Upper["<b>Upper controller</b><br/>chainable (optional)"]
-    Basic["<b>Basic controller</b><br/>4 command &nbsp;·&nbsp; 2 broadcaster"]
-    HW["<b>SystemInterface</b><br/>real &nbsp;·&nbsp; isaac &nbsp;·&nbsp; mock"]
-    SDK["<b>SDK</b><br/>Control loop &nbsp;·&nbsp; CAN-FD"]
-    Upper --> Basic --> HW --> SDK
-```
+Built on [ros2_control](https://control.ros.org/humble/index.html), this wrapper provides controllers for commanding the robot hand and broadcasters for observing its state.
 
-No new controller layer is added. The four basic controllers act as command-port adapters that turn a ROS topic or an upper-controller reference into one complete typed SDK command.
+![AIDIN Hand Gen2 ROS 2 architecture](docs/assets/aidin_hand2_ros2_architecture.webp)
 
-Standalone, each controller's `~/command` carries one cycle's target: all four modes take a single array of 16, and partial updates are not accepted. The effort ceiling and controller tuning (the JointPosition filter, JointImpedance gains) are not commands — they are parameters on the hardware component's own node.
+A user node sends a command by one of two paths.
 
-## System Requirements
+- Publish `sensor_msgs/JointState` directly to a command controller's `~/cmd` topic. The name
+  matching rule, the field read and the units are in
+  [2. Command message](aidin_hand2_msgs/README.ko.md#2-command-message).
+- Write a user controller and publish to the topic and message it defines. The user controller
+  processes the command and writes the targets to the command controller's reference interfaces, and
+  the command controller enters chained mode and stops reading its own `~/cmd` topic. The reference
+  names and the switching order are in
+  [6. Chaining](aidin_hand2_controllers/README.ko.md#6-chaining).
+
+On either path, one command controller is active per robot hand.
+
+Because the user controller runs inside the controller_manager, it can read actuator positions, joint
+angles and tactile values through state interfaces in the same cycle, without a topic. Observation and
+target computation close within one 500 Hz cycle, so the control loop has no topic round trip. The
+`aidin_hand2_examples` skeletons are this template, with a single line that scales the input by zero
+where the algorithm goes. The state interfaces they can read and the steps to run one are in
+[Chainable controller examples](aidin_hand2_examples/EXAMPLE.md).
+
+A user node reads state through the `/joint_states`, `~/hand_state` and `~/hand_diagnostics` topics.
+The `~` denotes the name of the node providing a topic or service; for example, `~/cmd` becomes
+`/left_joint_position_controller/cmd`. Effort limits, filters and gains are ROS parameters of the
+hardware node.
+
+## Terms
+
+The ros2_control terms this documentation uses throughout. If they are new to you, read them here
+first. The full definitions are in the [ros2_control documentation](https://control.ros.org/humble/index.html).
+
+| Term | Meaning |
+|---|---|
+| controller_manager | The node that loads, unloads and runs controllers every cycle. The launch files start it |
+| hardware component | The plugin that talks to the hardware, reads state and writes targets. The kinds are System, Actuator and Sensor; the wrapper provides one System per robot hand, which calls the SDK and is named `{side}_hand_control` |
+| hardware node | The node the hardware component starts. It offers the `~/run`, `~/stop`, `~/home` and `~/reconnect` services and the effort, filter and gain parameters |
+| controller | Runs every cycle on top of the hardware component to produce targets or publish observations |
+| broadcaster | A controller that produces no target and only publishes observations |
+| `unconfigured` · `inactive` · `active` | The ROS 2 managed node states, held separately by controllers and by hardware components. An `active` controller runs every cycle; an `active` hardware component has torque on the drives so the hand can move. `inactive` means loaded but neither, and `unconfigured` comes before it |
+| command interface | Where a controller writes a target. Only one controller can claim it at a time |
+| state interface | Where observations are read. Several readers can share one |
+| reference interface | The input a command controller opens to an upper controller. A target written here is used instead of the controller's own topic |
+| chained mode | The state in which a command controller takes its target from its reference interfaces |
+| spawner | The executable that loads a controller into the controller_manager. The launch files run one per controller |
+
+`active` applies to both controllers and hardware components, and neither is the lifecycle the SDK
+reports. The table that separates the three is in
+[1. Lifecycle](docs/ko/05_control_guide.md#1-lifecycle).
+
+## Getting started
+
+Choose a path below. Installation and mock execution do not require the robot hand or a CAN adapter.
+The detailed guides are currently in Korean.
+
+| Goal | Reading order |
+|---|---|
+| Try without the robot hand | [Installation](docs/ko/03_installation.md) → [1. Mock](docs/ko/04_bringup.md#1-mock) |
+| Run the robot hand | [Installation](docs/ko/03_installation.md) → [Real-time kernel setup](docs/ko/01_real_time_kernel_setup.md) and [CAN-FD setup](docs/ko/02_can_fd_setup.md) → [2. Robot hand](docs/ko/04_bringup.md#2-robot-hand) |
+| Control a running robot hand | [Control guide](docs/ko/05_control_guide.md) — Check state → home → send targets → observe and stop |
+| Integrate into your robot | Verify standalone [Bringup](docs/ko/04_bringup.md) → [Add to your robot](aidin_hand2_bringup/README.ko.md#7-add-to-your-robot) |
+
+## System requirements
+
+We verify that the wrapper builds and runs on the configuration below.
 
 | Component | Requirement |
 |---|---|
 | Operating System | Ubuntu 22.04 |
 | ROS 2 | Humble |
 | Control framework | `ros2_control` |
-| SDK | `aidin_hand2` 0.4.x — see [`aidin_hand2.repos`](aidin_hand2.repos) |
-| CAN interface | USB CAN-FD adapter (SocketCAN), 1 Mbit/s nominal / 5 Mbit/s data phase |
-
-Prepare the host first: PREEMPT_RT and boot-time CAN-FD bring-up are covered by the SDK's [real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/04_real_time_kernel_setup.md) and [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/05_can_fd_setup.md).
-
-## Packages
-
-| Package | Role |
-|---|---|
-| `aidin_hand2_hardware` | Real, Isaac Sim and mock `SystemInterface`, SDK lifecycle mapping |
-| `aidin_hand2_controllers` | 4 command controllers, 2 broadcasters |
-| `aidin_hand2_msgs` | 4 typed commands, `CommandState`, `HandState`, `HandDiagnostics` |
-| `aidin_hand2_description` | URDF, xacro, meshes, ros2_control description |
-| `aidin_hand2_bringup` | Real, Isaac Sim and mock launch files with controller config |
-| `aidin_hand2_examples` | 4 chainable upper-controller skeletons, optional MANUS glove teleop |
-
-## Build from source
-
-Build and install the SDK first. The verified revision is pinned in `aidin_hand2.repos`:
-
-```bash
-vcs import .. < aidin_hand2.repos
-```
-
-```bash
-cd <aidin-hand2-sdk>
-cmake -S cpp -B cpp/build -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build cpp/build -j"$(nproc)"
-sudo cmake --install cpp/build
-```
-
-To avoid sudo, install to a user prefix and put it on `CMAKE_PREFIX_PATH`:
-
-```bash
-cmake --install cpp/build --prefix "$HOME/.local"
-export CMAKE_PREFIX_PATH="$HOME/.local${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
-```
-
-Then build the wrapper from the workspace root. `/usr/local` is a default CMake search path, so no `CMAKE_PREFIX_PATH` is needed for a system install.
-
-```bash
-cd ~/your_ws
-source /opt/ros/humble/setup.bash
-
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
-source install/setup.bash
-```
-
-## Quick start
-
-`aidin_hand2_bringup` launches the hand on its own — use it to verify the hardware, not as
-the integration path. Always run the mock first:
-
-```bash
-ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py
-ros2 control list_controllers
-```
-
-For the real hand, start without homing and trigger it only after confirming the workspace is
-clear. See [first bringup](docs/ko/02_first_bringup.md).
-
-```bash
-ros2 launch aidin_hand2_bringup aidin_hand2.launch.py auto_home:=false
-```
-
-## Integration
-
-To mount the hand on your own robot, include our two xacro macros in your URDF instead of using
-our launch files — one adds the links and meshes, the other declares the `ros2_control` system.
-The geometry macro is per side (`aidin_hand2_left` / `aidin_hand2_right`); the `ros2_control`
-macro takes `hand_side`. `can_interface` and the three identity arguments are required, and the
-rest follow the SDK defaults.
-
-```xml
-<xacro:include filename="$(find aidin_hand2_description)/urdf/aidin_hand2_left.urdf.xacro"/>
-<xacro:include filename="$(find aidin_hand2_description)/ros2_control/aidin_hand2.ros2_control.xacro"/>
-
-<xacro:aidin_hand2_left prefix="left_" parent="your_tool_link">
-  <origin xyz="0 0 0" rpy="0 0 0"/>
-</xacro:aidin_hand2_left>
-
-<xacro:aidin_hand2_ros2_control
-  name="left_hand" prefix="left_" hand_side="left"
-  can_interface="can0" auto_home="false"/>
-```
-
-Then declare the controllers in your own `controllers.yaml`. Command controllers claim
-mode-specific interfaces, so exactly one may be active at a time; commands go either through
-each controller's `~/command` topic or through its reference interfaces when chained.
-
-See [ros2_control setup](docs/ko/03_setup.md) for the full parameter contract and both
-command paths.
+| SDK | `aidin_hand2` 0.6.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
+| CAN interface | For the robot hand: USB CAN-FD adapter (SocketCAN), 1 Mbit/s nominal, 5 Mbit/s data phase |
 
 ## Documentation
 
-Written in Korean; an English translation is planned.
+Follow the common guides for installation, the first run and control. Package READMEs provide configuration and detailed references (in Korean).
 
-### Getting started
+### User guides
 
-- [Installation](docs/ko/01_installation.md) — prerequisites, dependencies, SDK and wrapper build
-- [First bringup](docs/ko/02_first_bringup.md) — mock, real hand, homing, first command, shutdown
+- [Installation](docs/ko/03_installation.md) — SDK installation and wrapper build
+- [Real-time kernel setup](docs/ko/01_real_time_kernel_setup.md) — PREEMPT_RT kernel and real-time permissions
+- [CAN-FD setup](docs/ko/02_can_fd_setup.md) — CAN interface setup and receive checks
+- [Bringup](docs/ko/04_bringup.md) — First run with mock or robot hand, homing, first command, stop
+- [Control guide](docs/ko/05_control_guide.md) — Lifecycle, topic commands, service calls, monitoring, stop, recovery and QoS
+- [Troubleshooting](docs/ko/06_troubleshooting.md) — Build, launch, control and communication problems
 
-### Using the hand
+### Packages
 
-- [ros2_control setup](docs/ko/03_setup.md) — xacro macro contract and controller declaration
-- [Interfaces](docs/ko/04_interfaces.md) — topics, services, reference interfaces, and command examples
-- [Bringup example](docs/ko/05_bringup_example.md) — our standalone launch files and their arguments
-- [Chainable examples](aidin_hand2_examples/EXAMPLE.md) — upper-controller skeletons for chaining
-
-### Operations
-
-- [Operations](docs/ko/06_operations.md) — lifecycle, auto reconnect, RT, monitoring, recovery
-- [Troubleshooting](docs/ko/07_troubleshooting.md) — build, launch, controller, stale state, CAN diagnosis
-
-### Appendix
-
-- [Interface matrix](docs/ko/08_interface_matrix.md) — every interface name, enumerated
+| Package | Guide |
+|---|---|
+| [aidin_hand2_bringup](aidin_hand2_bringup/README.ko.md) | Launch arguments, defaults, configuration files, adding the robot hand to your robot |
+| [aidin_hand2_description](aidin_hand2_description/README.ko.md) | URDF and xacro file locations, macro calls and arguments, RViz preview |
+| [aidin_hand2_controllers](aidin_hand2_controllers/README.ko.md) | Controller selection, commands, switching, chaining, YAML and parameters |
+| [aidin_hand2_hardware](aidin_hand2_hardware/README.ko.md) | Homing, stop and recovery services, runtime tuning and initial values |
+| [aidin_hand2_msgs](aidin_hand2_msgs/README.ko.md) | Command and state message fields, units, joint and actuator array order |
+| [aidin_hand2_examples](aidin_hand2_examples/README.ko.md) | Upper-controller skeletons, source and config files, algorithm integration |
 
 ## Related repositories
 
-- [aidin-hand2-sdk](https://github.com/aidinrobotics/aidin-hand2-sdk) — C++ SDK
-- Web GUI (pending) — browser GUI and WebSocket bridge
+- [aidin-hand2-sdk](https://github.com/aidinrobotics/aidin-hand2-sdk) — the C++ SDK
 
-### SDK documents you will need
+Three of the SDK documents matter to a reader of this wrapper.
 
-The SDK owns host setup, kinematics, and the safety contract — this wrapper does not restate them.
-
-- [Real-time kernel setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/04_real_time_kernel_setup.md) — PREEMPT_RT, required before real hardware
-- [CAN-FD setup](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/05_can_fd_setup.md) — interface bring-up and boot automation
-- [SDK build & install](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/06_sdk_build_and_install.md) — the build this wrapper consumes
-- [Workspace limits](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/14_workspace_limits.md) — coupled workspace boundaries and command clamping
-- [Safety](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/13_safety.md) — command persistence and comms-loss behavior
-- [Troubleshooting](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/15_troubleshooting.md) — connection, RT, homing, and CAN errors
+- [C++ guide](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/07_cpp_usage_guide.md) — the lifecycle, homing and command semantics that this wrapper exposes
+- [Workspace limits](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/14_workspace_limits.md) — the reachable range that the SDK projects a joint target into
+- [Error messages](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/en/15_error_messages.md) — the text that a failed service returns

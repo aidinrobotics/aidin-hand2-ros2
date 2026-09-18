@@ -1,6 +1,9 @@
-"""URDF 시각화 전용 launch — RSP + joint_state_publisher_gui + rviz2.
+# Copyright (c) AIDIN ROBOTICS Inc.
+# SPDX-License-Identifier: Apache-2.0
 
-실제 하드웨어 control stack 은 aidin_hand2_bringup 의 aidin_hand2.launch.py.
+"""URDF visualisation only, robot_state_publisher with joint_state_publisher_gui and rviz2.
+
+The control stack is aidin_hand2_bringup/aidin_hand2.launch.py.
 """
 import os
 
@@ -34,10 +37,10 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('use_left_hand', default_value='true'),
-        DeclareLaunchArgument('use_right_hand', default_value='false'),
+        DeclareLaunchArgument('use_right_hand', default_value='true'),
         DeclareLaunchArgument(
             'use_gui', default_value='true',
-            description='joint_state_publisher_gui (slider) 실행 여부.'),
+            description='Run joint_state_publisher_gui with its sliders.'),
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',

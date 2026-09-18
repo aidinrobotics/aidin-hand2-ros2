@@ -12,18 +12,12 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(rcl_interfaces REQUIRED)
 find_package(std_srvs REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
-# C++ SDK — ROS 패키지가 아니다. CMAKE_PREFIX_PATH 또는 aidin_hand2_DIR 로 install prefix 지정.
-# SDK 는 정적 라이브러리라 PRIVATE 의존(Eigen)도 소비자 링크 단계에 필요($<LINK_ONLY:> 전파)
-# → aidin_hand2Config 의 find_dependency(Eigen3) 가 이 스코프에서 타겟을 찾도록 직접 find.
-find_package(Eigen3 REQUIRED)
-find_package(aidin_hand2 0.4 REQUIRED)  # 0.x 는 minor 가 breaking 경계
+# C++ SDK, not a ROS package. Point at it with CMAKE_PREFIX_PATH or aidin_hand2_DIR
+find_package(aidin_hand2 0.6 REQUIRED)  # 0.x treats a minor bump as breaking
 
 add_library(${PROJECT_NAME} SHARED
   src/aidin_hand2_system_interface.cpp
   src/aidin_hand2_mock_system_interface.cpp
-  src/aidin_hand2_isaac_system_interface.cpp
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -38,8 +32,6 @@ ament_target_dependencies(${PROJECT_NAME}
   rclcpp_lifecycle
   rcl_interfaces
   std_srvs
-  std_msgs
-  sensor_msgs
 )
 
 pluginlib_export_plugin_description_file(hardware_interface plugin/aidin_hand2_hardware_plugin.xml)

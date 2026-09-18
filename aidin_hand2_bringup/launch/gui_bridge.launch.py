@@ -1,14 +1,15 @@
-"""AIDIN Hand Gen2 GUI 연결용 rosbridge 기동 — 데스크톱 GUI(roslib.js)가 붙는 WebSocket 서버.
+# Copyright (c) AIDIN ROBOTICS Inc.
+# SPDX-License-Identifier: Apache-2.0
 
-GUI 는 브라우저/Electron 이라 ROS2 에 직접 못 붙고 rosbridge_server 를 경유한다. 이 launch 는
-rosbridge_websocket 을 port 9090(GUI 기본값)으로 띄운다. 제어 스택(bringup 또는 mock)과 별개
-프로세스이므로 순서 무관하게 따로 실행한다 — bridge 는 이미 떠 있는 topic/service 를 그대로 노출한다.
+"""rosbridge_websocket on port 9090, the WebSocket server the desktop GUI connects to.
 
-  ros2 launch aidin_hand2_bringup aidin_hand2.launch.py       # 제어 스택(실 CAN)
-  ros2 launch aidin_hand2_bringup gui_bridge.launch.py        # + 이 bridge 를 다른 터미널에서
+Runs as its own process alongside the control stack, in either order.
 
-GUI Settings 에서 소스=rosbridge, URL=ws://localhost:9090 으로 두면 연결된다. 포트를 바꾸려면
-port:=<n> 인자를 주고 GUI URL 도 함께 맞춘다.
+  ros2 launch aidin_hand2_bringup aidin_hand2.launch.py
+  ros2 launch aidin_hand2_bringup gui_bridge.launch.py
+
+In the GUI settings pick rosbridge with ws://localhost:9090. port:=<n> moves it, and the GUI URL
+has to follow.
 """
 import os
 

@@ -1,3 +1,6 @@
+// Copyright (c) AIDIN ROBOTICS Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 #include "aidin_hand2_hardware/aidin_hand2_mock_system_interface.hpp"
 
 #include <algorithm>
@@ -11,10 +14,8 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-// Mock command interface contract is identical to real hardware (98 resources):
-//   command_lock ×1, JointPosition ×17, JointImpedance ×48,
-//   ActuatorPosition ×16, ActuatorEffort ×16.
-// Each mode is accepted only as its exact complete interface set plus lock.
+// Write path is target -> clamp -> IK -> encoder count -> FK -> joint position
+// A mode is accepted only as its exact complete interface set plus the lock
 namespace aidin_hand2_hardware
 {
 namespace
@@ -27,28 +28,70 @@ constexpr char kVelocityRpmInterface[] = "velocity_rpm";
 constexpr char kCurrentMaInterface[] = "current_ma";
 
 constexpr std::array<const char *, ah2::kActuatorCount> kActuatorBaseNames = {
-  "thumb_actuator0", "thumb_actuator1", "thumb_actuator2", "thumb_actuator3",
-  "index_actuator1", "index_actuator2", "index_actuator3",
-  "middle_actuator1", "middle_actuator2", "middle_actuator3",
-  "ring_actuator1", "ring_actuator2", "ring_actuator3",
-  "baby_actuator1", "baby_actuator2", "baby_actuator3"};
+  "thumb_actuator0",
+  "thumb_actuator1",
+  "thumb_actuator2",
+  "thumb_actuator3",
+  "index_actuator1",
+  "index_actuator2",
+  "index_actuator3",
+  "middle_actuator1",
+  "middle_actuator2",
+  "middle_actuator3",
+  "ring_actuator1",
+  "ring_actuator2",
+  "ring_actuator3",
+  "baby_actuator1",
+  "baby_actuator2",
+  "baby_actuator3",
+};
 
 constexpr std::array<const char *, ah2::kActiveJointCount> kActiveJointBaseNames = {
-  "thumb_joint0", "thumb_joint1", "thumb_joint2", "thumb_joint3",
-  "index_joint1", "index_joint2", "index_joint3",
-  "middle_joint1", "middle_joint2", "middle_joint3",
-  "ring_joint1", "ring_joint2", "ring_joint3",
-  "baby_joint1", "baby_joint2", "baby_joint3"};
+  "thumb_joint0",
+  "thumb_joint1",
+  "thumb_joint2",
+  "thumb_joint3",
+  "index_joint1",
+  "index_joint2",
+  "index_joint3",
+  "middle_joint1",
+  "middle_joint2",
+  "middle_joint3",
+  "ring_joint1",
+  "ring_joint2",
+  "ring_joint3",
+  "baby_joint1",
+  "baby_joint2",
+  "baby_joint3",
+};
 
 constexpr std::array<std::size_t, ah2::kActiveJointCount> kActiveToJointIndex = {
   0, 1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19};
 
+// FK joints, the last of each digit being the coupled joint4
 constexpr std::array<const char *, ah2::kJointCount> kJointBaseNames = {
-  "thumb_joint0", "thumb_joint1", "thumb_joint2", "thumb_joint3", "thumb_joint4",
-  "index_joint1", "index_joint2", "index_joint3", "index_joint4",
-  "middle_joint1", "middle_joint2", "middle_joint3", "middle_joint4",
-  "ring_joint1", "ring_joint2", "ring_joint3", "ring_joint4",
-  "baby_joint1", "baby_joint2", "baby_joint3", "baby_joint4"};
+  "thumb_joint0",
+  "thumb_joint1",
+  "thumb_joint2",
+  "thumb_joint3",
+  "thumb_joint4",
+  "index_joint1",
+  "index_joint2",
+  "index_joint3",
+  "index_joint4",
+  "middle_joint1",
+  "middle_joint2",
+  "middle_joint3",
+  "middle_joint4",
+  "ring_joint1",
+  "ring_joint2",
+  "ring_joint3",
+  "ring_joint4",
+  "baby_joint1",
+  "baby_joint2",
+  "baby_joint3",
+  "baby_joint4",
+};
 
 std::string command_component(const std::string & side, ah2::CommandMode mode)
 {
@@ -115,8 +158,7 @@ std::optional<ah2::CommandMode> exact_mode_for_interfaces(
   return std::nullopt;
 }
 
-// command interface 의 NaN 은 "이번 cycle 명령 없음"(전체) 또는 "상위 미점유"(일부)를 뜻한다.
-// 실제 hardware 와 같은 규칙 — 전자면 직전 목표를 유지하고, 후자면 빈 자리를 채운다.
+// All NaN means no command this cycle, partial NaN means unowned entries
 template <std::size_t N>
 bool all_nan(const std::array<double, N> & values)
 {
@@ -265,7 +307,7 @@ hardware_interface::return_type AidinHand2MockSystemInterface::perform_command_m
   command_mode_ = pending_mode_;
   pending_mode_switch_valid_ = false;
 
-  // controller 가 처음 쓰기 전까지는 명령이 없다(NaN).
+  // No command until a controller writes
   const double unset = std::numeric_limits<double>::quiet_NaN();
   held_joint_target_rad_.fill(unset);
   held_actuator_target_cnt_.fill(unset);
@@ -288,6 +330,7 @@ hardware_interface::return_type AidinHand2MockSystemInterface::perform_command_m
   return hardware_interface::return_type::OK;
 }
 
+// Nothing to read, write() advances the state
 hardware_interface::return_type AidinHand2MockSystemInterface::read(
   const rclcpp::Time &, const rclcpp::Duration &)
 {
@@ -306,7 +349,7 @@ hardware_interface::return_type AidinHand2MockSystemInterface::write(
       }
     }
     if (any_nan(held_joint_target_rad_)) {
-      return hardware_interface::return_type::OK;  // 목표가 아직 완전하지 않다 — 자세 유지
+      return hardware_interface::return_type::OK;  // Target incomplete, hold the pose
     }
     ah2::JointPositionCommand command;
     command.target = held_joint_target_rad_;
@@ -340,10 +383,10 @@ hardware_interface::return_type AidinHand2MockSystemInterface::write(
       encoder[i] = static_cast<int>(std::lround(held_actuator_target_cnt_[i]));
     }
   } else {
-    // Idle은 pose hold, ActuatorEffort는 토크 동역학을 모델링하지 않아 pose를 움직이지 않는다.
+    // Idle and ActuatorEffort hold the pose, the mock has no torque model
     if (command_mode_ == ah2::CommandMode::ActuatorEffort) {
       for (double & effort : actuator_effort_target_pct_) {
-        if (std::isnan(effort)) continue;  // 미점유·명령 없음
+        if (std::isnan(effort)) continue;  // Unowned or no command
         effort = std::clamp(effort, -max_effort_pct_, max_effort_pct_);
       }
     }
