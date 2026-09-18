@@ -9,7 +9,6 @@
 
 #include <aidin_hand2/types/description.hpp>
 
-#include "aidin_hand2_controllers/joint_state_command.hpp"
 #include "controller_interface/chainable_controller_interface.hpp"
 #include "pluginlib/class_list_macros.hpp"
 #include "rclcpp/qos.hpp"
@@ -20,6 +19,7 @@
 //   claims and exports <side>_<active_joint>/position x16 on the JointImpedanceController
 // Command input
 //   subscribes ~/cmd as sensor_msgs/JointState matched by name, the command controller contract
+//   resolve_joint_state_command below is the same rule the command controllers apply
 // State input
 //   claims the hand's state interfaces and copies them into the members below every update
 //   tactile is claimed only with read_tactile, the mock exports none
@@ -28,8 +28,6 @@
 namespace aidin_hand2_examples
 {
 namespace ah2 = aidin_hand2;
-using aidin_hand2_controllers::JointStateCommand;
-using aidin_hand2_controllers::JointStateField;
 
 namespace
 {
@@ -107,6 +105,54 @@ constexpr std::array<const char *, ah2::kFingerCount> kFingerNames = {
   "ring",
   "baby",
 };
+
+// A JointState resolved by name into the controller's own order, NaN for a name not sent
+// sequence 0 is no message yet
+template <std::size_t N>
+struct JointStateCommand
+{
+  std::uint64_t sequence{0};
+  std::array<double, N> values{};
+};
+
+enum class JointStateField { kPosition, kEffort };
+
+// An empty name takes the N values in the controller's own order
+// Otherwise false when name differs in length from the field read or repeats a name
+// A name the controller does not own is skipped
+template <std::size_t N>
+bool resolve_joint_state_command(
+  const sensor_msgs::msg::JointState & msg, const std::vector<std::string> & names,
+  JointStateField field, std::array<double, N> & out)
+{
+  const auto & values = field == JointStateField::kPosition ? msg.position : msg.effort;
+  if (msg.name.empty()) {
+    if (values.size() != N) {
+      return false;
+    }
+    std::copy(values.begin(), values.end(), out.begin());
+    return true;
+  }
+  if (msg.name.size() != values.size()) {
+    return false;
+  }
+  out.fill(std::numeric_limits<double>::quiet_NaN());
+  std::array<bool, N> seen{};
+  for (std::size_t k = 0; k < msg.name.size(); ++k) {
+    for (std::size_t i = 0; i < N; ++i) {
+      if (msg.name[k] != names[i]) {
+        continue;
+      }
+      if (seen[i]) {
+        return false;
+      }
+      seen[i] = true;
+      out[i] = values[k];
+      break;
+    }
+  }
+  return true;
+}
 
 // Claim order of the state interfaces, read_state() indexes it
 constexpr std::size_t kJointOffset = 0;

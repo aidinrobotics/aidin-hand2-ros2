@@ -7,7 +7,6 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(aidin_hand2_controllers REQUIRED)
 find_package(controller_interface REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(pluginlib REQUIRED)
@@ -34,7 +33,6 @@ ament_target_dependencies(aidin_hand2_chainable_templates
   rclcpp
   realtime_tools
   sensor_msgs
-  aidin_hand2_controllers
 )
 install(TARGETS aidin_hand2_chainable_templates
   ARCHIVE DESTINATION lib
