@@ -146,7 +146,51 @@ ros2 topic pub --once \
   "{name: [left_index_joint2], position: [0.90]}"
 ```
 
-### 3.2 Actuator position
+### 3.2 Joint position with sliders
+
+명령을 직접 입력하는 대신 슬라이더로 보낼 수 있습니다. 자세를 찾아보거나 각 joint의 움직이는
+방향을 확인할 때 씁니다. mock과 로봇 핸드 모두 같은 방법을 사용합니다.
+
+launch를 실행한 terminal은 그대로 두고 새 terminal에서 실행하십시오. 왼손은 다음과 같습니다.
+
+```bash
+ros2 run joint_state_publisher_gui joint_state_publisher_gui \
+  --ros-args -r /joint_states:=/left_joint_position_controller/cmd -r __node:=left_cmd_slider
+```
+
+오른손은 topic과 node 이름만 바꿉니다.
+
+```bash
+ros2 run joint_state_publisher_gui joint_state_publisher_gui \
+  --ros-args -r /joint_states:=/right_joint_position_controller/cmd -r __node:=right_cmd_slider
+```
+
+창이 열리면 슬라이더를 움직입니다. 로봇 핸드에서는 첫 슬라이더를 움직이는 순간 그 자세로
+이동하므로, 현재 자세와 가까운 값부터 조금씩 움직이십시오.
+
+> [!WARNING]
+> 로봇 핸드는 토크가 걸린 상태입니다. 슬라이더를 크게 움직이면 손가락이 그만큼 빠르게
+> 움직입니다. 물체나 사람과 접촉할 수 있는 자리에서는 사용하지 마십시오.
+
+양손을 함께 실행했다면 창 하나에 양손의 슬라이더가 모두 나타납니다. 슬라이더는 URDF에 있는
+움직이는 joint를 전부 만들고, controller는 그중 자기 손의 이름만 적용하기 때문입니다. 반대쪽
+이름은 무시되므로 두 손을 조작하려면 창을 두 개 실행하십시오.
+
+한 손의 슬라이더만 보려면 그 손만 실행합니다. 다음은 오른손만 실행하는 예입니다.
+
+```bash
+ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py use_left_hand:=false
+```
+
+각 finger의 `joint4`와 thumb의 `joint4`는 four-bar로 연결된 수동 joint입니다. controller가
+받는 이름 16개에 들어 있지 않으므로 이 슬라이더를 움직여도 값이 적용되지 않습니다. 실제 각도는
+SDK가 같은 finger의 `joint3`에서 계산하며, `joint3`을 움직이면 함께 변하는 것을 `joint_states`와
+RViz에서 확인할 수 있습니다.
+
+슬라이더 창을 닫아도 마지막 목표값은 유지됩니다. 정지는
+[5. Stop and recover](#5-stop-and-recover)의 `~/stop`으로 수행하십시오.
+
+### 3.3 Actuator position
 
 목표는 `hand_state` topic의 `actuator_position` 필드에서 읽은 현재 값에 작은 차이를 더해 만듭니다. 다음
 예의 `<cnt_0>`부터 `<cnt_15>`는 읽어 온 현재 값입니다.
@@ -167,7 +211,7 @@ ros2 topic pub --once \
                <cnt_13>, <cnt_14>, <cnt_15>]}"
 ```
 
-### 3.3 Actuator effort
+### 3.4 Actuator effort
 
 actuator effort는 위치 제한 없이 토크를 계속 가할 수 있습니다. 물체와의 접촉·기구 제한을 확인하고
 정지 수단을 준비한 상태에서 사용하십시오. publisher를 종료해도 마지막 effort는 유지됩니다.
@@ -192,7 +236,7 @@ ros2 topic pub --once \
 
 joint impedance 제어는 SDK에서 개발 중이므로 사용하지 마십시오.
 
-### 3.4 Upper controller input
+### 3.5 Upper controller input
 
 사용자 node는 상위 controller가 제공하는 topic에 목표값을 보낼 수도 있습니다.
 상위 controller가 이를 처리해 하위 command controller의 reference interface에 전달합니다.
@@ -217,7 +261,7 @@ topic 이름은 controller 이름 아래에 있습니다. 발행 주기는 `aidi
 | `/{side}_joint_impedance_controller/cmd` | `sensor_msgs/JointState` | 구독 | — | real · mock |
 | `/{side}_actuator_position_controller/cmd` | `sensor_msgs/JointState` | 구독 | — | real · mock |
 | `/{side}_actuator_effort_controller/cmd` | `sensor_msgs/JointState` | 구독 | — | real · mock |
-| `/joint_states` | `sensor_msgs/JointState` | 발행 | 100 Hz. mock은 `controllers_mock.yaml`이 지정하지 않아 500 Hz | real · mock |
+| `/joint_states` | `sensor_msgs/JointState` | 발행 | 100 Hz | real · mock |
 | `/{side}_hand_state_broadcaster/hand_state` | `aidin_hand2_msgs/HandState` | 발행 | 100 Hz | real |
 | `/{side}_diagnostics_broadcaster/hand_diagnostics` | `aidin_hand2_msgs/HandDiagnostics` | 발행 | 20 Hz | real |
 
