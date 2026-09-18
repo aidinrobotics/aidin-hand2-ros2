@@ -36,8 +36,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
   actuator and, with the new `read_tactile` parameter, tactile state interfaces, copies them into
   member arrays every update, and forwards the input scaled by zero where the algorithm goes. The
   `hand_state_topic` parameter is gone; `read_tactile` defaults to false because the mock exports
-  no tactile interface. `aidin_hand2_examples` depends on `aidin_hand2_controllers` for the name
-  matching header instead of `aidin_hand2_msgs`.
+  no tactile interface. `aidin_hand2_examples` no longer depends on `aidin_hand2_msgs`; a skeleton
+  needs only `sensor_msgs` and the ros2_control packages, so it can be copied into your own package
+  as it is.
 - **`CommandState` carries the command echo as flat arrays.** `joint_position_input` is
   `joint_position_input_rad`, `joint_impedance_input` is `joint_impedance_input_rad`,
   `actuator_position_input` is `actuator_position_input_cnt` and `actuator_effort_input` is
