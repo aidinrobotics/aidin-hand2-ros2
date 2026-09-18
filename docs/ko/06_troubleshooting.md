@@ -297,7 +297,7 @@ ros2 topic echo /left_hand_state_broadcaster/hand_state --once --field command_s
 | `hand_diagnostics.lifecycle` | `Running` |
 | `hand_diagnostics.homing_state` | `Succeeded` |
 | 대상 command controller | `active`이고 chained mode가 아님 |
-| topic 이름과 message 타입 | controller 이름 아래의 `~/command` topic과 controller별 message |
+| topic 이름과 message 타입 | controller 이름 아래의 `~/cmd` topic과 `sensor_msgs/JointState`. `name`이 그 손의 이름 |
 | `command_state.selected_source` | `1` |
 
 `lifecycle` 값이 `Stopped`이면 `~/run` service를, `Faulted`이면 `~/reconnect` service를, `homing_state` 값이
@@ -321,7 +321,7 @@ JointPosition reference has an Inf value — ignored
 ```
 
 값이 유한한데도 `hand_diagnostics` topic의 `nan_command_count` 값이 늘면 SDK가 거부한 것입니다.
-`ActuatorPositionCommand`의 목표가 `int32` 범위를 벗어난 경우가 해당합니다. 거부가 시작되면 SDK가
+actuator position 목표가 `int32` 범위를 벗어난 경우가 해당합니다. 거부가 시작되면 SDK가
 `/rosout` topic에 다음 warning을 한 번 남깁니다.
 
 ```text

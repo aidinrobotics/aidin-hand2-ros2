@@ -352,14 +352,13 @@ controller_interface::return_type HandStateBroadcaster::update(
   // JointPosition and JointImpedance share one echo, the hardware exports the target once
   for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
     const double target = state_interfaces_[kControllerInputJointOffset + i].get_value();
-    command.joint_position_input.target_position_rad[i] = target;
-    command.joint_impedance_input.target_position_rad[i] = target;
+    command.joint_position_input_rad[i] = target;
+    command.joint_impedance_input_rad[i] = target;
   }
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
     const std::size_t base = kCommandedActuatorOffset + i * kCommandedActuatorStride;
-    command.actuator_position_input.target_position_cnt[i] =
-      state_interfaces_[base + 0].get_value();
-    command.actuator_effort_input.target_effort_pct[i] = state_interfaces_[base + 1].get_value();
+    command.actuator_position_input_cnt[i] = state_interfaces_[base + 0].get_value();
+    command.actuator_effort_input_pct[i] = state_interfaces_[base + 1].get_value();
     command.target_position_cnt[i] = state_interfaces_[base + 2].get_value();
     command.target_effort_pct[i] = state_interfaces_[base + 3].get_value();
     command.max_effort_pct[i] = state_interfaces_[base + 4].get_value();

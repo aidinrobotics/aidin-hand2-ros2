@@ -18,18 +18,27 @@ that runs without the robot hand, plus URDF and launch configuration for integra
 
 Built on [ros2_control](https://control.ros.org/humble/index.html), this wrapper provides controllers for commanding the robot hand and broadcasters for observing its state.
 
-![AIDIN Hand Gen2 ROS 2 architecture](docs/assets/aidin_hand2_ros2_architecture.png)
+![AIDIN Hand Gen2 ROS 2 architecture](docs/assets/aidin_hand2_ros2_architecture.webp)
 
-A user node can send targets directly to a command controller's topic or to an upper controller's input
-topic. The upper controller processes the targets and passes them to the command controller through
-reference interfaces. One command controller is active per robot hand. In chained mode, the lower
-controller does not accept input on its own command topic.
+A user node sends a command by one of two paths.
 
-The upper controller defines its input topic and message type. The supplied `aidin_hand2_examples`
-skeletons do not implement a target subscriber; add one for topic input.
-Read state through `/joint_states`, `~/hand_state` and `~/hand_diagnostics`. The `~` denotes the name of
-the node providing a topic or service; for example, `~/command` becomes
-`/left_joint_position_controller/command`. ROS parameters configure effort limits, filters and gains.
+- Publish `sensor_msgs/JointState` directly to a command controller's `~/cmd` topic.
+- Write a user controller and publish to the topic and message it defines. The user controller
+  processes the command and writes the targets to the command controller's reference interfaces, and
+  the command controller enters chained mode and stops reading its own `~/cmd` topic.
+
+On either path, one command controller is active per robot hand.
+
+Because the user controller runs inside the controller_manager, it can read actuator positions, joint
+angles and tactile values through state interfaces in the same cycle, without a topic. Observation and
+target computation close within one 500 Hz cycle, so the control loop has no topic round trip. The
+`aidin_hand2_examples` skeletons are this template, with a single line that scales the input by zero
+where the algorithm goes.
+
+A user node reads state through the `/joint_states`, `~/hand_state` and `~/hand_diagnostics` topics.
+The `~` denotes the name of the node providing a topic or service; for example, `~/cmd` becomes
+`/left_joint_position_controller/cmd`. Effort limits, filters and gains are ROS parameters of the
+hardware node.
 
 ## Getting started
 

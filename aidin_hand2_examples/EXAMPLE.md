@@ -18,8 +18,9 @@ the parameters are split per controller. Each skeleton claims the 16 references 
 controller named by its `target_controller` parameter as its command interfaces,
 `{target_controller}/{side}_<name>/<suffix>`, and exports the same suffixes under its own name,
 `{upper_controller}/{side}_<name>/<suffix>`. The suffixes are those of the command controller
-references listed in [Reference shape](#reference-shape). Each skeleton reads observations from
-the `HandState` topic.
+references listed in [Reference shape](#reference-shape). Each skeleton subscribes its own `~/cmd`
+as `sensor_msgs/JointState` with the same name matching as the command controllers, and reads the
+robot hand's state through state interfaces, in the same cycle, without a topic.
 
 | Upper skeleton (plugin class) | Source | Config | Command controller below |
 |---|---|---|---|
@@ -32,37 +33,42 @@ Each file is a template you can copy and edit on its own, and they differ only i
 shape they claim and export. Two command controllers of different modes cannot be active at the
 same time for one robot hand, so use one matching upper controller and command controller pair.
 
-## HandState input
+## State input
 
-All four subscribe to `hand_state_topic` and copy the latest whole
-`aidin_hand2_msgs::msg::HandState` into the member `hand_state_` through a realtime buffer, so one
-variable holds all of it:
+All four claim the robot hand's state interfaces in `state_interface_configuration()` and
+`read_state()` copies them into member arrays at the top of `update_and_write_commands()`. The
+members sit in one commented block at the end of each file, in the SDK index order:
 
-- header stamp and hand side
-- 21 joint positions
-- 16 actuator positions, velocities and currents
-- every finger and palm tactile cell
-- the nested `CommandState`
+| Member | Size | Unit | State interface |
+|---|---|---|---|
+| `joint_position_rad_` | 21 | rad | `{side}_{joint}/position`, passive `joint4` included |
+| `actuator_position_cnt_` | 16 | encoder count | `{side}_{actuator}/position_cnt` |
+| `actuator_velocity_rpm_` | 16 | rpm | `{side}_{actuator}/velocity_rpm` |
+| `actuator_current_ma_` | 16 | mA | `{side}_{actuator}/current_ma` |
+| `tactile_finger_` | 5 × 17 | raw count | `{side}_{finger}_sensor/tactile_1..17` |
+| `tactile_palm1_upper_` · `tactile_palm1_lower_` | 20 · 20 | raw count | `{side}_palm_sensor/palm1_upper_1..20` · `palm1_lower_1..20` |
+| `tactile_palm2_` | 18 | raw count | `{side}_palm_sensor/palm2_1..18` |
 
-A valid state has arrived only while `has_hand_state_` is true. The copy sits at the very top of
-`update_and_write_commands()`, which runs in chained mode as well. The default topic is
-`/<side>_hand_state_broadcaster/hand_state` and the YAML can change it.
+The tactile interfaces are claimed only when the `read_tactile` parameter is true, because the mock
+exports none and a controller whose state interface is missing fails to activate. With
+`read_tactile: false` the tactile members stay NaN. State interfaces are shared, so claiming them
+takes nothing away from the broadcasters.
 
-## Generating nothing, on purpose
+## Scaling by zero, on purpose
 
-The skeleton is a safe structural template, not an algorithm example.
+The skeleton is a structural template, not an algorithm example. `update_and_write_commands()` is
+split into three commented blocks:
 
-- `on_activate()` fills its exported references with NaN.
-- `update_reference_from_subscribers()` produces no command input.
-- `update_and_write_commands()` stores the whole HandState, then forwards the references to the
-  controller below only once every one of them is finite. The skeleton rejects a partly finite input
-  as an error, even though the command controller supports partial updates after an initial complete target.
-- With no input at all, no new target is applied. The SDK keeps the last command, including effort
-  if the previous command selected effort control.
+- **READ** — `read_state()` refreshes the state members.
+- **WRITE** — the algorithm. The template multiplies the input in `reference_interfaces_` by zero,
+  so any command drives the target to zero. Replace this block.
+- **FORWARD** — the target goes to the command controller below only when all 16 values are
+  finite; a partly finite target is dropped with a warning. With no input the cycle writes nothing
+  and the SDK keeps the last command.
 
-So activating the file as it stands produces no new target. To write a real upper controller, read
-`hand_state_` where each file says `Write the algorithm here` and fill the whole matching
-reference set with finite values in one update.
+The input arrives in `reference_interfaces_` either from the skeleton's own `~/cmd` topic
+(standalone) or from a controller chained above it. `on_activate()` fills the references with NaN,
+and a consumed input is reset to NaN.
 
 ## Reference shape
 
@@ -86,8 +92,8 @@ Joint impedance control is under development; do not use the impedance skeleton 
 
 Complete [Installation](../docs/ko/03_installation.md) and source the ROS 2 and workspace environments
 in each terminal. Bring up the mock first, which leaves the joint position command controller active.
-The mock does not publish `HandState`, so `has_hand_state_` stays false. This procedure verifies
-controller connections only; an algorithm that requires measured state needs the robot hand backend.
+The mock exports the joint and actuator state interfaces but no tactile, so keep `read_tactile: false`
+there; the tactile members stay NaN.
 
 ```bash
 ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py use_rviz:=false
@@ -113,8 +119,19 @@ ros2 control list_controllers
 ```
 
 Once `left_joint_position_upper` claims the reference below it, `left_joint_position_controller`
-enters chained mode and stops accepting command topic input. The skeleton generates no target,
-so the mock pose does not change.
+enters chained mode and stops accepting command topic input. Publish a command to the skeleton
+instead; the template scales it by zero, so the mock moves to the zero pose whatever the values.
+
+```bash
+ros2 topic pub --once /left_joint_position_upper/cmd sensor_msgs/msg/JointState \
+  "{name: [left_thumb_joint0, left_thumb_joint1, left_thumb_joint2, left_thumb_joint3,
+           left_index_joint1, left_index_joint2, left_index_joint3,
+           left_middle_joint1, left_middle_joint2, left_middle_joint3,
+           left_ring_joint1, left_ring_joint2, left_ring_joint3,
+           left_baby_joint1, left_baby_joint2, left_baby_joint3],
+    position: [0.20, 0.35, 0.10, 0.25, 0.08, 0.45, 0.30, 0.04, 0.55, 0.40,
+               -0.04, 0.65, 0.50, -0.08, 0.75, 0.60]}"
+```
 
 To try a skeleton of another mode, deactivate the current upper controller first, switch the two
 command controllers atomically, and bring the new upper controller up last. Two command
@@ -132,10 +149,9 @@ ros2 control unload_controller left_joint_position_upper
 
 - Claim the exact reference names of the controller below in `command_interface_configuration()`.
 - Export references of the same shape to allow one more chain step above.
-- Write only a complete command into the realtime buffer from a subscriber callback.
-- Keep the `HandState` subscriber callback free of computation, writing only the latest message
-  into the realtime buffer.
+- Resolve the `JointState` by name in the subscriber callback and hand the update a fixed-size array.
+- Read state through state interfaces, not a topic, so observation and target stay in one cycle.
 - Reject NaN and Inf in the update.
-- Leave the references NaN on activate and generate no target.
+- Leave the references NaN on activate.
 - Deactivate the upper controller before switching command controllers.
-- Use the same controller and config on the robot hand and the mock.
+- Use the same controller and config on the robot hand and the mock, `read_tactile` aside.

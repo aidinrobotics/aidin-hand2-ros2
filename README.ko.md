@@ -18,18 +18,25 @@ AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. con
 
 [ros2_control](https://control.ros.org/humble/index.html)을 기반으로 로봇 핸드 제어를 위한 controller와 상태 관측을 위한 broadcaster를 제공합니다.
 
-![AIDIN Hand Gen2 ROS 2 architecture](docs/assets/aidin_hand2_ros2_architecture.png)
+![AIDIN Hand Gen2 ROS 2 architecture](docs/assets/aidin_hand2_ros2_architecture.webp)
 
-사용자 node는 command controller의 topic에 직접 목표값을 보내거나, 상위 controller의 입력 topic에
-목표값을 보낼 수 있습니다. 상위 controller는 목표를 처리해 command controller의 reference interface에
-전달합니다. 한 손에는 command controller 하나를 활성화하며, chained mode에서는 하위 controller의
-직접 command topic 입력을 사용하지 않습니다.
+사용자 node가 command를 보내는 경로는 둘입니다.
 
-상위 controller의 topic 이름과 message 타입은 해당 구현에 따릅니다.
-제공된 `aidin_hand2_examples` skeleton에는 목표 입력 subscriber가 없으므로 직접 추가해야 합니다.
-상태는 `/joint_states`, `~/hand_state`, `~/hand_diagnostics`로 읽습니다. `~`는 해당 topic이나 service를
-제공하는 node 이름입니다. 예를 들어 `~/command`는 `/left_joint_position_controller/command`가 됩니다.
-effort 상한과 filter·gain은 ROS parameter로 설정합니다.
+- command controller의 `~/cmd` topic에 `sensor_msgs/JointState`를 직접 보냅니다.
+- user controller를 만들어 직접 정의한 topic과 message로 보냅니다. user controller는 command를
+  처리해 목표값을 command controller의 reference interface에 쓰고, 그동안 command controller는 chained
+  mode가 되어 자기 `~/cmd` topic을 읽지 않습니다.
+
+어느 경로든 한 손에 active인 command controller는 하나입니다.
+
+user controller는 controller_manager 안에서 돌기 때문에 actuator 위치·joint 각도·tactile 같은 상태를
+topic이 아니라 state interface로 같은 cycle 안에서 읽을 수 있습니다. 상태 관측과 목표값 계산이 500 Hz
+cycle 하나에서 닫히므로 topic 왕복이 없는 제어 루프가 됩니다. `aidin_hand2_examples`의 skeleton이 이
+틀이고, 알고리즘 자리에는 입력에 0을 곱하는 한 줄이 들어 있습니다.
+
+user node는 상태를 `/joint_states`, `~/hand_state`, `~/hand_diagnostics` topic으로 읽습니다. `~`는 해당
+topic이나 service를 제공하는 node 이름입니다. 예를 들어 `~/cmd`는 `/left_joint_position_controller/cmd`가 됩니다.
+effort 상한과 filter·gain은 hardware node의 ROS parameter로 설정합니다.
 
 ## Getting started
 
@@ -85,7 +92,7 @@ command를 적용하려면 controller가 `active`, lifecycle이 `Running`, homin
 | [aidin_hand2_controllers](aidin_hand2_controllers/README.ko.md) | controller 선택·입력·전환, chaining, controller YAML·설정값 |
 | [aidin_hand2_hardware](aidin_hand2_hardware/README.ko.md) | homing·정지·복구 service, effort·filter·gain 변경과 초기 설정 |
 | [aidin_hand2_msgs](aidin_hand2_msgs/README.ko.md) | command·상태 message 필드·단위, joint·actuator 배열 순서 |
-| [aidin_hand2_examples](aidin_hand2_examples/README.ko.md) | 상위 controller skeleton, 소스·설정 파일, 알고리즘 연결 |
+| [aidin_hand2_examples](aidin_hand2_examples/README.ko.md) | user controller skeleton, 소스·설정 파일, 알고리즘 연결 |
 
 ## Related repositories
 

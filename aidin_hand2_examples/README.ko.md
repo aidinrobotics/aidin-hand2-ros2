@@ -6,8 +6,8 @@
 chainable 상위 controller skeleton 4개를 제공합니다. 일반 node에서 목표값을 보낼 때는
 [aidin_hand2_controllers](../aidin_hand2_controllers/README.ko.md)의 command topic을 사용하면 됩니다.
 
-skeleton은 입력받은 목표값을 하위 controller의 reference로 전달하며 자체 목표를 생성하지 않습니다.
-mock에서도 실행할 수 있습니다. 먼저 [Bringup](../docs/ko/04_bringup.md#1-mock)으로 mock 동작을 확인하십시오.
+skeleton은 자기 `~/cmd` topic에 `sensor_msgs/JointState`를 받아 0을 곱한 값을 하위 controller의 reference로
+전달합니다. 알고리즘 자리를 표시하는 틀이고 mock에서도 실행할 수 있습니다. 먼저 [Bringup](../docs/ko/04_bringup.md#1-mock)으로 mock 동작을 확인하십시오.
 
 ## Contents
 
@@ -32,7 +32,7 @@ mock에서도 실행할 수 있습니다. 먼저 [Bringup](../docs/ko/04_bringup
 
 ## 2. Configuration
 
-선택한 YAML에서 상위 controller가 연결할 하위 controller와 상태 topic을 지정합니다.
+선택한 YAML에서 상위 controller가 연결할 하위 controller와 tactile을 읽을지를 지정합니다.
 아래는 제공된 왼손 joint position 설정입니다.
 
 ```yaml
@@ -45,27 +45,29 @@ left_joint_position_upper:
   ros__parameters:
     hand_side: left
     target_controller: left_joint_position_controller
-    hand_state_topic: /left_hand_state_broadcaster/hand_state
+    read_tactile: false
 ```
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `hand_side` | `string` | 필수 | `left` 또는 `right` |
 | `target_controller` | `string` | 필수 | 연결할 하위 command controller 이름 |
-| `hand_state_topic` | `string` | 빈 문자열 | 비우면 `/{side}_hand_state_broadcaster/hand_state`를 구독합니다 |
+| `read_tactile` | `bool` | `false` | `true`면 tactile state interface 143개도 claim합니다 |
 
-mock에는 `HandState` 발행이 없습니다. mock에서 알고리즘을 시험하려면 관측값 없이도 동작하도록
-구현하거나 별도의 상태 입력을 제공해야 합니다.
+skeleton은 joint 각도, actuator 위치·속도·전류를 state interface로 매 cycle 읽어 멤버 배열에 담습니다.
+mock에는 tactile state interface가 없으므로 mock에서는 `read_tactile`을 `false`로 두고, 로봇 핸드에서
+tactile을 쓰려면 `true`로 바꿉니다. 없는 interface를 claim하면 activate가 실패합니다.
 
 ## 3. Run and extend
 
 빌드된 skeleton을 실행하고 해제하는 명령은
 [Running a skeleton](EXAMPLE.md#running-a-skeleton)에 있습니다.
-상위 controller가 연결되면 하위 controller는 chained mode로 바뀌고 command topic 입력을 받지 않습니다.
-목표 생성 코드를 추가하지 않은 skeleton을 활성화해도 새로운 목표값은 만들어지지 않습니다.
+상위 controller가 연결되면 하위 controller는 chained mode로 바뀌고 자기 command topic 입력을 받지 않으며,
+command는 skeleton의 `~/cmd` topic으로 보냅니다. 고치지 않은 skeleton은 입력에 0을 곱하므로 어떤 command를
+보내도 0 자세가 됩니다.
 
-알고리즘을 구현할 때는 선택한 소스의 `Write the algorithm here` 위치를 수정합니다.
+알고리즘을 구현할 때는 선택한 소스의 `WRITE` 블록을 수정합니다.
 입력으로 쓸 상태와 출력할 reference 이름·단위는
-[HandState input](EXAMPLE.md#handstate-input)과
+[State input](EXAMPLE.md#state-input)과
 [Reference shape](EXAMPLE.md#reference-shape)에서 확인하십시오.
 제어 방식을 바꾸거나 종료할 때는 상위 controller를 먼저 비활성화합니다.

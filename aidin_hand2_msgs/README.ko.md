@@ -2,18 +2,14 @@
 
 [전체 문서](../README.ko.md#documentation) | [English overview](README.md)
 
-`aidin_hand2_msgs`는 command와 상태 message 타입을 정의합니다.
+`aidin_hand2_msgs`는 상태 message 타입을 정의합니다. command는 표준 `sensor_msgs/JointState`를 씁니다.
 이 문서에서 필드·타입·단위와 배열 순서를 확인할 수 있습니다. message 정의 파일은 [msg/](msg)에 있습니다.
 목표 전송과 상태 관측 명령은 [Control guide](../docs/ko/05_control_guide.md)에 있습니다.
 
 ## Contents
 
 &nbsp;&nbsp;[**1. Message types**](#1-message-types)<br>
-&nbsp;&nbsp;[**2. Command messages**](#2-command-messages)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[2.1 JointPositionCommand](#21-jointpositioncommand)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[2.2 JointImpedanceCommand](#22-jointimpedancecommand)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[2.3 ActuatorPositionCommand](#23-actuatorpositioncommand)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[2.4 ActuatorEffortCommand](#24-actuatoreffortcommand)<br>
+&nbsp;&nbsp;[**2. Command message**](#2-command-message)<br>
 &nbsp;&nbsp;[**3. State messages**](#3-state-messages)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.1 HandState](#31-handstate)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.2 CommandState](#32-commandstate)<br>
@@ -24,64 +20,38 @@
 
 | Type | Purpose |
 |---|---|
-| [JointPositionCommand](msg/JointPositionCommand.msg) | joint 목표 각도 |
-| [JointImpedanceCommand](msg/JointImpedanceCommand.msg) | joint impedance 목표 각도. 사용 보류 |
-| [ActuatorPositionCommand](msg/ActuatorPositionCommand.msg) | actuator 목표 위치 |
-| [ActuatorEffortCommand](msg/ActuatorEffortCommand.msg) | actuator 목표 effort |
 | [HandState](msg/HandState.msg) | joint·actuator·tactile 관측과 적용된 command |
 | [CommandState](msg/CommandState.msg) | `HandState.command_state`에 포함된 command 정보 |
 | [HandDiagnostics](msg/HandDiagnostics.msg) | lifecycle·homing 상태, 주기 통계와 actuator fault |
 
-## 2. Command messages
+## 2. Command message
 
-command message는 길이 16의 `float64` 배열 하나입니다. 처음 보낼 때는 목표값 16개를 모두
-유한한 값으로 지정합니다. 이후 일부 축을 유지하려면 해당 위치에 NaN을 넣을 수 있습니다.
-값 처리 규칙은 [4.2 Target values](../aidin_hand2_controllers/README.ko.md#42-target-values)에 있습니다.
+command message는 command controller 넷이 `~/cmd` topic에 받는 `sensor_msgs/JointState`입니다. `name`
+필드를 [4. Joint and actuator order](#4-joint-and-actuator-order)의 이름에 `{side}_`를 붙인 것과 대조하고,
+순서는 자유입니다. controller가 소유하지 않는 이름은 무시하고, 빠진 이름은 이번 cycle에 지정하지 않은
+것으로 보아 SDK가 마지막 값을 유지합니다. `header` 필드는 읽지 않습니다.
 
-### 2.1 JointPositionCommand
-
-`JointPositionCommand`는 active joint 16개의 목표 각도입니다.
-
-| Field | Type | Unit | Description |
+| Controller | Field read | Names | Unit |
 |---|---|---|---|
-| `target_position_rad` | `float64[16]` | rad | active joint 16개의 목표 각도 |
+| `{side}_joint_position_controller` | `position` | `{side}_thumb_joint0` … `{side}_baby_joint3` | rad |
+| `{side}_joint_impedance_controller` | `position` | `{side}_thumb_joint0` … `{side}_baby_joint3` | rad |
+| `{side}_actuator_position_controller` | `position` | `{side}_thumb_actuator0` … `{side}_baby_actuator3` | encoder count. `int32` 범위 |
+| `{side}_actuator_effort_controller` | `effort` | `{side}_thumb_actuator0` … `{side}_baby_actuator3` | 정격 전류의 0.1%. 부호가 방향이고 `1000`이 100% |
 
-SDK가 목표를 finger별 도달 범위로 투영한 뒤 joint position controller를 거쳐 actuator position으로
-변환합니다. controller의 filter는 hardware node의 parameter이고 [6.2 Joint position controller](../aidin_hand2_hardware/README.ko.md#62-joint-position-controller)에
-있습니다.
+activate 후 첫 message는 16개 이름을 모두 담아야 합니다. `name`을 비우면 값 16개를
+[4. Joint and actuator order](#4-joint-and-actuator-order)의 순서로 받습니다. `name`이 읽는 필드와 길이가
+다르거나 이름이 중복된 message, `name`이 비었는데 값이 16개가 아닌 message는 warning과 함께 버려지고
+controller는 `active`로 남습니다. 값 처리 규칙은
+[4.2 Target values](../aidin_hand2_controllers/README.ko.md#42-target-values)에 있습니다.
 
-### 2.2 JointImpedanceCommand
-
-`JointImpedanceCommand`는 active joint 16개의 목표 각도입니다. 필드는 `JointPositionCommand`와 같고
-SDK가 actuator position이 아니라 actuator effort를 전송합니다.
-
-| Field | Type | Unit | Description |
-|---|---|---|---|
-| `target_position_rad` | `float64[16]` | rad | active joint 16개의 목표 각도 |
-
-`stiffness`·`damping`은 message에 넣지 않고 hardware node parameter로 설정합니다.
+joint 목표는 SDK가 finger별 도달 범위로 투영한 뒤 변환합니다. joint position은 joint position controller를
+거쳐 actuator position이 되고, joint impedance는 actuator effort가 됩니다. actuator 목표는 kinematics를
+거치지 않아 도달 범위 투영이 없고, effort는 SDK가 절댓값을 actuator별 `max_effort` 값으로 제한한 뒤
+전송합니다. filter와 `stiffness`·`damping`은 hardware node parameter이고
+[6.2 Joint position controller](../aidin_hand2_hardware/README.ko.md#62-joint-position-controller)에 있습니다.
 
 > [!NOTE]
-> joint impedance controller는 SDK에서 개발 중이므로 사용하지 마십시오. 이 절은 message 형식만 설명합니다.
-
-### 2.3 ActuatorPositionCommand
-
-`ActuatorPositionCommand`는 actuator 16개의 목표 위치입니다. kinematics를 거치지 않아 도달 범위 투영이
-없습니다.
-
-| Field | Type | Unit | Description |
-|---|---|---|---|
-| `target_position_cnt` | `float64[16]` | encoder count | actuator 16개의 목표 위치. `int32` 범위 |
-
-### 2.4 ActuatorEffortCommand
-
-`ActuatorEffortCommand`는 actuator 16개의 목표 effort입니다.
-
-| Field | Type | Unit | Description |
-|---|---|---|---|
-| `target_effort_pct` | `float64[16]` | 정격 전류의 0.1% | actuator 16개의 목표 effort. 부호가 방향이고 `1000`이 100% |
-
-SDK가 절댓값을 actuator별 `max_effort` 값으로 제한한 뒤 전송합니다.
+> joint impedance controller는 SDK에서 개발 중이므로 사용하지 마십시오.
 
 ## 3. State messages
 
@@ -111,12 +81,14 @@ tactile 값은 센서가 전송한 원시 count라 단위도 정규화도 없습
 ### 3.2 CommandState
 
 `CommandState`는 한 cycle의 command 처리 과정을 담은 `HandState`의 `command_state` 필드입니다. 세 enum
-필드가 어느 nested 필드가 유효한지 결정하고, 유효하지 않은 필드는 NaN일 수 있습니다.
+필드가 어느 필드가 유효한지 결정하고, 유효하지 않은 필드는 NaN일 수 있습니다.
 
 | Field | Type | Description |
 |---|---|---|
 | `controller_input_mode` | `uint8` | 적용 중인 command의 종류. `0` idle, `1` joint position, `2` joint impedance, `3` actuator position, `4` actuator effort |
-| `joint_position_input` · `joint_impedance_input` · `actuator_position_input` · `actuator_effort_input` | command message | `controller_input_mode`가 나타내는 하나만 유효. joint 둘은 같은 값 |
+| `joint_position_input_rad` · `joint_impedance_input_rad` | `float64[16]` | 도달 범위 투영 후의 joint 목표[rad]. `controller_input_mode`가 `1`·`2`일 때 유효하고 둘은 같은 값 |
+| `actuator_position_input_cnt` | `float64[16]` | actuator 목표 위치[encoder count]. `controller_input_mode`가 `3`일 때 유효 |
+| `actuator_effort_input_pct` | `float64[16]` | actuator 목표 effort[정격 전류의 0.1%]. `controller_input_mode`가 `4`일 때 유효 |
 | `controller_output_type` | `uint8` | SDK 변환 결과의 종류. `0` none, `1` actuator position, `2` actuator effort |
 | `target_position_cnt` · `target_effort_pct` | `float64[16]` | `controller_output_type`이 나타내는 하나만 유효 |
 | `selected_source` | `uint8` | 이번 cycle에 전송 대상으로 선택된 출처. `0` none, `1` controller, `2` quick stop, `3` homing |

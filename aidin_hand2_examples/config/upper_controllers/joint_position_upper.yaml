@@ -9,4 +9,5 @@ left_joint_position_upper:
   ros__parameters:
     hand_side: left
     target_controller: left_joint_position_controller
-    hand_state_topic: /left_hand_state_broadcaster/hand_state
+    # The mock exports no tactile state interface, set true on the robot hand to read tactile
+    read_tactile: false

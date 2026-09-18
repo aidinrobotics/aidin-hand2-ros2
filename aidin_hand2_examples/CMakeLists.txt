@@ -7,8 +7,9 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(aidin_hand2_msgs REQUIRED)
+find_package(aidin_hand2_controllers REQUIRED)
 find_package(controller_interface REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(realtime_tools REQUIRED)
 find_package(aidin_hand2 0.5 REQUIRED)  # 0.x treats a minor bump as breaking
@@ -32,7 +33,8 @@ ament_target_dependencies(aidin_hand2_chainable_templates
   pluginlib
   rclcpp
   realtime_tools
-  aidin_hand2_msgs
+  sensor_msgs
+  aidin_hand2_controllers
 )
 install(TARGETS aidin_hand2_chainable_templates
   ARCHIVE DESTINATION lib

@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <string>
@@ -8,26 +9,52 @@
 
 #include <aidin_hand2/types/description.hpp>
 
-#include "aidin_hand2_msgs/msg/hand_state.hpp"
+#include "aidin_hand2_controllers/joint_state_command.hpp"
 #include "controller_interface/chainable_controller_interface.hpp"
 #include "pluginlib/class_list_macros.hpp"
 #include "rclcpp/qos.hpp"
 #include "realtime_tools/realtime_buffer.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
 
 // Chain interface
 //   claims and exports <side>_<active_joint>/position x16 on the JointImpedanceController
+// Command input
+//   subscribes ~/cmd as sensor_msgs/JointState matched by name, the command controller contract
 // State input
-//   subscribes to HandState and copies the whole message into hand_state_ every update
+//   claims the hand's state interfaces and copies them into the members below every update
+//   tactile is claimed only with read_tactile, the mock exports none
 // Template behavior
-//   generates nothing, only a complete finite reference set from above is forwarded
+//   scales the input by zero and forwards it, replace the WRITE block with the algorithm
 namespace aidin_hand2_examples
 {
 namespace ah2 = aidin_hand2;
+using aidin_hand2_controllers::JointStateCommand;
+using aidin_hand2_controllers::JointStateField;
 
 namespace
 {
 
 // Interface names without the prefix
+// The position in the list is the actuator index
+constexpr std::array<const char *, ah2::kActuatorCount> kActuatorBaseNames = {
+  "thumb_actuator0",
+  "thumb_actuator1",
+  "thumb_actuator2",
+  "thumb_actuator3",
+  "index_actuator1",
+  "index_actuator2",
+  "index_actuator3",
+  "middle_actuator1",
+  "middle_actuator2",
+  "middle_actuator3",
+  "ring_actuator1",
+  "ring_actuator2",
+  "ring_actuator3",
+  "baby_actuator1",
+  "baby_actuator2",
+  "baby_actuator3",
+};
+
 // The position in the list is the active joint index
 constexpr std::array<const char *, ah2::kActiveJointCount> kActiveJointBaseNames = {
   "thumb_joint0",
@@ -48,6 +75,48 @@ constexpr std::array<const char *, ah2::kActiveJointCount> kActiveJointBaseNames
   "baby_joint3",
 };
 
+// The position in the list is the joint index, the coupled joint4 of each digit included
+constexpr std::array<const char *, ah2::kJointCount> kJointBaseNames = {
+  "thumb_joint0",
+  "thumb_joint1",
+  "thumb_joint2",
+  "thumb_joint3",
+  "thumb_joint4",
+  "index_joint1",
+  "index_joint2",
+  "index_joint3",
+  "index_joint4",
+  "middle_joint1",
+  "middle_joint2",
+  "middle_joint3",
+  "middle_joint4",
+  "ring_joint1",
+  "ring_joint2",
+  "ring_joint3",
+  "ring_joint4",
+  "baby_joint1",
+  "baby_joint2",
+  "baby_joint3",
+  "baby_joint4",
+};
+
+constexpr std::array<const char *, ah2::kFingerCount> kFingerNames = {
+  "thumb",
+  "index",
+  "middle",
+  "ring",
+  "baby",
+};
+
+// Claim order of the state interfaces, read_state() indexes it
+constexpr std::size_t kJointOffset = 0;
+constexpr std::size_t kActuatorPositionOffset = kJointOffset + ah2::kJointCount;
+constexpr std::size_t kActuatorVelocityOffset = kActuatorPositionOffset + ah2::kActuatorCount;
+constexpr std::size_t kActuatorCurrentOffset = kActuatorVelocityOffset + ah2::kActuatorCount;
+constexpr std::size_t kFingerTactileOffset = kActuatorCurrentOffset + ah2::kActuatorCount;
+constexpr std::size_t kPalmTactileOffset =
+  kFingerTactileOffset + ah2::kFingerCount * ah2::kTactileTaxelsPerFinger;
+
 }  // namespace
 
 class JointImpedanceUpperController : public controller_interface::ChainableControllerInterface
@@ -57,7 +126,7 @@ public:
   {
     auto_declare<std::string>("hand_side", "");
     auto_declare<std::string>("target_controller", "");
-    auto_declare<std::string>("hand_state_topic", "");
+    auto_declare<bool>("read_tactile", false);
     return controller_interface::CallbackReturn::SUCCESS;
   }
 
@@ -66,16 +135,15 @@ public:
   {
     const std::string side = get_node()->get_parameter("hand_side").as_string();
     target_controller_ = get_node()->get_parameter("target_controller").as_string();
-    std::string state_topic = get_node()->get_parameter("hand_state_topic").as_string();
+    read_tactile_ = get_node()->get_parameter("read_tactile").as_bool();
     if ((side != "left" && side != "right") || target_controller_.empty()) {
       return controller_interface::CallbackReturn::ERROR;
     }
-    if (state_topic.empty()) {
-      state_topic = "/" + side + "_hand_state_broadcaster/hand_state";
-    }
 
+    command_names_.clear();
     reference_suffixes_.clear();
     for (const char * joint : kActiveJointBaseNames) {
+      command_names_.push_back(side + "_" + joint);
       reference_suffixes_.push_back(side + "_" + joint + "/position");
     }
     lower_reference_names_.clear();
@@ -83,13 +151,48 @@ public:
       lower_reference_names_.push_back(target_controller_ + "/" + suffix);
     }
 
-    hand_state_buffer_.writeFromNonRT(
-      std::shared_ptr<aidin_hand2_msgs::msg::HandState>());
-    hand_state_subscriber_ =
-      get_node()->create_subscription<aidin_hand2_msgs::msg::HandState>(
-      state_topic, rclcpp::SystemDefaultsQoS(),
-      [this](const std::shared_ptr<aidin_hand2_msgs::msg::HandState> message) {
-        hand_state_buffer_.writeFromNonRT(message);
+    state_interface_names_.clear();
+    for (const char * joint : kJointBaseNames) {
+      state_interface_names_.push_back(side + "_" + joint + "/position");
+    }
+    for (const char * interface : {"position_cnt", "velocity_rpm", "current_ma"}) {
+      for (const char * actuator : kActuatorBaseNames) {
+        state_interface_names_.push_back(side + "_" + actuator + "/" + interface);
+      }
+    }
+    if (read_tactile_) {
+      for (const char * finger : kFingerNames) {
+        for (std::size_t k = 1; k <= ah2::kTactileTaxelsPerFinger; ++k) {
+          state_interface_names_.push_back(
+            side + "_" + finger + "_sensor/tactile_" + std::to_string(k));
+        }
+      }
+      const std::string palm = side + "_palm_sensor/";
+      for (std::size_t k = 1; k <= ah2::kPalm1UpperCount; ++k) {
+        state_interface_names_.push_back(palm + "palm1_upper_" + std::to_string(k));
+      }
+      for (std::size_t k = 1; k <= ah2::kPalm1LowerCount; ++k) {
+        state_interface_names_.push_back(palm + "palm1_lower_" + std::to_string(k));
+      }
+      for (std::size_t k = 1; k <= ah2::kPalm2Count; ++k) {
+        state_interface_names_.push_back(palm + "palm2_" + std::to_string(k));
+      }
+    }
+
+    command_buffer_.writeFromNonRT(JointStateCommand<ah2::kActiveJointCount>{});
+    command_subscriber_ = get_node()->create_subscription<sensor_msgs::msg::JointState>(
+      "~/cmd", rclcpp::SystemDefaultsQoS(),
+      [this](const std::shared_ptr<sensor_msgs::msg::JointState> message) {
+        JointStateCommand<ah2::kActiveJointCount> command;
+        if (!resolve_joint_state_command(
+              *message, command_names_, JointStateField::kPosition, command.values)) {
+          RCLCPP_WARN_THROTTLE(
+            get_node()->get_logger(), *get_node()->get_clock(), 5000,
+            "JointImpedance upper command dropped — name and position differ in length, or a name repeats");
+          return;
+        }
+        command.sequence = ++command_sequence_;
+        command_buffer_.writeFromNonRT(command);
       });
     return controller_interface::CallbackReturn::SUCCESS;
   }
@@ -97,12 +200,23 @@ public:
   controller_interface::CallbackReturn on_activate(
     const rclcpp_lifecycle::State &) override
   {
-    hand_state_buffer_.writeFromNonRT(
-      std::shared_ptr<aidin_hand2_msgs::msg::HandState>());
-    has_hand_state_ = false;
-    std::fill(
-      reference_interfaces_.begin(), reference_interfaces_.end(),
-      std::numeric_limits<double>::quiet_NaN());
+    if (state_interfaces_.size() != state_interface_names_.size()) {
+      return controller_interface::CallbackReturn::ERROR;
+    }
+    command_buffer_.writeFromNonRT(JointStateCommand<ah2::kActiveJointCount>{});
+    consumed_sequence_ = 0;
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    std::fill(reference_interfaces_.begin(), reference_interfaces_.end(), nan);
+    joint_position_rad_.fill(nan);
+    actuator_position_cnt_.fill(nan);
+    actuator_velocity_rpm_.fill(nan);
+    actuator_current_ma_.fill(nan);
+    for (auto & finger : tactile_finger_) {
+      finger.fill(nan);
+    }
+    tactile_palm1_upper_.fill(nan);
+    tactile_palm1_lower_.fill(nan);
+    tactile_palm2_.fill(nan);
     return controller_interface::CallbackReturn::SUCCESS;
   }
 
@@ -121,7 +235,9 @@ public:
 
   controller_interface::InterfaceConfiguration state_interface_configuration() const override
   {
-    return {controller_interface::interface_configuration_type::NONE, {}};
+    return {
+      controller_interface::interface_configuration_type::INDIVIDUAL,
+      state_interface_names_};
   }
 
 protected:
@@ -141,62 +257,118 @@ protected:
 
   bool on_set_chained_mode(bool) override {return true;}
 
+  // Standalone only, a message not yet consumed moves to the references
   controller_interface::return_type update_reference_from_subscribers() override
   {
+    const auto & command = *command_buffer_.readFromRT();
+    if (command.sequence == 0 || command.sequence == consumed_sequence_) {
+      return controller_interface::return_type::OK;
+    }
+    consumed_sequence_ = command.sequence;
+    for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+      reference_interfaces_[i] = command.values[i];
+    }
     return controller_interface::return_type::OK;
   }
 
   controller_interface::return_type update_and_write_commands(
     const rclcpp::Time &, const rclcpp::Duration &) override
   {
-    const auto state = *hand_state_buffer_.readFromRT();
-    if (state) {
-      hand_state_ = *state;
-      has_hand_state_ = true;
+    // ------------------------------------ READ ------------------------------------
+    // state interfaces -> the hand state members at the end of this file
+    read_state();
+
+    // ------------------------------------ WRITE -----------------------------------
+    // Write the algorithm here, the input is in reference_interfaces_[0..15] (target_position_rad)
+    // The template scales it by zero, so any command sends zero
+    std::array<double, ah2::kActiveJointCount> target{};
+    for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+      target[i] = 0.0 * reference_interfaces_[i];
     }
 
-    // Write the algorithm here
-    //   read hand_state_ and fill reference_interfaces_[0..15] with the target position
-
-    const bool has_any_reference = std::any_of(
-      reference_interfaces_.begin(), reference_interfaces_.end(),
-      [](double value) {return std::isfinite(value);});
-    if (!has_any_reference) {
+    // ----------------------------------- FORWARD ----------------------------------
+    // A complete finite target goes to the command controller below, else nothing this cycle
+    const bool has_any_target = std::any_of(
+      target.begin(), target.end(), [](double value) {return std::isfinite(value);});
+    if (!has_any_target) {
       return controller_interface::return_type::OK;
     }
-    const bool has_complete_reference = std::all_of(
-      reference_interfaces_.begin(), reference_interfaces_.end(),
-      [](double value) {return std::isfinite(value);});
-    bool gains_are_non_negative = true;
-    if (has_complete_reference) {
-      for (std::size_t i = kActiveJointBaseNames.size();
-        i < reference_interfaces_.size(); ++i)
-      {
-        gains_are_non_negative =
-          gains_are_non_negative && reference_interfaces_[i] >= 0.0;
-      }
-    }
-    if (!has_complete_reference || !gains_are_non_negative) {
-      RCLCPP_ERROR_THROTTLE(
+    const bool has_complete_target = std::all_of(
+      target.begin(), target.end(), [](double value) {return std::isfinite(value);});
+    if (!has_complete_target) {
+      RCLCPP_WARN_THROTTLE(
         get_node()->get_logger(), *get_node()->get_clock(), 5000,
-        "JointImpedance upper reference must be complete, finite, and use non-negative gains");
-      return controller_interface::return_type::ERROR;
+        "JointImpedance upper target dropped — not all 16 values are finite");
+      std::fill(
+        reference_interfaces_.begin(), reference_interfaces_.end(),
+        std::numeric_limits<double>::quiet_NaN());
+      return controller_interface::return_type::OK;
     }
-    for (std::size_t i = 0; i < reference_interfaces_.size(); ++i) {
-      (void)command_interfaces_[i].set_value(reference_interfaces_[i]);
+    for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+      (void)command_interfaces_[i].set_value(target[i]);
     }
+    std::fill(
+      reference_interfaces_.begin(), reference_interfaces_.end(),
+      std::numeric_limits<double>::quiet_NaN());
     return controller_interface::return_type::OK;
   }
 
 private:
+  void read_state()
+  {
+    for (std::size_t i = 0; i < ah2::kJointCount; ++i) {
+      joint_position_rad_[i] = state_interfaces_[kJointOffset + i].get_value();
+    }
+    for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+      actuator_position_cnt_[i] = state_interfaces_[kActuatorPositionOffset + i].get_value();
+      actuator_velocity_rpm_[i] = state_interfaces_[kActuatorVelocityOffset + i].get_value();
+      actuator_current_ma_[i] = state_interfaces_[kActuatorCurrentOffset + i].get_value();
+    }
+    if (!read_tactile_) {
+      return;
+    }
+    for (std::size_t finger = 0; finger < ah2::kFingerCount; ++finger) {
+      for (std::size_t k = 0; k < ah2::kTactileTaxelsPerFinger; ++k) {
+        tactile_finger_[finger][k] = state_interfaces_[
+          kFingerTactileOffset + finger * ah2::kTactileTaxelsPerFinger + k].get_value();
+      }
+    }
+    std::size_t index = kPalmTactileOffset;
+    for (double & value : tactile_palm1_upper_) {
+      value = state_interfaces_[index++].get_value();
+    }
+    for (double & value : tactile_palm1_lower_) {
+      value = state_interfaces_[index++].get_value();
+    }
+    for (double & value : tactile_palm2_) {
+      value = state_interfaces_[index++].get_value();
+    }
+  }
+
   std::string target_controller_;
+  bool read_tactile_{false};
+  std::vector<std::string> command_names_;
   std::vector<std::string> reference_suffixes_;
   std::vector<std::string> lower_reference_names_;
-  realtime_tools::RealtimeBuffer<
-    std::shared_ptr<aidin_hand2_msgs::msg::HandState>> hand_state_buffer_;
-  rclcpp::Subscription<aidin_hand2_msgs::msg::HandState>::SharedPtr hand_state_subscriber_;
-  aidin_hand2_msgs::msg::HandState hand_state_{};
-  bool has_hand_state_{false};
+  std::vector<std::string> state_interface_names_;
+
+  std::uint64_t command_sequence_{0};
+  std::uint64_t consumed_sequence_{0};
+  realtime_tools::RealtimeBuffer<JointStateCommand<ah2::kActiveJointCount>> command_buffer_;
+  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr command_subscriber_;
+
+  // ======================= Hand state, refreshed by read_state() every update =======================
+  // Index order is the SDK order, see kJointBaseNames and kActuatorBaseNames above
+  std::array<double, ah2::kJointCount> joint_position_rad_{};          // rad, passive joint4 included
+  std::array<double, ah2::kActuatorCount> actuator_position_cnt_{};    // encoder count
+  std::array<double, ah2::kActuatorCount> actuator_velocity_rpm_{};    // rpm
+  std::array<double, ah2::kActuatorCount> actuator_current_ma_{};      // mA
+  // Raw sensor counts, NaN unless read_tactile is set
+  std::array<std::array<double, ah2::kTactileTaxelsPerFinger>, ah2::kFingerCount> tactile_finger_{};
+  std::array<double, ah2::kPalm1UpperCount> tactile_palm1_upper_{};
+  std::array<double, ah2::kPalm1LowerCount> tactile_palm1_lower_{};
+  std::array<double, ah2::kPalm2Count> tactile_palm2_{};
+  // =================================================================================================
 };
 
 }  // namespace aidin_hand2_examples

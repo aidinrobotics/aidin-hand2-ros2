@@ -19,8 +19,8 @@
 //                          target_position_rad.{finger}_joint{n}         (rad)
 //   reference interface: {side}_joint_impedance_controller/
 //                          {side}_{finger}_joint{n}/position             (rad)
-//   command topic      : /{side}_joint_impedance_controller/command
-//                        (aidin_hand2_msgs/JointImpedanceCommand)
+//   command topic      : /{side}_joint_impedance_controller/cmd
+//                        (sensor_msgs/JointState, name matched, position read)
 //
 //   The input moves to the command interface unchanged, no target is generated and no state
 //   is read
@@ -133,12 +133,20 @@ void JointImpedanceController::subscribe()
   if (command_subscriber_) {
     return;
   }
-  command_subscriber_ =
-    get_node()->create_subscription<aidin_hand2_msgs::msg::JointImpedanceCommand>(
-      "~/command", rclcpp::SystemDefaultsQoS(),
-      [this](const std::shared_ptr<aidin_hand2_msgs::msg::JointImpedanceCommand> message) {
-        command_buffer_.writeFromNonRT(message);
-      });
+  command_subscriber_ = get_node()->create_subscription<sensor_msgs::msg::JointState>(
+    "~/cmd", rclcpp::SystemDefaultsQoS(),
+    [this](const std::shared_ptr<sensor_msgs::msg::JointState> message) {
+      JointStateCommand<ah2::kActiveJointCount> command;
+      if (!resolve_joint_state_command(
+            *message, active_joint_names_, JointStateField::kPosition, command.values)) {
+        RCLCPP_WARN_THROTTLE(
+          get_node()->get_logger(), *get_node()->get_clock(), 5000,
+          "JointImpedance command dropped — name and position differ in length, or a name repeats");
+        return;
+      }
+      command.sequence = ++command_sequence_;
+      command_buffer_.writeFromNonRT(command);
+    });
 }
 
 void JointImpedanceController::unsubscribe()
@@ -148,9 +156,8 @@ void JointImpedanceController::unsubscribe()
 
 void JointImpedanceController::drop_buffered_command()
 {
-  command_buffer_.writeFromNonRT(
-    std::shared_ptr<aidin_hand2_msgs::msg::JointImpedanceCommand>());
-  consumed_command_ = nullptr;
+  command_buffer_.writeFromNonRT(JointStateCommand<ah2::kActiveJointCount>{});
+  consumed_sequence_ = 0;
 }
 
 // -------------------------- Interface configuration -------------------------
@@ -202,13 +209,13 @@ bool JointImpedanceController::on_set_chained_mode(bool chained_mode)
 controller_interface::return_type
 JointImpedanceController::update_reference_from_subscribers()
 {
-  const auto message = *command_buffer_.readFromRT();
-  if (!message || message.get() == consumed_command_) {
+  const auto & command = *command_buffer_.readFromRT();
+  if (command.sequence == 0 || command.sequence == consumed_sequence_) {
     return controller_interface::return_type::OK;
   }
-  consumed_command_ = message.get();
+  consumed_sequence_ = command.sequence;
   for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
-    reference_interfaces_[i] = message->target_position_rad[i];
+    reference_interfaces_[i] = command.values[i];
   }
   return controller_interface::return_type::OK;
 }

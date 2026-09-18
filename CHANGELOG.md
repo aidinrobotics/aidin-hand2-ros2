@@ -16,6 +16,33 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **Breaking: the four command controllers take `sensor_msgs/JointState` on `~/cmd`.** A command
+  used to be a bare `float64[16]` in a message of this repository, so nothing standard could
+  publish it and the reader had to know the wrapper's joint order. The controllers now match
+  `name` against the URDF names, `{side}_thumb_joint0` to `{side}_baby_joint3` for the joint
+  controllers and `{side}_thumb_actuator0` to `{side}_baby_actuator3` for the actuator controllers,
+  in any order. Joint position, joint impedance and actuator position read `position`, actuator
+  effort reads `effort`, in rad, encoder count and 0.1 % of rated current as before. A name the
+  controller does not own is ignored and a name left out is not commanded this cycle, so a
+  `joint_state_publisher_gui` remapped to `~/cmd` drives the mock directly. The first message after
+  activation still has to name all 16. An empty `name` with exactly 16 values is taken in the
+  wrapper's joint order, as the old messages were. A message whose `name` differs in length from
+  the field read or repeats a name is dropped with a warning and the controller stays active.
+  Publish `sensor_msgs/msg/JointState` to `/{side}_<mode>_controller/cmd`.
+- **The upper controller skeletons take a `~/cmd` `sensor_msgs/JointState` and read state through
+  state interfaces.** They had no command input and subscribed to the `HandState` topic, which put a
+  topic round trip inside the control loop and needed `aidin_hand2_msgs`. Each skeleton now
+  subscribes its own `~/cmd` with the command controllers' name matching, claims the joint,
+  actuator and, with the new `read_tactile` parameter, tactile state interfaces, copies them into
+  member arrays every update, and forwards the input scaled by zero where the algorithm goes. The
+  `hand_state_topic` parameter is gone; `read_tactile` defaults to false because the mock exports
+  no tactile interface. `aidin_hand2_examples` depends on `aidin_hand2_controllers` for the name
+  matching header instead of `aidin_hand2_msgs`.
+- **`CommandState` carries the command echo as flat arrays.** `joint_position_input` is
+  `joint_position_input_rad`, `joint_impedance_input` is `joint_impedance_input_rad`,
+  `actuator_position_input` is `actuator_position_input_cnt` and `actuator_effort_input` is
+  `actuator_effort_input_pct`, each `float64[16]`. Readers of `hand_state.command_state` drop one
+  level of nesting.
 - **The documentation is organized by ROS 2 interface kind.** Installation, Bringup and
   Integration are procedures in the order a reader does them. Controllers, Topics, Services,
   Parameters and Launch files each describe one kind of interface. Troubleshooting is the
@@ -33,13 +60,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Removed
 
+- **Breaking: the `JointPositionCommand`, `JointImpedanceCommand`, `ActuatorPositionCommand` and
+  `ActuatorEffortCommand` messages are gone.** Their only reader was the command topics, which now
+  take `sensor_msgs/JointState`. `aidin_hand2_msgs` keeps `HandState`, `CommandState` and
+  `HandDiagnostics`. A node that only published commands no longer needs this package.
 - **Breaking: the Isaac Sim backend is removed.** The `AidinHand2IsaacSystemInterface` plugin,
   `aidin_hand2_isaac.launch.py`, `controllers_isaac.yaml` and the `use_isaac` and `isaac_*`
   arguments of the xacro macro are gone, so drop those arguments from your URDF and your launch
   commands. The robot hand and the mock remain, and `use_mock` selects between them. We plan to add
   the backend again once the wrapper framework is stable.
 - **The Interface matrix document.** The wrapper exposes its interfaces at the controller level. A
-  command enters through a command controller's `~/command` topic or its reference interfaces, and
+  command enters through a command controller's `~/cmd` topic or its reference interfaces, and
   the hardware rejects any claim of a command port that is not the whole port together with
   `command_lock`. State is read from the topics of the three broadcasters, whose message fields are
   in the Topics document. No user path therefore reads the 65 hardware command interfaces or the 352

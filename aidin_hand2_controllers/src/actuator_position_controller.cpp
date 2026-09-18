@@ -19,8 +19,8 @@
 //                          target_position_cnt.{finger}_actuator{n}      (encoder count)
 //   reference interface: {side}_actuator_position_controller/
 //                          {side}_{finger}_actuator{n}/position_cnt      (encoder count)
-//   command topic      : /{side}_actuator_position_controller/command
-//                        (aidin_hand2_msgs/ActuatorPositionCommand)
+//   command topic      : /{side}_actuator_position_controller/cmd
+//                        (sensor_msgs/JointState, name matched, position read)
 //
 //   The input moves to the command interface unchanged, no target is generated and no state
 //   is read
@@ -132,12 +132,20 @@ void ActuatorPositionController::subscribe()
   if (command_subscriber_) {
     return;
   }
-  command_subscriber_ =
-    get_node()->create_subscription<aidin_hand2_msgs::msg::ActuatorPositionCommand>(
-      "~/command", rclcpp::SystemDefaultsQoS(),
-      [this](const std::shared_ptr<aidin_hand2_msgs::msg::ActuatorPositionCommand> message) {
-        command_buffer_.writeFromNonRT(message);
-      });
+  command_subscriber_ = get_node()->create_subscription<sensor_msgs::msg::JointState>(
+    "~/cmd", rclcpp::SystemDefaultsQoS(),
+    [this](const std::shared_ptr<sensor_msgs::msg::JointState> message) {
+      JointStateCommand<ah2::kActuatorCount> command;
+      if (!resolve_joint_state_command(
+            *message, actuator_names_, JointStateField::kPosition, command.values)) {
+        RCLCPP_WARN_THROTTLE(
+          get_node()->get_logger(), *get_node()->get_clock(), 5000,
+          "ActuatorPosition command dropped — name and position differ in length, or a name repeats");
+        return;
+      }
+      command.sequence = ++command_sequence_;
+      command_buffer_.writeFromNonRT(command);
+    });
 }
 
 void ActuatorPositionController::unsubscribe()
@@ -147,9 +155,8 @@ void ActuatorPositionController::unsubscribe()
 
 void ActuatorPositionController::drop_buffered_command()
 {
-  command_buffer_.writeFromNonRT(
-    std::shared_ptr<aidin_hand2_msgs::msg::ActuatorPositionCommand>());
-  consumed_command_ = nullptr;
+  command_buffer_.writeFromNonRT(JointStateCommand<ah2::kActuatorCount>{});
+  consumed_sequence_ = 0;
 }
 
 // -------------------------- Interface configuration -------------------------
@@ -201,13 +208,13 @@ bool ActuatorPositionController::on_set_chained_mode(bool chained_mode)
 controller_interface::return_type
 ActuatorPositionController::update_reference_from_subscribers()
 {
-  const auto message = *command_buffer_.readFromRT();
-  if (!message || message.get() == consumed_command_) {
+  const auto & command = *command_buffer_.readFromRT();
+  if (command.sequence == 0 || command.sequence == consumed_sequence_) {
     return controller_interface::return_type::OK;
   }
-  consumed_command_ = message.get();
+  consumed_sequence_ = command.sequence;
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
-    reference_interfaces_[i] = message->target_position_cnt[i];
+    reference_interfaces_[i] = command.values[i];
   }
   return controller_interface::return_type::OK;
 }

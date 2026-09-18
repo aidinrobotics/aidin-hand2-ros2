@@ -244,7 +244,7 @@ ros2 param set /left_hand_control max_effort \
 
 ### 6.2 Joint position controller
 
-`joint_position_controller` parameter 셋은 SDK의 joint position controller 설정입니다. `JointPositionCommand`의
+`joint_position_controller` parameter 셋은 SDK의 joint position controller 설정입니다. joint position
 목표는 매 cycle 다음 세 단계를 거쳐 actuator position이 됩니다.
 
 1. 직전에 통과한 목표에서 `deadband` 값 이내로 움직인 입력은 무시합니다.
@@ -276,7 +276,7 @@ ros2 param set /left_hand_control joint_position_controller.cutoff_freq 20.0
 > joint impedance controller는 SDK에서 개발 중이므로 사용하지 마십시오. 아래는 설정값의 의미입니다.
 
 `joint_impedance_controller` parameter 둘은 SDK의 joint impedance controller gain입니다.
-`JointImpedanceCommand`의 목표를 inverse kinematics로 actuator position으로 바꾼 뒤, encoder 공간에서
+joint impedance 목표를 inverse kinematics로 actuator position으로 바꾼 뒤, encoder 공간에서
 다음 식으로 effort를 산출합니다.
 
 ```text

@@ -10,8 +10,9 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
-  <depend>aidin_hand2_msgs</depend>
+  <depend>aidin_hand2_controllers</depend>
   <depend>controller_interface</depend>
+  <depend>sensor_msgs</depend>
   <depend>pluginlib</depend>
   <depend>realtime_tools</depend>
 
