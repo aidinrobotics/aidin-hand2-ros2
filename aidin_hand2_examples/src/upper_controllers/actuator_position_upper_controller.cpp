@@ -1,3 +1,6 @@
+// Copyright (c) AIDIN ROBOTICS Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 #include <algorithm>
 #include <array>
 #include <cmath>

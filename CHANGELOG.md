@@ -21,6 +21,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
   carry the same procedure as the SDK documents, so a reader who installs only the wrapper does
   not switch repositories. The last chapter of the CAN-FD document names the interface through the
   launch argument and the xacro macro instead of `HandConfig`.
+- **The wrapper is licensed under the Apache License 2.0.** Every `package.xml` declared `TODO` as
+  its license and the repository carried no license file, so nobody using this wrapper had terms to
+  rely on and no ROS 2 tool could report one. `LICENSE` and `NOTICE` now sit at the root, the six
+  packages declare `Apache-2.0`, and the C++ and launch sources carry an SPDX header. This is the
+  license the SDK already uses, so linking the two raises no question.
 
 ### Changed
 

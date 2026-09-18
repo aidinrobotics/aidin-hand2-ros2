@@ -1,3 +1,6 @@
+# Copyright (c) AIDIN ROBOTICS Inc.
+# SPDX-License-Identifier: Apache-2.0
+
 """AIDIN Hand Gen2 on mock hardware, no CAN and no homing.
 
 The path is ~/cmd -> joint_position_controller -> mock hardware -> /joint_states -> rviz.

@@ -1,3 +1,6 @@
+# Copyright (c) AIDIN ROBOTICS Inc.
+# SPDX-License-Identifier: Apache-2.0
+
 """rosbridge_websocket on port 9090, the WebSocket server the desktop GUI connects to.
 
 Runs as its own process alongside the control stack, in either order.

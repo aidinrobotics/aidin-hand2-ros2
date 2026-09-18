@@ -1,3 +1,6 @@
+// Copyright (c) AIDIN ROBOTICS Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 #include "aidin_hand2_controllers/joint_impedance_controller.hpp"
 
 #include <algorithm>

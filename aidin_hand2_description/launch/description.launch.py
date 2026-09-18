@@ -1,3 +1,6 @@
+# Copyright (c) AIDIN ROBOTICS Inc.
+# SPDX-License-Identifier: Apache-2.0
+
 """URDF visualisation only, robot_state_publisher with joint_state_publisher_gui and rviz2.
 
 The control stack is aidin_hand2_bringup/aidin_hand2.launch.py.
@@ -34,7 +37,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('use_left_hand', default_value='true'),
-        DeclareLaunchArgument('use_right_hand', default_value='false'),
+        DeclareLaunchArgument('use_right_hand', default_value='true'),
         DeclareLaunchArgument(
             'use_gui', default_value='true',
             description='Run joint_state_publisher_gui with its sliders.'),

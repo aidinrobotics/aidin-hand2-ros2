@@ -1,3 +1,6 @@
+# Copyright (c) AIDIN ROBOTICS Inc.
+# SPDX-License-Identifier: Apache-2.0
+
 # Spawns the controllers and broadcasters on a controller_manager that is already up
 # robot_description, ros2_control_node and robot_state_publisher belong to the parent launch,
 # which includes this one and points the controller_manager argument at its own

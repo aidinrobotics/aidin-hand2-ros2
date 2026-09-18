@@ -1,3 +1,6 @@
+# Copyright (c) AIDIN ROBOTICS Inc.
+# SPDX-License-Identifier: Apache-2.0
+
 """AIDIN Hand Gen2 control stack on real hardware.
 
 Starts ros2_control_node and robot_state_publisher from the xacro description, then includes
