@@ -22,17 +22,20 @@ AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. con
 
 사용자 node가 command를 보내는 경로는 둘입니다.
 
-- command controller의 `~/cmd` topic에 `sensor_msgs/JointState`를 직접 보냅니다.
+- command controller의 `~/cmd` topic에 `sensor_msgs/JointState`를 직접 보냅니다. 이름 대조 규칙과
+  읽는 필드·단위는 [2. Command message](aidin_hand2_msgs/README.ko.md#2-command-message)에 있습니다.
 - user controller를 만들어 직접 정의한 topic과 message로 보냅니다. user controller는 command를
   처리해 목표값을 command controller의 reference interface에 쓰고, 그동안 command controller는 chained
-  mode가 되어 자기 `~/cmd` topic을 읽지 않습니다.
+  mode가 되어 자기 `~/cmd` topic을 읽지 않습니다. reference 이름과 mode 전환 순서는
+  [6. Chaining](aidin_hand2_controllers/README.ko.md#6-chaining)에 있습니다.
 
 어느 경로든 한 손에 active인 command controller는 하나입니다.
 
 user controller는 controller_manager 안에서 돌기 때문에 actuator 위치·joint 각도·tactile 같은 상태를
 topic이 아니라 state interface로 같은 cycle 안에서 읽을 수 있습니다. 상태 관측과 목표값 계산이 500 Hz
 cycle 하나에서 닫히므로 topic 왕복이 없는 제어 루프가 됩니다. `aidin_hand2_examples`의 skeleton이 이
-틀이고, 알고리즘 자리에는 입력에 0을 곱하는 한 줄이 들어 있습니다.
+틀이고, 알고리즘 자리에는 입력에 0을 곱하는 한 줄이 들어 있습니다. 읽을 수 있는 state interface
+목록과 실행 절차는 [Chainable controller examples](aidin_hand2_examples/EXAMPLE.md)에 있습니다.
 
 user node는 상태를 `/joint_states`, `~/hand_state`, `~/hand_diagnostics` topic으로 읽습니다. `~`는 해당
 topic이나 service를 제공하는 node 이름입니다. 예를 들어 `~/cmd`는 `/left_joint_position_controller/cmd`가 됩니다.

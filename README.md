@@ -22,10 +22,14 @@ Built on [ros2_control](https://control.ros.org/humble/index.html), this wrapper
 
 A user node sends a command by one of two paths.
 
-- Publish `sensor_msgs/JointState` directly to a command controller's `~/cmd` topic.
+- Publish `sensor_msgs/JointState` directly to a command controller's `~/cmd` topic. The name
+  matching rule, the field read and the units are in
+  [2. Command message](aidin_hand2_msgs/README.ko.md#2-command-message).
 - Write a user controller and publish to the topic and message it defines. The user controller
   processes the command and writes the targets to the command controller's reference interfaces, and
-  the command controller enters chained mode and stops reading its own `~/cmd` topic.
+  the command controller enters chained mode and stops reading its own `~/cmd` topic. The reference
+  names and the switching order are in
+  [6. Chaining](aidin_hand2_controllers/README.ko.md#6-chaining).
 
 On either path, one command controller is active per robot hand.
 
@@ -33,7 +37,8 @@ Because the user controller runs inside the controller_manager, it can read actu
 angles and tactile values through state interfaces in the same cycle, without a topic. Observation and
 target computation close within one 500 Hz cycle, so the control loop has no topic round trip. The
 `aidin_hand2_examples` skeletons are this template, with a single line that scales the input by zero
-where the algorithm goes.
+where the algorithm goes. The state interfaces they can read and the steps to run one are in
+[Chainable controller examples](aidin_hand2_examples/EXAMPLE.md).
 
 A user node reads state through the `/joint_states`, `~/hand_state` and `~/hand_diagnostics` topics.
 The `~` denotes the name of the node providing a topic or service; for example, `~/cmd` becomes
