@@ -6,7 +6,7 @@
 [Bringup](../docs/ko/04_bringup.md)에서 joint position command로 동작을 확인하십시오.
 controller 설정은 [7. Configuration](#7-configuration), message 필드는 [Topics](../aidin_hand2_msgs/README.ko.md)에 있습니다.
 
-`{side}`는 `left` 또는 `right`입니다. `~/cmd`의 `~`는 controller 이름을 나타냅니다.
+`{side}`는 `left` 또는 `right`입니다. `~/cmd` topic의 `~`는 controller 이름을 나타냅니다.
 왼손 joint position controller의 입력 topic은 `/left_joint_position_controller/cmd`입니다.
 
 ## Contents
@@ -64,13 +64,13 @@ joint impedance의 gain은 [6. Runtime settings](../aidin_hand2_hardware/README.
 | `aidin_hand2_controllers/HandStateBroadcaster` | `~/hand_state` | joint·actuator·촉각 관측값과 적용된 command |
 | `aidin_hand2_controllers/DiagnosticsBroadcaster` | `~/hand_diagnostics` | lifecycle, homing, actuator fault, 제어·통신 루프 통계 |
 
-wrapper의 broadcaster에는 `hand_side`를 지정합니다. 발행 주기는 `update_rate`로 조정하며 기본 launch는
+wrapper의 broadcaster에는 `hand_side` parameter를 지정합니다. 발행 주기는 `update_rate` 값으로 조정하며 기본 launch는
 `hand_state`를 100 Hz, `hand_diagnostics`를 20 Hz로 발행합니다. message 필드와 읽는 방법은
 [4. Read state](../docs/ko/05_control_guide.md#4-read-state)에 있습니다.
 
 ## 2. Send a command
 
-외부 node에서 사용할 때는 활성화된 controller의 `~/cmd` topic에 `sensor_msgs/JointState`를 보냅니다.
+외부 node에서 사용할 때는 활성화된 controller의 `~/cmd` topic에 `sensor_msgs/JointState` message를 보냅니다.
 `name` 필드로 축을 지정하고 순서는 자유입니다. 이름과 controller가 읽는 필드는
 [2. Command message](../aidin_hand2_msgs/README.ko.md#2-command-message)에 있습니다.
 
@@ -81,7 +81,7 @@ wrapper의 broadcaster에는 `hand_side`를 지정합니다. 발행 주기는 `u
 | `{side}_actuator_position_controller` | `position` [encoder count] |
 | `{side}_actuator_effort_controller` | `effort` [정격 전류의 0.1%] |
 
-로봇 핸드에서는 controller가 `active`이고, `lifecycle`이 `Running`이며, `homing_state`가
+로봇 핸드에서는 controller가 `active`이고, `lifecycle` 필드가 `Running`이며, `homing_state` 필드가
 `Succeeded`인지 확인한 뒤 전송합니다. mock에서는 homing 없이 보낼 수 있습니다.
 처음 보낼 때와 controller를 바꾼 뒤에는 16개 이름을 모두 담아 보내십시오.
 
@@ -122,7 +122,7 @@ ros2 control switch_controllers --strict \
 
 모든 command controller를 비활성화하면, 제어가 실행 중이고 homing을 마친 로봇 핸드는 `Idle`로 전환합니다.
 `Idle`은 drive를 활성화한 채 effort `0`을 전송하므로 정지 service를 대신하지 않습니다.
-토크를 제거하려면 [2. run and stop](../aidin_hand2_hardware/README.ko.md#2-run-and-stop)의 `~/stop`을 호출하십시오.
+토크를 제거하려면 [2. run and stop](../aidin_hand2_hardware/README.ko.md#2-run-and-stop)의 `~/stop` service를 호출하십시오.
 
 ## 4. Command behavior
 
@@ -140,8 +140,8 @@ ros2 control switch_controllers --strict \
 정지·복구·homing 중에 보낸 command는 나중 실행을 위해 대기하지 않습니다. 제어를 재개하고 homing이
 완료된 뒤 필요한 목표를 다시 보내십시오. service 호출 순서는 [Services](../aidin_hand2_hardware/README.ko.md)에 있습니다.
 
-publish 성공만으로 command 적용 여부를 알 수 없습니다. `hand_state.command_state`에서 입력 mode와
-목표값, `selected_source`를 함께 확인합니다. `selected_source`가 `1`이면 SDK가 controller 출력을
+publish 성공만으로 command 적용 여부를 알 수 없습니다. `hand_state.command_state` 필드에서 입력 mode와
+목표값, `selected_source` 필드를 함께 확인합니다. `selected_source` 필드가 `1`이면 SDK가 controller 출력을
 선택했다는 뜻이며, 새 message의 수신 확인이나 실제 목표 도달을 보장하지는 않습니다.
 관측값은 [3.1 HandState](../aidin_hand2_msgs/README.ko.md#31-handstate), command 표시는
 [3.2 CommandState](../aidin_hand2_msgs/README.ko.md#32-commandstate)에 있습니다.
@@ -159,7 +159,7 @@ publish 성공만으로 command 적용 여부를 알 수 없습니다. `hand_sta
 | Inf 포함 | warning을 남기고 해당 축을 NaN과 같이 처리합니다 |
 
 joint 목표는 finger별 도달 범위로 보정됩니다. actuator position 목표가 `int32` 범위를 벗어나면
-command가 거부되고 `hand_diagnostics.nan_command_count`가 증가합니다. effort 목표는 actuator별
+command가 거부되고 `hand_diagnostics.nan_command_count` 필드가 증가합니다. effort 목표는 actuator별
 `max_effort` 범위로 제한됩니다. 이 처리는 충돌 검사나 속도 제한을 제공하지 않습니다.
 
 ### 4.3 Command lifetime
@@ -173,7 +173,7 @@ command가 거부되고 `hand_diagnostics.nan_command_count`가 증가합니다.
 
 ## 5. Mock behavior
 
-mock에서는 로봇 핸드와 같은 command topic으로 입력을 보내고 `/joint_states`로 결과를 확인합니다.
+mock에서는 로봇 핸드와 같은 command topic으로 입력을 보내고 `/joint_states` topic으로 결과를 확인합니다.
 CAN 연결과 homing은 필요하지 않습니다.
 
 | Feature | Mock behavior |
@@ -192,7 +192,7 @@ mock은 controller 연결과 목표값 전달을 확인하는 용도입니다. �
 상위 controller를 작성하면 command controller의 reference interface에 목표값을 전달할 수 있습니다.
 사용자 node가 상위 controller의 입력 topic에 목표값을 보내는 경로도 가능합니다.
 입력 topic과 message 타입은 상위 controller가 정의합니다. 제공된 skeleton은 자기 `~/cmd` topic에
-`sensor_msgs/JointState`를 받아 0을 곱한 값을 전달하므로, 알고리즘 자리만 바꾸면 됩니다.
+`sensor_msgs/JointState` message를 받아 0을 곱한 값을 전달하므로, 알고리즘 자리만 바꾸면 됩니다.
 chained mode에서는 command controller가 `~/cmd` topic 대신 상위 controller의 입력을 사용합니다.
 
 연결할 reference 이름과 구현·실행 예제는

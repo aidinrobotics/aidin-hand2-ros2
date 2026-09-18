@@ -301,7 +301,7 @@ ros2 topic echo /left_hand_state_broadcaster/hand_state --once --field command_s
 | `command_state.selected_source` | `1` |
 
 `lifecycle` 값이 `Stopped`이면 `~/run` service를, `Faulted`이면 `~/reconnect` service를, `homing_state` 값이
-`NotRun` 또는 `Failed`이면 원인을 확인한 뒤 `~/home`을 호출합니다.
+`NotRun` 또는 `Failed`이면 원인을 확인한 뒤 `~/home` service를 호출합니다.
 `InProgress`이면 완료를 기다립니다. `selected_source` 값이 `3`이면 homing 중, `2`면 quick
 stop입니다. wrapper는 `lifecycle` 값이 `Running`이 아니거나 `homing_state` 값이 `Succeeded`가 아니면
 command를 error 없이 건너뜁니다. 조건은 [4.1 When commands are applied](../../aidin_hand2_controllers/README.ko.md#41-when-commands-are-applied)에 있습니다.
@@ -346,13 +346,13 @@ ros2 param get /left_hand_control joint_position_controller.filter_enabled
 ros2 param get /left_hand_control joint_position_controller.cutoff_freq
 ```
 
-`filter_enabled`가 `false`이면 filter 없이 목표가 반영됩니다. filter는 이동 속도의 상한을
+`filter_enabled` 값이 `false`이면 filter 없이 목표가 반영됩니다. filter는 이동 속도의 상한을
 보장하지 않으므로 속도 제한이 필요하면 상위 application이 시간에 따른 목표를 생성해야 합니다.
 설정의 의미는 [6.2 Joint position controller](../../aidin_hand2_hardware/README.ko.md#62-joint-position-controller)에 있습니다.
 
 ### 4.6 Broadcasters missing on mock
 
-mock은 `/joint_states`만 발행합니다. `HandStateBroadcaster`와 `DiagnosticsBroadcaster`는
+mock은 `/joint_states` topic만 발행합니다. `HandStateBroadcaster`와 `DiagnosticsBroadcaster`는
 제공하지 않으므로 두 broadcaster를 추가로 실행하지 않습니다. mock의 지원 범위는
 [5. Mock behavior](../../aidin_hand2_controllers/README.ko.md#5-mock-behavior)에 있습니다.
 
@@ -415,14 +415,14 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics
 success: False
 ```
 
-`~/reconnect`는 `lifecycle`이 `Faulted`일 때만 사용합니다. `Stopped`에서 제어를 재개하려면
-`~/run`을 호출합니다. 현재 상태는 다음으로 확인합니다.
+`~/reconnect` service는 `lifecycle` 필드가 `Faulted`일 때만 사용합니다. `Stopped`에서 제어를 재개하려면
+`~/run` service를 호출합니다. 현재 상태는 다음으로 확인합니다.
 
 ```bash
 ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once --field lifecycle
 ```
 
-`Faulted`인데도 실패하면 service 응답의 `message`와 `/rosout`을 확인합니다.
+`Faulted`인데도 실패하면 service 응답의 `message` 필드와 `/rosout` topic을 확인합니다.
 첫 state 수신 시간 초과라면 [6. Communication](#6-communication)으로 전원과 CAN을 확인한 뒤
 다시 호출합니다. 복구 순서는 [4.1 Manual recovery](../../aidin_hand2_hardware/README.ko.md#41-manual-recovery)에 있습니다.
 

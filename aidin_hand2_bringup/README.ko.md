@@ -2,7 +2,7 @@
 
 [전체 문서](../README.ko.md#documentation) | [English overview](README.md)
 
-`aidin_hand2_bringup`은 로봇 핸드와 mock을 실행하는 launch 파일과 controller 설정을 제공합니다.
+`aidin_hand2_bringup` package는 로봇 핸드와 mock을 실행하는 launch 파일과 controller 설정을 제공합니다.
 이 문서에서 launch 인자·기본값·설정 파일과 기존 로봇에 추가하는 순서를 확인할 수 있습니다.
 첫 실행은 [Bringup](../docs/ko/04_bringup.md)을 따라 하십시오. `{side}`는 `left` 또는 `right`입니다.
 URDF 시각화는 [aidin_hand2_description](../aidin_hand2_description/README.ko.md#3-descriptionlaunchpy)에서 제공합니다.
@@ -49,7 +49,7 @@ ros2 launch aidin_hand2_bringup aidin_hand2.launch.py auto_home:=false
 ### 2.1 Arguments
 
 `config`를 뺀 인자 12개의 기본값은 `hand_bringup.yaml`에서 전달됩니다. `auto_home` parameter와
-`auto_reconnect`로 시작하는 parameter 셋은 양손 공통이고,
+이름이 `auto_reconnect`로 시작하는 인자 셋은 양손 공통이고,
 `*_hand_interface`·`*_hand_cpu_affinity`·`*_hand_disabled_actuators` parameter는 손별입니다.
 
 | Argument | Default | Description |
@@ -68,11 +68,11 @@ ros2 launch aidin_hand2_bringup aidin_hand2.launch.py auto_home:=false
 | `auto_reconnect_home` | `false` | 자동 재연결 뒤 homing을 수행합니다 |
 | `config` | `<share>/config/hand_bringup.yaml` | 위 인자의 기본값을 담은 YAML 경로 |
 
-`control_rate`와 `max_effort`는 xacro 인자이지만 이 launch가 선언하지 않으므로 `key:=value`로 바꿀 수
+`control_rate`와 `max_effort`는 xacro 매크로 인자이지만 이 launch가 선언하지 않으므로 `key:=value`로 바꿀 수
 없습니다. 바꾸려면 [2. Add the robot hand to the URDF](../aidin_hand2_description/README.ko.md#2-add-the-robot-hand-to-the-urdf)의 매크로를 자기 URDF에서 호출하고, runtime의 effort
 상한은 [6. Runtime settings](../aidin_hand2_hardware/README.ko.md#6-runtime-settings)의 hardware node parameter로 조정합니다.
 
-이 launch는 인자를 `OpaqueFunction` 안에서 선언하므로 `ros2 launch --show-args`가 `config`만 표시합니다.
+이 launch는 인자를 `OpaqueFunction` 안에서 선언하므로 `ros2 launch --show-args`가 `config` 인자만 표시합니다.
 전체 인자는 위 표와 `hand_bringup.yaml`을 보십시오.
 
 ### 2.2 Config file
@@ -131,7 +131,7 @@ ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py use_rviz:=false
 ```
 
 active로 올라오는 controller는 `joint_state_broadcaster`와 손별 `{side}_joint_position_controller`뿐입니다.
-mock은 `/joint_states`만 발행하므로 `HandStateBroadcaster`와
+mock은 `/joint_states` topic만 발행하므로 `HandStateBroadcaster`와
 `DiagnosticsBroadcaster`를 실행하지 않습니다. 나머지 command controller 셋은 `controllers_mock.yaml`에
 등록되어 있어 필요할 때 load합니다.
 

@@ -2,11 +2,11 @@
 
 [전체 문서](../README.ko.md#documentation) | [English overview](README.md)
 
-`aidin_hand2_examples`는 command controller 위에 사용자 제어 알고리즘을 연결하는
+`aidin_hand2_examples` package는 command controller 위에 사용자 제어 알고리즘을 연결하는
 chainable 상위 controller skeleton 4개를 제공합니다. 일반 node에서 목표값을 보낼 때는
 [aidin_hand2_controllers](../aidin_hand2_controllers/README.ko.md)의 command topic을 사용하면 됩니다.
 
-skeleton은 자기 `~/cmd` topic에 `sensor_msgs/JointState`를 받아 0을 곱한 값을 하위 controller의 reference로
+skeleton은 자기 `~/cmd` topic에 `sensor_msgs/JointState` message를 받아 0을 곱한 값을 하위 controller의 reference로
 전달합니다. 알고리즘 자리를 표시하는 틀이고 mock에서도 실행할 수 있습니다. 먼저 [Bringup](../docs/ko/04_bringup.md#1-mock)으로 mock 동작을 확인하십시오.
 
 ## Contents
@@ -55,7 +55,7 @@ left_joint_position_upper:
 | `read_tactile` | `bool` | `false` | `true`면 tactile state interface 143개도 claim합니다 |
 
 skeleton은 joint 각도, actuator 위치·속도·전류를 state interface로 매 cycle 읽어 멤버 배열에 담습니다.
-mock에는 tactile state interface가 없으므로 mock에서는 `read_tactile`을 `false`로 두고, 로봇 핸드에서
+mock에는 tactile state interface가 없으므로 mock에서는 `read_tactile` parameter를 `false`로 두고, 로봇 핸드에서
 tactile을 쓰려면 `true`로 바꿉니다. 없는 interface를 claim하면 activate가 실패합니다.
 
 ## 3. Run and extend

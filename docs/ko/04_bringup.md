@@ -242,9 +242,9 @@ ros2 topic pub --once \
 ros2 topic echo /left_hand_state_broadcaster/hand_state --once --field command_state
 ```
 
-`controller_input_mode`가 `1`(joint position), `selected_source`가 `1`(controller)이고
-`joint_position_input_rad`에 도달 범위 보정 후의 목표값이 있습니다.
-실제 joint 각도는 `joint_position`에서 확인합니다. 값의 뜻은
+`controller_input_mode` 필드가 `1`(joint position), `selected_source` 필드가 `1`(controller)이고
+`joint_position_input_rad` 필드에 도달 범위 보정 후의 목표값이 있습니다.
+실제 joint 각도는 `joint_position` 필드에서 확인합니다. 값의 뜻은
 [3.2 CommandState](../../aidin_hand2_msgs/README.ko.md#32-commandstate)에, 전송값에 적용되는 effort 상한은
 [6.1 Max effort](../../aidin_hand2_hardware/README.ko.md#61-max-effort)에 있습니다.
 

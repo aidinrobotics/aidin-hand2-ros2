@@ -2,7 +2,7 @@
 
 [전체 문서](../README.ko.md#documentation) | [English overview](README.md)
 
-`aidin_hand2_hardware`는 로봇 핸드·mock 연결을 제공합니다. 이 문서는 로봇 핸드의
+`aidin_hand2_hardware` package는 로봇 핸드·mock 연결을 제공합니다. 이 문서는 로봇 핸드의
 제어 시작·정지, homing, 통신 오류 복구와 effort·filter·gain 설정을 설명합니다.
 service는 `std_srvs/srv/Trigger` 타입이며 요청 인자는 없습니다. mock에는 제공하지 않습니다.
 
@@ -37,8 +37,8 @@ controller의 `active`·homing 상태의 차이는
 
 ### 1.2 Service calls
 
-`~/run`·`~/stop`·`~/reconnect`는 전이 결과를 확인한 뒤 응답합니다.
-`~/home`은 시작만 확인하고 즉시 응답하므로 완료 상태를 별도로 읽어야 합니다.
+`~/run`·`~/stop`·`~/reconnect` service는 전이 결과를 확인한 뒤 응답합니다.
+`~/home` service는 시작만 확인하고 즉시 응답하므로 완료 상태를 별도로 읽어야 합니다.
 표의 호출 조건과 결과는 `lifecycle` 값입니다.
 
 | Service | Precondition | Postcondition | Waits for | Timeout | Success message |
@@ -115,13 +115,13 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field homing_st
 - homing 중에는 `hand_state` topic의 `command_state.selected_source` 값이 `3`(homing)입니다.
 - `~/reconnect` service는 `homing_state` 값을 `NotRun`으로 되돌리므로 homing을 다시 해야 합니다.
 
-`auto_home`은 제어 시작 뒤 자동으로 homing을 시작하는 설정입니다. `~/run` service 성공 뒤 첫 cycle에서
+`auto_home` 인자는 제어 시작 뒤 자동으로 homing을 시작하는 설정입니다. `~/run` service 성공 뒤 첫 cycle에서
 `homing_state` 값이 `Succeeded`가 아니면 homing이 한 번 시작되고, `~/home` service와 마찬가지로 시작만
 하므로 controller_manager 루프는 멈추지 않습니다.
 
 ## 4. reconnect
 
-`~/reconnect`는 `Faulted`에서 통신을 복구합니다. 성공하면 `Connected`가 되므로 제어 시작과
+`~/reconnect` service는 `Faulted`에서 통신을 복구합니다. 성공하면 `Connected`가 되므로 제어 시작과
 homing을 이어서 수행해야 합니다. 복구 중에도 controller와 broadcaster가 `active`로 표시될 수 있으므로
 `hand_diagnostics`의 상태를 확인합니다.
 
@@ -130,7 +130,7 @@ frame이 닿지 않으면 drive가 마지막 토크를 유지할 수 있습니�
 
 ### 4.1 Manual recovery
 
-전원·배선·SocketCAN 오류와 drive fault의 원인을 제거하고 `lifecycle`이 `Faulted`인지 확인합니다.
+전원·배선·SocketCAN 오류와 drive fault의 원인을 제거하고 `lifecycle` 필드가 `Faulted`인지 확인합니다.
 먼저 통신을 복구합니다.
 
 ```bash
@@ -151,10 +151,10 @@ ros2 service call /left_hand_control/run std_srvs/srv/Trigger
 ros2 service call /left_hand_control/home std_srvs/srv/Trigger
 ```
 
-[3. home](#3-home)의 방법으로 `homing_state`가 `Succeeded`인지 확인합니다.
+[3. home](#3-home)의 방법으로 `homing_state` 필드가 `Succeeded`인지 확인합니다.
 대상 command controller가 `active`인지 확인한 뒤 필요한 목표를 다시 보냅니다.
 
-`~/reconnect`는 `Faulted`에서만 사용합니다. 단순히 제어를 멈췄다 재개하려면 `~/stop`과 `~/run`을
+`~/reconnect` service는 `Faulted`에서만 사용합니다. 단순히 제어를 멈췄다 재개하려면 `~/stop`과 `~/run` service를
 사용하십시오. 연결을 완전히 닫고 다시 시작해야 한다면 [5. Shutdown](#5-shutdown)으로 종료한 뒤
 launch를 다시 실행합니다.
 
@@ -212,7 +212,7 @@ ros2 param get /left_hand_control max_effort
 
 ### 6.1 Max effort
 
-`max_effort`는 actuator로 전송되는 effort의 상한입니다.
+`max_effort` 값은 actuator로 전송되는 effort의 상한입니다.
 
 | Parameter | Type | Default | Valid |
 |---|---|---|---|
@@ -257,7 +257,7 @@ ros2 param set /left_hand_control max_effort \
 | `cutoff_freq` | `double` | `10.0` | 차단 주파수 [Hz]. 유한하고 `0` 이상. `0`이면 2단계만 생략합니다 |
 | `deadband` | `double` | `0.000873` | 무시할 변화량 [rad]. 유한하고 `0` 이상. 기본값은 0.05°이며 `0`이면 1단계만 생략합니다 |
 
-`cutoff_freq`를 낮추면 목표 변화가 더 완만해지지만 응답 지연이 커집니다. 높이면 목표 변화가
+`cutoff_freq` 값을 낮추면 목표 변화가 더 완만해지지만 응답 지연이 커집니다. 높이면 목표 변화가
 더 빠르게 전달됩니다. filter는 속도 상한을 지정하는 기능이 아니므로 이동 속도를 제한하려면
 상위 application에서 시간에 따른 목표값을 생성해야 합니다.
 

@@ -53,9 +53,9 @@ launch와 종료가 실행합니다. 두 경로가 같은 전이를 일으키므
 | `lifecycle` | 로봇 핸드가 실제로 제어 중인지 SDK가 보고합니다 | `hand_diagnostics.lifecycle` |
 | `homing_state` | 원점 설정 상태입니다. lifecycle과 별개 축입니다 | `hand_diagnostics.homing_state` |
 
-command가 적용되려면 command controller가 `active`이고 `lifecycle`이 `Running`이며 `homing_state`가
+command가 적용되려면 command controller가 `active`이고 `lifecycle` 필드가 `Running`이며 `homing_state` 필드가
 `Succeeded`여야 합니다. 통신 오류로 `Faulted`가 되어도 hardware component는 활성화된 채로 남으므로
-hardware component 상태만으로는 판단할 수 없습니다. `homing_state`는 `NotRun` → `InProgress` →
+hardware component 상태만으로는 판단할 수 없습니다. `homing_state` 필드는 `NotRun` → `InProgress` →
 `Succeeded` 순서로 진행하며 실패하면 `Failed`입니다.
 
 mock은 이 lifecycle·homing 상태와 service를 제공하지 않으므로 3장으로 진행합니다.
@@ -69,7 +69,7 @@ ros2 control list_controllers
 ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once
 ```
 
-기본 launch에서는 `left_joint_position_controller`가 `active`이고 `lifecycle`은 `Running`입니다.
+기본 launch에서는 `left_joint_position_controller`가 `active`이고 `lifecycle` 필드는 `Running`입니다.
 `Faulted`이면 [5. Stop and recover](#5-stop-and-recover)의 복구 절차로 진행하십시오.
 
 > [!WARNING]
@@ -85,9 +85,9 @@ ros2 service call /left_hand_control/run std_srvs/srv/Trigger
 ```
 
 service는 `std_srvs/srv/Trigger` 타입이며 요청 인자가 없습니다. `success=True`인지 확인한 뒤
-다음 단계로 진행하십시오. 실패하면 응답의 `message`를 확인합니다.
+다음 단계로 진행하십시오. 실패하면 응답의 `message` 필드를 확인합니다.
 
-`auto_home=false`이고 `homing_state`가 `Succeeded`가 아니면 직접 homing을 시작합니다.
+`auto_home=false`이고 `homing_state` 필드가 `Succeeded`가 아니면 직접 homing을 시작합니다.
 이미 `InProgress`이면 다시 호출하지 말고 완료를 기다립니다.
 
 ```bash
@@ -101,14 +101,14 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field homing_st
 ```
 
 `Succeeded`가 출력되면 `Ctrl-C`로 관측을 끝냅니다. `Failed`이면 명령을 보내지 말고
-`actuator_fault_name`과 주변 상태를 확인합니다. 자세한 조건은
+`actuator_fault_name` 필드와 주변 상태를 확인합니다. 자세한 조건은
 [home](../../aidin_hand2_hardware/README.ko.md#3-home)에 있습니다.
 
 ## 3. Send a command
 
 직접 topic을 사용할 때는 대상 controller가 `active`이고 chained mode가 아니어야 합니다.
 로봇 핸드는 `lifecycle=Running`, `homing_state=Succeeded`도 확인합니다. mock에는 homing이 없습니다.
-명령은 `sensor_msgs/JointState`이고 `name` 필드로 축을 지정합니다. 최초 입력과 controller 전환 후 첫
+명령은 `sensor_msgs/JointState` message이고 `name` 필드로 축을 지정합니다. 최초 입력과 controller 전환 후 첫
 입력은 16개 이름을 모두 담아야 합니다. 이름과 읽는 필드는
 [Command message](../../aidin_hand2_msgs/README.ko.md#2-command-message)에 있습니다.
 
@@ -199,7 +199,7 @@ joint impedance 제어는 SDK에서 개발 중이므로 사용하지 마십시�
 
 상위 controller의 topic 이름과 message 타입은 해당 controller의 구현에 따릅니다.
 제공된 [상위 controller skeleton](../../aidin_hand2_examples/README.ko.md)은 자기 `~/cmd` topic에
-`sensor_msgs/JointState`를 받고, 알고리즘 자리에서 입력에 0을 곱해 전달합니다. 그 자리를 사용자 알고리즘으로
+`sensor_msgs/JointState` message를 받고, 알고리즘 자리에서 입력에 0을 곱해 전달합니다. 그 자리를 사용자 알고리즘으로
 바꾸면 됩니다.
 
 ## 4. Read state
@@ -221,7 +221,7 @@ topic 이름은 controller 이름 아래에 있습니다. 발행 주기는 `aidi
 | `/{side}_diagnostics_broadcaster/hand_diagnostics` | `aidin_hand2_msgs/HandDiagnostics` | 발행 | 20 Hz | real |
 
 command를 적용하려면 대상 controller가 `active`이고 chained mode가 아니어야 합니다.
-mock에서는 `/joint_states`로 결과를 확인합니다. `hand_state`와 `hand_diagnostics`는 제공하지 않습니다.
+mock에서는 `/joint_states` topic으로 결과를 확인합니다. `hand_state`와 `hand_diagnostics`는 제공하지 않습니다.
 
 ### 4.2 Observe the result
 
@@ -229,7 +229,7 @@ mock에서는 `/joint_states`로 결과를 확인합니다. `hand_state`와 `han
 mock에서는 `/joint_states`, 로봇 핸드에서는 다음 세 topic으로 관측합니다.
 
 
-`/joint_states` topic은 표준 `joint_state_broadcaster`가 발행하는 `sensor_msgs/JointState`입니다. `name`
+`/joint_states` topic은 표준 `joint_state_broadcaster`가 발행하는 `sensor_msgs/JointState` message입니다. `name`
 필드에 로봇의 모든 joint, `position` 필드에 각도[rad]가 있고, 로봇 핸드의 joint는 손마다 21개입니다.
 로봇 핸드의 joint velocity·effort 측정값은 제공하지 않습니다.
 배열 위치는 `name`으로 확인하십시오. 다른 로봇의 joint가 함께 포함될 수 있습니다.
@@ -241,13 +241,13 @@ ros2 topic echo /joint_states --once
 ```
 
 joint·actuator·tactile 관측을 한 번 읽습니다. 목표 도달 여부는 `joint_position` 또는
-`actuator_position`을 보십시오.
+`actuator_position` 필드를 보십시오.
 
 ```bash
 ros2 topic echo /left_hand_state_broadcaster/hand_state --once
 ```
 
-적용 중인 command와 effort 상한을 읽습니다. `command_state`는 새 message 수신 확인 응답이 아니며,
+적용 중인 command와 effort 상한을 읽습니다. `command_state` 필드는 새 message 수신 확인 응답이 아니며,
 마지막 command를 유지하는 동안에도 같은 값일 수 있습니다.
 
 ```bash
@@ -281,7 +281,7 @@ SDK가 `Faulted`로 정지하면 broadcaster가 마지막 관측값을 같은 �
 
 > [!IMPORTANT]
 > `HandDiagnostics`에는 종합 판정 필드가 없습니다. 준비 여부는 구독자가 `lifecycle`·`homing_state`·
-> `actuator_fault_name` 필드와 `control_cycles` 값의 증가를 합쳐 판단해야 합니다. 마지막 예외 문구와
+> `actuator_fault_name`·`control_cycles` 필드의 증가를 합쳐 판단해야 합니다. 마지막 예외 문구와
 > 재연결 시도 횟수도 message에 없습니다.
 
 ### 4.4 QoS
@@ -289,7 +289,7 @@ SDK가 `Faulted`로 정지하면 broadcaster가 마지막 관측값을 같은 �
 현재 command controller 4종의 `~/cmd` 구독과 `HandStateBroadcaster`·`DiagnosticsBroadcaster`의
 발행은 `rclcpp::SystemDefaultsQoS()`를 사용합니다. 상위 controller skeleton의 `HandState` 구독도
 같습니다. 이 설정은 history·depth·reliability 등을 RMW 기본값에 맡기므로 실행 환경에서 실제 값을 확인합니다.
-`/joint_states`는 별도로 설치된 `joint_state_broadcaster`의 설정을 확인하십시오.
+`/joint_states` topic은 별도로 설치된 `joint_state_broadcaster`의 설정을 확인하십시오.
 
 ```bash
 ros2 topic info /left_joint_position_controller/cmd --verbose

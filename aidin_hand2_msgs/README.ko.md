@@ -2,7 +2,7 @@
 
 [전체 문서](../README.ko.md#documentation) | [English overview](README.md)
 
-`aidin_hand2_msgs`는 상태 message 타입을 정의합니다. command는 표준 `sensor_msgs/JointState`를 씁니다.
+`aidin_hand2_msgs` package는 상태 message 타입을 정의합니다. command는 표준 `sensor_msgs/JointState` message를 씁니다.
 이 문서에서 필드·타입·단위와 배열 순서를 확인할 수 있습니다. message 정의 파일은 [msg/](msg)에 있습니다.
 목표 전송과 상태 관측 명령은 [Control guide](../docs/ko/05_control_guide.md)에 있습니다.
 
@@ -26,7 +26,7 @@
 
 ## 2. Command message
 
-command message는 command controller 넷이 `~/cmd` topic에 받는 `sensor_msgs/JointState`입니다. `name`
+command message는 command controller 넷이 `~/cmd` topic에 받는 `sensor_msgs/JointState` message입니다. `name`
 필드를 [4. Joint and actuator order](#4-joint-and-actuator-order)의 이름에 `{side}_`를 붙인 것과 대조하고,
 순서는 자유입니다. controller가 소유하지 않는 이름은 무시하고, 빠진 이름은 이번 cycle에 지정하지 않은
 것으로 보아 SDK가 마지막 값을 유지합니다. `header` 필드는 읽지 않습니다.
@@ -47,7 +47,7 @@ controller는 `active`로 남습니다. 값 처리 규칙은
 joint 목표는 SDK가 finger별 도달 범위로 투영한 뒤 변환합니다. joint position은 joint position controller를
 거쳐 actuator position이 되고, joint impedance는 actuator effort가 됩니다. actuator 목표는 kinematics를
 거치지 않아 도달 범위 투영이 없고, effort는 SDK가 절댓값을 actuator별 `max_effort` 값으로 제한한 뒤
-전송합니다. filter와 `stiffness`·`damping`은 hardware node parameter이고
+전송합니다. filter와 `stiffness`·`damping` 값은 hardware node parameter이고
 [6.2 Joint position controller](../aidin_hand2_hardware/README.ko.md#62-joint-position-controller)에 있습니다.
 
 > [!NOTE]
@@ -80,7 +80,7 @@ tactile 값은 센서가 전송한 16-bit raw value라 단위도 정규화도 �
 
 ### 3.2 CommandState
 
-`CommandState`는 한 cycle의 command 처리 과정을 담은 `HandState`의 `command_state` 필드입니다. 세 enum
+`CommandState` message는 한 cycle의 command 처리 과정을 담은 `HandState` message의 `command_state` 필드입니다. 세 enum
 필드가 어느 필드가 유효한지 결정하고, 유효하지 않은 필드는 NaN일 수 있습니다.
 
 | Field | Type | Description |
@@ -94,7 +94,7 @@ tactile 값은 센서가 전송한 16-bit raw value라 단위도 정규화도 �
 | `selected_source` | `uint8` | 이번 cycle에 전송 대상으로 선택된 출처. `0` none, `1` controller, `2` quick stop, `3` homing |
 | `max_effort_pct` | `float64[16]` | 변환에 적용된 actuator별 effort 상한 |
 
-`selected_source`가 `1`이면 SDK가 controller 출력을 선택한 상태입니다. 마지막 command를 유지하는
+`selected_source` 필드가 `1`이면 SDK가 controller 출력을 선택한 상태입니다. 마지막 command를 유지하는
 동안에도 같은 값이므로 새 message의 수신 확인으로 사용하지 않습니다. 목표 도달 여부는
 `joint_position` 또는 `actuator_position` 관측값으로 확인합니다.
 joint 목표의 echo는 SDK가 도달 범위로 보정한 뒤의 값입니다.
@@ -105,7 +105,7 @@ joint 목표의 echo는 SDK가 도달 범위로 보정한 뒤의 값입니다.
 
 ### 3.3 HandDiagnostics
 
-`HandDiagnostics`는 SDK와 제어·통신 루프의 상태를 담으며 `DiagnosticsBroadcaster`가 발행합니다.
+`HandDiagnostics` message는 SDK와 제어·통신 루프의 상태를 담으며 `DiagnosticsBroadcaster`가 발행합니다.
 `header.stamp` 필드는 발행 시각입니다.
 `Running` 열은 homing 완료 후 제어 중일 때의 참고값이며, 시간 값은 기본 500 Hz 설정 기준입니다.
 
@@ -144,7 +144,7 @@ command와 actuator 관측 배열의 길이는 16입니다. thumb 4개 뒤에 in
 같은 index의 joint와 actuator가 물리적으로 일대일 대응하는 것은 아닙니다.
 SDK가 kinematics로 두 공간 사이의 값을 변환합니다.
 
-`HandState.joint_position`은 passive `joint4`를 포함하므로 길이가 21입니다.
+`HandState.joint_position` 필드는 passive `joint4`를 포함하므로 길이가 21입니다.
 순서는 다음과 같습니다. passive joint는 command 배열에 넣지 않습니다.
 
 ```text
@@ -155,5 +155,5 @@ ring_joint1, ring_joint2, ring_joint3, ring_joint4,
 baby_joint1, baby_joint2, baby_joint3, baby_joint4
 ```
 
-`/joint_states`는 전체 로봇의 joint를 담을 수 있으므로 위 고정 순서를 적용하지 않고 `name`과
+`/joint_states` topic은 전체 로봇의 joint를 담을 수 있으므로 위 고정 순서를 적용하지 않고 `name`과
 `position`의 같은 index를 대응시켜 읽습니다.

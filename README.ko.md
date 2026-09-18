@@ -33,12 +33,12 @@ AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. con
 
 user controller는 controller_manager 안에서 작동하기 때문에 actuator 위치·joint 각도·tactile 같은 상태를
 topic이 아니라 state interface로 같은 cycle 안에서 읽을 수 있습니다. 상태 관측과 목표값 계산이 500 Hz
-cycle 하나에서 닫히므로 topic 왕복이 없는 제어 루프가 됩니다. `aidin_hand2_examples`의 skeleton이 이
+cycle 하나에서 닫히므로 topic 왕복이 없는 제어 루프가 됩니다. `aidin_hand2_examples` package의 skeleton이 이
 틀이고, 알고리즘 자리에는 입력에 0을 곱하는 한 줄이 들어 있습니다. 읽을 수 있는 state interface
 목록과 실행 절차는 [Chainable controller examples](aidin_hand2_examples/EXAMPLE.md)에 있습니다.
 
 user node는 상태를 `/joint_states`, `~/hand_state`, `~/hand_diagnostics` topic으로 읽습니다. `~`는 해당
-topic이나 service를 제공하는 node 이름입니다. 예를 들어 `~/cmd`는 `/left_joint_position_controller/cmd`가 됩니다.
+topic이나 service를 제공하는 node 이름입니다. 예를 들어 `~/cmd` topic은 `/left_joint_position_controller/cmd`가 됩니다.
 effort 상한과 filter·gain은 hardware node의 ROS parameter로 설정합니다.
 
 ## Terms
@@ -88,7 +88,7 @@ effort 상한과 filter·gain은 hardware node의 ROS parameter로 설정합니�
 
 ## Lifecycle
 
-lifecycle은 로봇 핸드의 연결·제어 상태입니다. `hand_diagnostics.lifecycle`에서 읽으며,
+lifecycle은 로봇 핸드의 연결·제어 상태입니다. `hand_diagnostics.lifecycle` 필드에서 읽으며,
 `ros2 control`이 표시하는 controller·hardware component의 `active`와 구분합니다.
 command를 적용하려면 controller가 `active`, lifecycle이 `Running`, homing이 `Succeeded`여야 합니다.
 

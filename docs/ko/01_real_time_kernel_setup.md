@@ -1,6 +1,6 @@
 # Real-time kernel setup
 
-SDK의 500 Hz 제어·통신 루프와 `controller_manager`의 update 루프를 실시간으로 스케줄링하려면
+SDK의 500 Hz 제어·통신 루프와 `controller_manager` node의 update 루프를 실시간으로 스케줄링하려면
 `PREEMPT_RT` kernel과, root가 아닌 user가 real-time priority(`SCHED_FIFO`)로 실행하고 메모리를 잠글
 수 있는 permission이 필요합니다. 이 문서는 Ubuntu(x86_64 / arm64)에서 PREEMPT_RT kernel을 source에서
 빌드하고 실행 권한을 설정합니다. mock 실행에는 이 설정이 필요하지 않습니다. SDK 문서의
@@ -195,7 +195,7 @@ sudo tee /etc/security/limits.d/99-realtime.conf >/dev/null <<'EOF'
 EOF
 ```
 
-SDK는 제어·통신 루프를 priority 90으로 올리고 `controller_manager`는 기본값 50으로 update 루프를
+SDK는 제어·통신 루프를 priority 90으로 올리고 `controller_manager` node는 기본값 50으로 update 루프를
 돌리므로 `rtprio`는 90 이상이어야 합니다. `mlockall`은 이후 할당분까지 잠그므로 `memlock`은
 `unlimited`여야 합니다.
 
