@@ -11,9 +11,10 @@ launch는 계속 실행하고, 명령은 ROS와 workspace 환경을 적용한 �
 &nbsp;&nbsp;[**2. Prepare the robot hand**](#2-prepare-the-robot-hand)<br>
 &nbsp;&nbsp;[**3. Send a command**](#3-send-a-command)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.1 Joint position](#31-joint-position)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.2 Actuator position](#32-actuator-position)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.3 Actuator effort](#33-actuator-effort)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.4 Upper controller input](#34-upper-controller-input)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.2 Joint position with sliders](#32-joint-position-with-sliders)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.3 Actuator position](#33-actuator-position)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.4 Actuator effort](#34-actuator-effort)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.5 Upper controller input](#35-upper-controller-input)<br>
 &nbsp;&nbsp;[**4. Read state**](#4-read-state)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[4.1 Topics](#41-topics)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[4.2 Observe the result](#42-observe-the-result)<br>
@@ -41,9 +42,9 @@ launch와 종료가 실행합니다. 두 경로가 같은 전이를 일으키므
 | `Stopped` | quick stop이 확인된 무토크 상태 | 제어를 재개하려면 `~/run`을 호출합니다 |
 | `Faulted` | 통신 오류나 제어·통신 루프 예외로 제어가 종료된 상태 | 원인을 확인하고 [4. reconnect](../../aidin_hand2_hardware/README.ko.md#4-reconnect)로 복구합니다 |
 
-기본 launch는 `configure`와 `activate`를 함께 수행하므로 정상 실행 후에는 `Running`입니다.
+기본 launch는 `configure`와 `activate`를 함께 수행하므로 정상 실행 후에는 `Running` 상태입니다.
 
-`active`는 명령 출력에서 두 곳에 나타나고 뜻이 다릅니다. 제어가 가능한지 판단하려면 다음 넷을 함께
+`active` 상태는 명령 출력에서 두 곳에 나타나고 뜻이 다릅니다. 제어가 가능한지 판단하려면 다음 넷을 함께
 읽습니다.
 
 | 값 | 의미 | 확인 방법 |
@@ -53,8 +54,8 @@ launch와 종료가 실행합니다. 두 경로가 같은 전이를 일으키므
 | `lifecycle` | 로봇 핸드가 실제로 제어 중인지 SDK가 보고합니다 | `hand_diagnostics.lifecycle` |
 | `homing_state` | 원점 설정 상태입니다. lifecycle과 별개 축입니다 | `hand_diagnostics.homing_state` |
 
-command가 적용되려면 command controller가 `active`이고 `lifecycle` 필드가 `Running`이며 `homing_state` 필드가
-`Succeeded`여야 합니다. 통신 오류로 `Faulted`가 되어도 hardware component는 활성화된 채로 남으므로
+command가 적용되려면 command controller가 `active` 상태이고 `lifecycle` 필드가 `Running`이며 `homing_state` 필드가
+`Succeeded`여야 합니다. 통신 오류로 `Faulted` 상태가 되어도 hardware component는 활성화된 채로 남으므로
 hardware component 상태만으로는 판단할 수 없습니다. `homing_state` 필드는 `NotRun` → `InProgress` →
 `Succeeded` 순서로 진행하며 실패하면 `Failed`입니다.
 
@@ -69,15 +70,15 @@ ros2 control list_controllers
 ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once
 ```
 
-기본 launch에서는 `left_joint_position_controller`가 `active`이고 `lifecycle` 필드는 `Running`입니다.
-`Faulted`이면 [5. Stop and recover](#5-stop-and-recover)의 복구 절차로 진행하십시오.
+기본 launch에서는 `left_joint_position_controller`가 `active` 상태이고 `lifecycle` 필드는 `Running`입니다.
+`Faulted` 상태이면 [5. Stop and recover](#5-stop-and-recover)의 복구 절차로 진행하십시오.
 
 > [!WARNING]
 > homing은 finger를 hard stop까지 움직입니다. 주변을 비우고 완료까지 접촉하지 마십시오.
 > 움직임이 막히면 잘못된 위치가 원점으로 설정될 수 있습니다. `auto_home=true`이면 `run` 뒤에도
 > homing이 시작될 수 있으므로 제어를 재개하기 전에 주변을 확인하십시오.
 
-`Connected` 또는 `Stopped`이면 아래 service로 제어를 시작합니다.
+`Connected` 또는 `Stopped` 상태이면 아래 service로 제어를 시작합니다.
 `auto_home=true`이고 homing이 완료되지 않았다면 이 호출 뒤 자동으로 homing이 시작됩니다.
 
 ```bash
@@ -106,7 +107,7 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field homing_st
 
 ## 3. Send a command
 
-직접 topic을 사용할 때는 대상 controller가 `active`이고 chained mode가 아니어야 합니다.
+직접 topic을 사용할 때는 대상 controller가 `active` 상태이고 chained mode가 아니어야 합니다.
 로봇 핸드는 `lifecycle=Running`, `homing_state=Succeeded`도 확인합니다. mock에는 homing이 없습니다.
 명령은 `sensor_msgs/JointState` message이고 `name` 필드로 축을 지정합니다. 최초 입력과 controller 전환 후 첫
 입력은 16개 이름을 모두 담아야 합니다. 이름과 읽는 필드는
@@ -220,7 +221,7 @@ topic 이름은 controller 이름 아래에 있습니다. 발행 주기는 `aidi
 | `/{side}_hand_state_broadcaster/hand_state` | `aidin_hand2_msgs/HandState` | 발행 | 100 Hz | real |
 | `/{side}_diagnostics_broadcaster/hand_diagnostics` | `aidin_hand2_msgs/HandDiagnostics` | 발행 | 20 Hz | real |
 
-command를 적용하려면 대상 controller가 `active`이고 chained mode가 아니어야 합니다.
+command를 적용하려면 대상 controller가 `active` 상태이고 chained mode가 아니어야 합니다.
 mock에서는 `/joint_states` topic으로 결과를 확인합니다. `hand_state`와 `hand_diagnostics`는 제공하지 않습니다.
 
 ### 4.2 Observe the result
@@ -265,7 +266,7 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once
 ### 4.3 Monitoring
 
 topic이 계속 발행되어도 로봇 핸드의 상태가 갱신되고 있다는 뜻은 아닙니다.
-SDK가 `Faulted`로 정지하면 broadcaster가 마지막 관측값을 같은 주기로 반복할 수 있습니다.
+SDK가 `Faulted` 상태로 정지하면 broadcaster가 마지막 관측값을 같은 주기로 반복할 수 있습니다.
 각 필드가 나타내는 정보를 구별해서 확인합니다.
 
 | Signal | Meaning |
@@ -275,7 +276,7 @@ SDK가 `Faulted`로 정지하면 broadcaster가 마지막 관측값을 같은 �
 | `hand_diagnostics.lifecycle` | 통신·제어 상태입니다. command를 적용할 때는 `Running`이어야 합니다 |
 | `hand_diagnostics.homing_state` | homing 상태입니다. command를 적용할 때는 `Succeeded`여야 합니다 |
 
-`control_cycles`와 `header.stamp` 필드는 `Faulted`가 아닌 동안 frame 수신 여부와 무관하게 매 cycle
+`control_cycles`와 `header.stamp` 필드는 `Faulted` 상태가 아닌 동안 frame 수신 여부와 무관하게 매 cycle
 갱신되므로 통신 생존의 근거는 아닙니다. 통신이 끊기면 약 100 ms 뒤 `lifecycle` 값이 `Faulted`로 바뀌고
 전이 시점부터 둘이 함께 멈춥니다.
 
@@ -321,12 +322,12 @@ quick stop 확인에 실패하면 actuator가 마지막 command를 유지할 수
 종료할 때는 양손 모두 정지를 확인한 뒤 launch 터미널에서 `Ctrl-C`를 누릅니다.
 mock은 [Stop the mock](04_bringup.md#14-stop-the-mock)을 따릅니다.
 
-`Faulted`에서는 전원·배선·CAN 오류 원인을 제거한 다음 재연결합니다.
+`Faulted` 상태에서는 전원·배선·CAN 오류 원인을 제거한 다음 재연결합니다.
 
 ```bash
 ros2 service call /left_hand_control/reconnect std_srvs/srv/Trigger
 ```
 
-수동 재연결이 성공하면 `Connected`로 돌아갑니다. 2장처럼 `run` → homing 완료 확인을 거친 뒤
+수동 재연결이 성공하면 `Connected` 상태로 돌아갑니다. 2장처럼 `run` → homing 완료 확인을 거친 뒤
 command를 다시 보냅니다. 재연결은 homing 상태를 초기화합니다.
 실패 조건과 자동 재연결은 [reconnect](../../aidin_hand2_hardware/README.ko.md#4-reconnect)에 있습니다.

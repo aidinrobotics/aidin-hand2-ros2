@@ -157,7 +157,7 @@ ros2 launch aidin_hand2_bringup aidin_hand2_controllers.launch.py \
   use_left_hand:=true use_right_hand:=false controller_manager:=/controller_manager
 ```
 
-joint position controller와 broadcaster는 `active`, 나머지 command controller는 `inactive`로
+joint position controller와 broadcaster는 `active`, 나머지 command controller는 `inactive` 상태로
 실행됩니다. spawner가 controller_manager를 기다리는 시간은 30 s입니다.
 
 ## 5. gui_bridge.launch.py
@@ -236,7 +236,7 @@ source ~/your_ws/install/setup.bash
 ros2 control list_hardware_components
 ```
 
-`left_hand_control`이 `active`이면 선언한 controller를 실행합니다.
+`left_hand_control`이 `active` 상태이면 선언한 controller를 실행합니다.
 기존 로봇 launch가 이미 활성화한 controller는 다시 spawn하지 않습니다.
 
 ```bash

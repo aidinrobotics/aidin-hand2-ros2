@@ -60,8 +60,8 @@ topic으로 발행합니다.
 
 둘 다 ROS 2 managed node의 상태인 `unconfigured`·`inactive`·`active`를 가집니다. controller가 `active`면
 매 cycle 실행되고, hardware component가 `active`면 drive에 토크가 걸려 움직일 수 있습니다. command
-controller 넷은 같은 command interface를 점유하므로 로봇 핸드마다 하나만 `active`가 될 수 있습니다.
-mock launch는 joint position 하나만 올리고, 로봇 핸드 launch는 나머지 셋을 `inactive`로 함께 올려 둡니다.
+controller 넷은 같은 command interface를 점유하므로 로봇 핸드마다 하나만 `active` 상태가 될 수 있습니다.
+mock launch는 joint position 하나만 올리고, 로봇 핸드 launch는 나머지 셋을 `inactive` 상태로 함께 올려 둡니다.
 
 다른 터미널에서 hardware component와 controller 상태를 확인합니다.
 
@@ -72,9 +72,9 @@ ros2 control list_controllers
 
 출력에서 다음을 확인합니다.
 
-- hardware component `left_hand_control`과 `right_hand_control`이 `active`입니다.
+- hardware component `left_hand_control`과 `right_hand_control`이 `active` 상태입니다.
 - `joint_state_broadcaster`, `left_joint_position_controller`, `right_joint_position_controller`가
-  `active`입니다.
+  `active` 상태입니다.
 
 ### 1.3 Send a command
 
@@ -168,10 +168,10 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once
 
 출력에서 다음을 확인합니다.
 
-- hardware component `left_hand_control`이 `active`입니다.
+- hardware component `left_hand_control`이 `active` 상태입니다.
 - `joint_state_broadcaster`, `left_hand_state_broadcaster`, `left_diagnostics_broadcaster`,
-  `left_joint_position_controller`가 `active`이고, `left_actuator_position_controller`,
-  `left_actuator_effort_controller`, `left_joint_impedance_controller`가 `inactive`입니다.
+  `left_joint_position_controller`가 `active` 상태이고, `left_actuator_position_controller`,
+  `left_actuator_effort_controller`, `left_joint_impedance_controller`가 `inactive` 상태입니다.
 - `hand_diagnostics` topic의 `lifecycle` 값이 `Running`, `homing_state` 값이 `NotRun`,
   `actuator_fault_name` 필드 16개가 모두 빈 문자열입니다. `lifecycle` 값의 뜻은
   [1.1 Lifecycle](../../aidin_hand2_hardware/README.ko.md#11-lifecycle)에 있습니다.

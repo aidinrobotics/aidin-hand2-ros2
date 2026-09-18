@@ -41,7 +41,7 @@ command message는 command controller 넷이 `~/cmd` topic에 받는 `sensor_msg
 activate 후 첫 message는 16개 이름을 모두 담아야 합니다. `name`을 비우면 값 16개를
 [4. Joint and actuator order](#4-joint-and-actuator-order)의 순서로 받습니다. `name`이 읽는 필드와 길이가
 다르거나 이름이 중복된 message, `name`이 비었는데 값이 16개가 아닌 message는 warning과 함께 버려지고
-controller는 `active`로 남습니다. 값 처리 규칙은
+controller는 `active` 상태로 남습니다. 값 처리 규칙은
 [4.2 Target values](../aidin_hand2_controllers/README.ko.md#42-target-values)에 있습니다.
 
 joint 목표는 SDK가 finger별 도달 범위로 투영한 뒤 변환합니다. joint position은 joint position controller를

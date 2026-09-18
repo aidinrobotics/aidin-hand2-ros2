@@ -22,7 +22,7 @@ AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. con
 
 사용자 node가 command를 보내는 경로는 둘입니다.
 
-- command controller의 `~/cmd` topic에 `sensor_msgs/JointState`를 직접 보냅니다. 이름 대조 규칙과
+- command controller의 `~/cmd` topic에 `sensor_msgs/JointState` message를 직접 보냅니다. 이름 대조 규칙과
   읽는 필드·단위는 [2. Command message](aidin_hand2_msgs/README.ko.md#2-command-message)에 있습니다.
 - user controller를 만들어 직접 정의한 topic과 message로 보냅니다. user controller는 command를
   처리해 목표값을 command controller의 reference interface에 쓰고, 그동안 command controller는 chained
@@ -60,7 +60,7 @@ effort 상한과 filter·gain은 hardware node의 ROS parameter로 설정합니�
 | chained mode | command controller가 reference interface의 값을 쓰는 상태입니다 |
 | spawner | controller를 controller_manager에 올리는 실행 파일입니다. launch가 controller마다 하나씩 실행합니다 |
 
-`active`는 controller와 hardware component 양쪽에 쓰이고, SDK가 보고하는 lifecycle과도 다릅니다. 셋을
+`active` 상태는 controller와 hardware component 양쪽에 쓰이고, SDK가 보고하는 lifecycle과도 다릅니다. 셋을
 구별하는 표는 [1. Lifecycle](docs/ko/05_control_guide.md#1-lifecycle)에 있습니다.
 
 ## Getting started
@@ -89,7 +89,7 @@ effort 상한과 filter·gain은 hardware node의 ROS parameter로 설정합니�
 ## Lifecycle
 
 lifecycle은 로봇 핸드의 연결·제어 상태입니다. `hand_diagnostics.lifecycle` 필드에서 읽으며,
-`ros2 control`이 표시하는 controller·hardware component의 `active`와 구분합니다.
+`ros2 control`이 표시하는 controller·hardware component의 `active` 상태와 구분합니다.
 command를 적용하려면 controller가 `active`, lifecycle이 `Running`, homing이 `Succeeded`여야 합니다.
 
 `run`은 제어 시작, `stop`은 quick stop, `home`은 원점 설정, `reconnect`는 통신 오류 복구를 요청합니다.

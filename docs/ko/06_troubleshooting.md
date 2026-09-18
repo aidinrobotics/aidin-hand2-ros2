@@ -186,7 +186,7 @@ warning입니다. hardware component와 controller가 이어서 configure·activ
 
 ### 3.4 Hardware component fails to configure
 
-hardware component가 `unconfigured`에 머물고 `/rosout` topic에 SDK 예외가 남는 경우입니다. `ErrorCode`로
+hardware component가 `unconfigured` 상태에 머물고 `/rosout` topic에 SDK 예외가 남는 경우입니다. `ErrorCode`로
 점검 대상을 나눕니다.
 
 | ErrorCode | Check |
@@ -268,7 +268,7 @@ rejected mode switch: command interfaces must be one complete mode port plus com
 
 로봇 핸드마다 command controller 하나만 활성화할 수 있습니다. 현재 활성화된 controller와
 대상 controller를 확인하고, 기존 controller의 비활성화와 대상 controller의 활성화를 함께 요청합니다.
-다음은 joint position이 `active`이고 actuator position이 이미 `inactive`로 load된 경우입니다.
+다음은 joint position이 `active` 상태이고 actuator position이 이미 `inactive` 상태로 load된 경우입니다.
 
 ```bash
 ros2 control list_controllers
@@ -390,7 +390,7 @@ printenv ROS_DOMAIN_ID
 ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field homing_state
 ```
 
-- `InProgress`이면 진행 중입니다. 제한 시간을 넘기면 `control_cycles`의 증가 여부와 오류 log를 확인합니다.
+- `InProgress`이면 진행 중입니다. 제한 시간을 넘기면 `control_cycles` 필드의 증가 여부와 오류 log를 확인합니다.
 - `Failed`면 `actuator_fault_name` 필드에서 fault가 있는 actuator를 확인하고 원인을 제거한 뒤 `~/home`
   service를 다시 호출합니다.
 - `NotRun`으로 돌아갔다면 직전에 `~/reconnect` service를 호출한 경우입니다. `~/run` service 뒤 `~/home`
@@ -406,7 +406,7 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics
 ```
 
 `Ctrl-C`로 관측을 끝냅니다. `lifecycle` 값이 `Faulted`이면 통신 오류나 제어·통신 루프 예외로 정지한 것이고, `control_cycles` 값이
-`Faulted`로 전이한 시점부터 멈춥니다. 복구 절차는 [Services](../../aidin_hand2_hardware/README.ko.md) 4장에 있습니다. `auto_reconnect=true`이면 복구
+`Faulted` 상태로 전이한 시점부터 멈춥니다. 복구 절차는 [Services](../../aidin_hand2_hardware/README.ko.md) 4장에 있습니다. `auto_reconnect=true`이면 복구
 중에도 마지막 state가 반복 발행됩니다.
 
 ### 5.4 reconnect fails

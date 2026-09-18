@@ -49,8 +49,8 @@ controller의 `active`·homing 상태의 차이는
 | `~/reconnect` | `Faulted` | `Connected` | 첫 state 수신 | 300 ms | `reconnected — call ~/run to resume control` |
 
 표에 없는 state에서 호출하거나 제한 시간 안에 확인되지 않으면 `success` 필드가 `false`이고 `message`
-필드에 SDK 예외 문구가 그대로 들어갑니다. 이미 postcondition을 만족하는 state에서 호출하면(`Running`에서
-`~/run`, `Stopped`에서 `~/stop`) 아무 동작 없이 성공을 반환합니다. 문구별 조치는 SDK 문서의
+필드에 SDK 예외 문구가 그대로 들어갑니다. 이미 postcondition을 만족하는 state에서 호출하면(`Running` 상태에서
+`~/run`, `Stopped` 상태에서 `~/stop`) 아무 동작 없이 성공을 반환합니다. 문구별 조치는 SDK 문서의
 [Error messages](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_error_messages.md)에
 있습니다.
 
@@ -69,11 +69,11 @@ std_srvs.srv.Trigger_Response(success=True, message='running')
 
 ## 2. run and stop
 
-`~/run` service는 actuator를 enable해 `Running`으로, `~/stop` service는 quick stop으로 `Stopped`로
+`~/run` service는 actuator를 enable해 `Running` 상태로, `~/stop` service는 quick stop으로 `Stopped` 상태로
 전이합니다. launch를 유지한 채 제어를 시작하거나 정지할 때 사용합니다.
 
 `~/stop` service 뒤에는 wrapper가 command 전송을 멈추고, `~/run` service가 성공하면 다시 시작합니다.
-`Stopped`에서 재개하면 SDK는 재개 시점의 자세를 목표로 제어를 시작합니다.
+`Stopped` 상태에서 재개하면 SDK는 재개 시점의 자세를 목표로 제어를 시작합니다.
 원하는 목표는 다시 전송하십시오.
 
 `auto_home=true`이고 `homing_state` 값이 `Succeeded`가 아니면 `~/run` service 뒤 homing이 다시
@@ -81,7 +81,7 @@ std_srvs.srv.Trigger_Response(success=True, message='running')
 
 > [!WARNING]
 > `~/stop` service가 500 ms 안에 quick stop을 확인하지 못하면 실패를 반환하고 `lifecycle` 값은
-> `Running`으로 남습니다. actuator가 마지막 command를 유지하고 있을 수 있으므로, 다시 호출하기보다 로봇
+> `Running` 상태로 남습니다. actuator가 마지막 command를 유지하고 있을 수 있으므로, 다시 호출하기보다 로봇
 > 핸드의 전원을 차단하십시오.
 
 ## 3. home
@@ -121,11 +121,11 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field homing_st
 
 ## 4. reconnect
 
-`~/reconnect` service는 `Faulted`에서 통신을 복구합니다. 성공하면 `Connected`가 되므로 제어 시작과
-homing을 이어서 수행해야 합니다. 복구 중에도 controller와 broadcaster가 `active`로 표시될 수 있으므로
+`~/reconnect` service는 `Faulted` 상태에서 통신을 복구합니다. 성공하면 `Connected` 상태가 되므로 제어 시작과
+homing을 이어서 수행해야 합니다. 복구 중에도 controller와 broadcaster가 `active` 상태로 표시될 수 있으므로
 `hand_diagnostics`의 상태를 확인합니다.
 
-통신이 끊기면 SDK가 약 100 ms 뒤 `Faulted`로 전이하며 quick stop을 전송합니다. CAN이 끊겨 quick stop
+통신이 끊기면 SDK가 약 100 ms 뒤 `Faulted` 상태로 전이하며 quick stop을 전송합니다. CAN이 끊겨 quick stop
 frame이 닿지 않으면 drive가 마지막 토크를 유지할 수 있습니다.
 
 ### 4.1 Manual recovery
@@ -154,16 +154,16 @@ ros2 service call /left_hand_control/home std_srvs/srv/Trigger
 [3. home](#3-home)의 방법으로 `homing_state` 필드가 `Succeeded`인지 확인합니다.
 대상 command controller가 `active`인지 확인한 뒤 필요한 목표를 다시 보냅니다.
 
-`~/reconnect` service는 `Faulted`에서만 사용합니다. 단순히 제어를 멈췄다 재개하려면 `~/stop`과 `~/run` service를
+`~/reconnect` service는 `Faulted` 상태에서만 사용합니다. 단순히 제어를 멈췄다 재개하려면 `~/stop`과 `~/run` service를
 사용하십시오. 연결을 완전히 닫고 다시 시작해야 한다면 [5. Shutdown](#5-shutdown)으로 종료한 뒤
 launch를 다시 실행합니다.
 
 ### 4.2 Automatic recovery
 
 `auto_reconnect=true`이면 SDK의 제어·통신 루프가 스스로 재연결을 반복하고, 연결이 복구되면 `~/run`
-service 없이 `Running`으로 복귀합니다. `auto_reconnect_home=true`이면 재개 전에 homing도 수행합니다.
+service 없이 `Running` 상태로 복귀합니다. `auto_reconnect_home=true`이면 재개 전에 homing도 수행합니다.
 
-- 자동 복구는 통신 오류에만 동작합니다. 제어·통신 루프 예외로 `Faulted`가 되면 `~/reconnect` service를
+- 자동 복구는 통신 오류에만 동작합니다. 제어·통신 루프 예외로 `Faulted` 상태가 되면 `~/reconnect` service를
   직접 호출해야 합니다.
 - `auto_reconnect_home=false`이면 복구 뒤 `homing_state` 값이 `NotRun`이므로 `~/home` service를 호출해야
   command가 전송됩니다.

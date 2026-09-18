@@ -81,7 +81,7 @@ wrapper의 broadcaster에는 `hand_side` parameter를 지정합니다. 발행 �
 | `{side}_actuator_position_controller` | `position` [encoder count] |
 | `{side}_actuator_effort_controller` | `effort` [정격 전류의 0.1%] |
 
-로봇 핸드에서는 controller가 `active`이고, `lifecycle` 필드가 `Running`이며, `homing_state` 필드가
+로봇 핸드에서는 controller가 `active` 상태이고, `lifecycle` 필드가 `Running`이며, `homing_state` 필드가
 `Succeeded`인지 확인한 뒤 전송합니다. mock에서는 homing 없이 보낼 수 있습니다.
 처음 보낼 때와 controller를 바꾼 뒤에는 16개 이름을 모두 담아 보내십시오.
 
@@ -100,14 +100,14 @@ service 호출과 상태 확인은 같은 문서의 [Prepare the robot hand](../
 ros2 control list_controllers
 ```
 
-대상 controller가 목록에 없을 때만 `inactive`로 load합니다. 다음은 actuator position을 선택하는 예입니다.
+대상 controller가 목록에 없을 때만 `inactive` 상태로 load합니다. 다음은 actuator position을 선택하는 예입니다.
 기본 로봇 핸드 launch에서는 이미 load되어 있으므로 이 명령을 건너뜁니다.
 
 ```bash
 ros2 control load_controller --set-state inactive left_actuator_position_controller
 ```
 
-joint position이 `active`이고 actuator position이 `inactive`이면 두 전환을 함께 요청합니다.
+joint position이 `active` 상태이고 actuator position이 `inactive` 상태이면 두 전환을 함께 요청합니다.
 `--strict`를 사용해 요청한 전환 중 일부만 성공한 상태를 성공으로 처리하지 않도록 합니다.
 
 ```bash
