@@ -30,6 +30,13 @@ controller_manager:
     right_actuator_effort_controller:
       type: aidin_hand2_controllers/ActuatorEffortController
 
+# ----------------------------- Joint state broadcaster -----------------------
+
+# One for the whole robot, feeding rviz and TF
+joint_state_broadcaster:
+  ros__parameters:
+    update_rate: 100
+
 # --------------------------------- Left hand ---------------------------------
 
 left_joint_position_controller:

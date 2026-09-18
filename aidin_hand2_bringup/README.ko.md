@@ -184,7 +184,7 @@ controller_manager parameter 파일은 backend마다 하나입니다. 둘 모두
 | File | Backend | Controllers | Broadcaster rate | Hardware node block |
 |---|---|---|---|---|
 | `controllers.yaml` | 로봇 핸드 | 양손 각 command 4 + broadcaster 2, `joint_state_broadcaster` | `joint_states` 100 Hz, `hand_state` 100 Hz, `hand_diagnostics` 20 Hz | `left_hand_control` · `right_hand_control` |
-| `controllers_mock.yaml` | mock | 양손 각 command 4, `joint_state_broadcaster` | 지정 없음. `joint_states` 500 Hz | 없음 |
+| `controllers_mock.yaml` | mock | 양손 각 command 4, `joint_state_broadcaster` | `joint_states` 100 Hz | 없음 |
 
 `controllers.yaml`의 hardware node block은 [6. Runtime settings](../aidin_hand2_hardware/README.ko.md#6-runtime-settings)의 6개 parameter를 기본값으로
 채워 둔 것입니다. 자기 로봇에 통합할 때는 `controllers.yaml`을 복사하지 말고 [7. Configuration](../aidin_hand2_controllers/README.ko.md#7-configuration)의
