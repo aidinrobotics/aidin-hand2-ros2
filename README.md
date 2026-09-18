@@ -92,15 +92,6 @@ We verify that the wrapper builds and runs on the configuration below.
 | SDK | `aidin_hand2` 0.5.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
 | CAN interface | For the robot hand: USB CAN-FD adapter (SocketCAN), 1 Mbit/s nominal, 5 Mbit/s data phase |
 
-## Lifecycle
-
-Lifecycle describes the robot hand's connection and control state. Read it from `hand_diagnostics.lifecycle`.
-It differs from the controller and hardware component state shown by `ros2 control`.
-Applying commands requires an `active` controller, a `Running` lifecycle and `Succeeded` homing.
-
-Use `run` to start control, `stop` for a quick stop, `home` for homing and `reconnect` to recover communication.
-The [Control guide](docs/ko/05_control_guide.md) explains the states and topic and service commands (in Korean).
-
 ## Documentation
 
 Follow the common guides for installation, the first run and control. Package READMEs provide configuration and detailed references (in Korean).

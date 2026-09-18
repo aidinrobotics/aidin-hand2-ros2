@@ -86,15 +86,6 @@ effort 상한과 filter·gain은 hardware node의 ROS parameter로 설정합니�
 | SDK | `aidin_hand2` 0.5.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
 | CAN interface | 로봇 핸드 구동 시 USB CAN-FD adapter (SocketCAN), nominal 1 Mbit/s, data phase 5 Mbit/s |
 
-## Lifecycle
-
-lifecycle은 로봇 핸드의 연결·제어 상태입니다. `hand_diagnostics.lifecycle` 필드에서 읽으며,
-`ros2 control`이 표시하는 controller·hardware component의 `active` 상태와 구분합니다.
-command를 적용하려면 controller가 `active`, lifecycle이 `Running`, homing이 `Succeeded`여야 합니다.
-
-`run`은 제어 시작, `stop`은 quick stop, `home`은 원점 설정, `reconnect`는 통신 오류 복구를 요청합니다.
-상태별 의미와 실제 topic·service 명령은 [Control guide](docs/ko/05_control_guide.md)에서 이어서 설명합니다.
-
 ## Documentation
 
 설치·첫 실행·제어는 공통 안내를 따라 진행하십시오. package별 README는 설정과 상세 참조를 제공합니다.
