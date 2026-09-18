@@ -183,8 +183,9 @@ joint impedance 제어는 SDK에서 개발 중이므로 사용하지 마십시�
 이때 하위 controller는 chained mode이므로 자신의 `~/cmd` topic 입력을 받지 않습니다.
 
 상위 controller의 topic 이름과 message 타입은 해당 controller의 구현에 따릅니다.
-제공된 [상위 controller skeleton](../../aidin_hand2_examples/README.ko.md)은 목표 입력 subscriber가
-구현되어 있지 않습니다. 사용자 topic 입력을 받으려면 subscriber와 목표 생성 코드를 추가해야 합니다.
+제공된 [상위 controller skeleton](../../aidin_hand2_examples/README.ko.md)은 자기 `~/cmd` topic에
+`sensor_msgs/JointState`를 받고, 알고리즘 자리에서 입력에 0을 곱해 전달합니다. 그 자리를 사용자 알고리즘으로
+바꾸면 됩니다.
 
 ## 4. Read state
 

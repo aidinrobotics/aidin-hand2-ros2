@@ -191,8 +191,8 @@ mock은 controller 연결과 목표값 전달을 확인하는 용도입니다. �
 
 상위 controller를 작성하면 command controller의 reference interface에 목표값을 전달할 수 있습니다.
 사용자 node가 상위 controller의 입력 topic에 목표값을 보내는 경로도 가능합니다.
-입력 topic과 message 타입은 상위 controller가 정의합니다. 제공된 skeleton에는 목표 입력 subscriber가
-없으므로 이 경로를 사용하려면 직접 구현해야 합니다.
+입력 topic과 message 타입은 상위 controller가 정의합니다. 제공된 skeleton은 자기 `~/cmd` topic에
+`sensor_msgs/JointState`를 받아 0을 곱한 값을 전달하므로, 알고리즘 자리만 바꾸면 됩니다.
 chained mode에서는 command controller가 `~/cmd` topic 대신 상위 controller의 입력을 사용합니다.
 
 연결할 reference 이름과 구현·실행 예제는

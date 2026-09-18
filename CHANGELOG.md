@@ -29,6 +29,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
   wrapper's joint order, as the old messages were. A message whose `name` differs in length from
   the field read or repeats a name is dropped with a warning and the controller stays active.
   Publish `sensor_msgs/msg/JointState` to `/{side}_<mode>_controller/cmd`.
+- **The upper controller skeletons take a `~/cmd` `sensor_msgs/JointState` and read state through
+  state interfaces.** They had no command input and subscribed to the `HandState` topic, which put a
+  topic round trip inside the control loop and needed `aidin_hand2_msgs`. Each skeleton now
+  subscribes its own `~/cmd` with the command controllers' name matching, claims the joint,
+  actuator and, with the new `read_tactile` parameter, tactile state interfaces, copies them into
+  member arrays every update, and forwards the input scaled by zero where the algorithm goes. The
+  `hand_state_topic` parameter is gone; `read_tactile` defaults to false because the mock exports
+  no tactile interface. `aidin_hand2_examples` depends on `aidin_hand2_controllers` for the name
+  matching header instead of `aidin_hand2_msgs`.
 - **`CommandState` carries the command echo as flat arrays.** `joint_position_input` is
   `joint_position_input_rad`, `joint_impedance_input` is `joint_impedance_input_rad`,
   `actuator_position_input` is `actuator_position_input_cnt` and `actuator_effort_input` is
