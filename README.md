@@ -8,7 +8,7 @@ A `ros2_control` wrapper for controlling AIDIN Hand Gen2 from ROS 2. Send target
 read state topics, and use services for homing, stopping and recovery. The wrapper provides a mock
 that runs without the robot hand, plus URDF and launch configuration for integration into your robot.
 
-[![version](https://img.shields.io/badge/version-0.5.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.5.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
+[![version](https://img.shields.io/badge/version-0.6.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.6.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
 
 [Install](docs/ko/03_installation.md) | [Documentation](#documentation) | [Changelog](CHANGELOG.md) | [Official Site](https://www.aidinrobotics.co.kr/) | English | [한국어](README.ko.md)
 
@@ -89,7 +89,7 @@ We verify that the wrapper builds and runs on the configuration below.
 | Operating System | Ubuntu 22.04 |
 | ROS 2 | Humble |
 | Control framework | `ros2_control` |
-| SDK | `aidin_hand2` 0.5.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
+| SDK | `aidin_hand2` 0.6.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
 | CAN interface | For the robot hand: USB CAN-FD adapter (SocketCAN), 1 Mbit/s nominal, 5 Mbit/s data phase |
 
 ## Documentation

@@ -11,7 +11,7 @@ find_package(controller_interface REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(realtime_tools REQUIRED)
-find_package(aidin_hand2 0.5 REQUIRED)  # 0.x treats a minor bump as breaking
+find_package(aidin_hand2 0.6 REQUIRED)  # 0.x treats a minor bump as breaking
 
 # One chainable upper controller skeleton per command controller, in a single plugin library
 # named by plugin/aidin_hand2_examples_plugins.xml

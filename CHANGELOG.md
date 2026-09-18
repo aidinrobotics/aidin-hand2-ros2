@@ -7,6 +7,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-18
+
+A command is a `sensor_msgs/JointState` on `~/cmd`, so anything standard can drive the hand and the
+wrapper's joint order is no longer a contract. Both hands are rebuilt from the 260918 CAD revision
+and carry the tactile pads as links. The wrapper is licensed under Apache-2.0 and requires SDK
+0.6.x.
+
 ### Added
 
 - **The documentation defines the ros2_control terms it uses and draws the lifecycle.** A reader
@@ -26,9 +33,24 @@ project adheres to [Semantic Versioning](https://semver.org/).
   rely on and no ROS 2 tool could report one. `LICENSE` and `NOTICE` now sit at the root, the six
   packages declare `Apache-2.0`, and the C++ and launch sources carry an SPDX header. This is the
   license the SDK already uses, so linking the two raises no question.
+- **Each hand carries 17 tactile links on fixed joints, three per finger and two on the palm.**
+  The pads exist on the hardware but nothing in the description said where they were, so a reader
+  had no frame to attach a reading to. They are `{side}_<finger>_tactile_link2` to `link4` and
+  `{side}_palm_tactile_<top|bottom>_link`, and because the joints are fixed they add no actuator
+  and no command interface. Read a pad's pose from TF.
 
 ### Changed
 
+- **Breaking: requires SDK 0.6.x.** `find_package(aidin_hand2 0.6 REQUIRED)` fails at configure
+  time against 0.5.x, because 0.x treats a minor bump as breaking. Install SDK 0.6.0 before
+  building this release; `aidin_hand2.repos` pins it.
+- **Breaking: both hands are rebuilt from the 260918 CAD revision and the meshes move.** The
+  description held geometry from before the revision that added the tactile pads, so the palm mass
+  was 32 g short and the finger roots sat 8.9 mm too low. Meshes are now
+  `meshes/<side>_aidin_hand2/{visual,collision}/`, each file named after the link it draws, and the
+  left hand has its own meshes instead of borrowing the right hand's through a negative scale.
+  Anything referencing `meshes/{visual,collision}/*.STL` by path has to follow. Joint limits are
+  the CAD values, which differ from the measured ones the previous release carried.
 - **Breaking: the four command controllers take `sensor_msgs/JointState` on `~/cmd`.** A command
   used to be a bare `float64[16]` in a message of this repository, so nothing standard could
   publish it and the reader had to know the wrapper's joint order. The controllers now match
