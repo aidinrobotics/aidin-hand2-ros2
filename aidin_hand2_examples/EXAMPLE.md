@@ -45,9 +45,9 @@ members sit in one commented block at the end of each file, in the SDK index ord
 | `actuator_position_cnt_` | 16 | encoder count | `{side}_{actuator}/position_cnt` |
 | `actuator_velocity_rpm_` | 16 | rpm | `{side}_{actuator}/velocity_rpm` |
 | `actuator_current_ma_` | 16 | mA | `{side}_{actuator}/current_ma` |
-| `tactile_finger_` | 5 × 17 | raw count | `{side}_{finger}_sensor/tactile_1..17` |
-| `tactile_palm1_upper_` · `tactile_palm1_lower_` | 20 · 20 | raw count | `{side}_palm_sensor/palm1_upper_1..20` · `palm1_lower_1..20` |
-| `tactile_palm2_` | 18 | raw count | `{side}_palm_sensor/palm2_1..18` |
+| `tactile_finger_` | 5 × 17 | raw value | `{side}_{finger}_sensor/tactile_1..17` |
+| `tactile_palm1_upper_` · `tactile_palm1_lower_` | 20 · 20 | raw value | `{side}_palm_sensor/palm1_upper_1..20` · `palm1_lower_1..20` |
+| `tactile_palm2_` | 18 | raw value | `{side}_palm_sensor/palm2_1..18` |
 
 The tactile interfaces are claimed only when the `read_tactile` parameter is true, because the mock
 exports none and a controller whose state interface is missing fails to activate. With

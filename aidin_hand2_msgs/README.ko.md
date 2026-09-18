@@ -67,15 +67,15 @@ joint 목표는 SDK가 finger별 도달 범위로 투영한 뒤 변환합니다.
 | `actuator_position` | `float64[16]` | encoder count | drive가 보고한 위치 |
 | `actuator_velocity` | `float64[16]` | rpm | drive가 보고한 속도 |
 | `actuator_current` | `float64[16]` | mA | drive가 보고한 전류 |
-| `tactile_thumb` · `tactile_index` · `tactile_middle` · `tactile_ring` · `tactile_baby` | `float64[17]` | 원시 count | finger별 taxel |
-| `tactile_palm1_upper` · `tactile_palm1_lower` | `float64[20]` | 원시 count | palm1 taxel |
-| `tactile_palm2` | `float64[18]` | 원시 count | palm2 taxel |
+| `tactile_thumb` · `tactile_index` · `tactile_middle` · `tactile_ring` · `tactile_baby` | `float64[17]` | raw value | finger별 taxel |
+| `tactile_palm1_upper` · `tactile_palm1_lower` | `float64[20]` | raw value | palm1 taxel |
+| `tactile_palm2` | `float64[18]` | raw value | palm2 taxel |
 | `command_state` | `CommandState` | — | 같은 cycle에 적용된 command. [3.2 CommandState](#32-commandstate) |
 
 `header.stamp` 필드는 SDK가 아직 state를 채우지 않아 `0`일 때만 broadcaster의 update 시각으로
 대체됩니다.
 
-tactile 값은 센서가 전송한 원시 count라 단위도 정규화도 없습니다. 접촉 판정 임계값은 SDK가 기준을
+tactile 값은 센서가 전송한 16-bit raw value라 단위도 정규화도 없습니다. 접촉 판정 임계값은 SDK가 기준을
 제시하지 않으므로, 접촉이 없는 상태를 baseline으로 두고 차이를 보십시오.
 
 ### 3.2 CommandState
