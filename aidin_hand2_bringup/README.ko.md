@@ -145,15 +145,12 @@ controller를 spawn합니다. 자기 launch로 `ros2_control_node`를 실행하�
 
 | Argument | Default | Description |
 |---|---|---|
-| `use_left_hand` | `false` | 왼손 controller를 spawn합니다 |
+| `use_left_hand` | `true` | 왼손 controller를 spawn합니다 |
 | `use_right_hand` | `true` | 오른손 controller를 spawn합니다 |
 | `controller_manager` | `/controller_manager` | 대상 controller_manager node 이름 |
 
-> [!IMPORTANT]
-> `use_left_hand`·`use_right_hand` parameter의 기본값은 오른손만 사용하는 구성으로, 양손을 사용하는 `aidin_hand2.launch.py`와 다릅니다. 두 인자를
-> 항상 명시하십시오.
-
-다음은 왼손 controller만 기본 controller_manager에 올리는 예입니다.
+기본값은 다른 launch 파일과 같이 양손입니다. 다음은 왼손 controller만 기본 controller_manager에 올리는
+예입니다.
 
 ```bash
 ros2 launch aidin_hand2_bringup aidin_hand2_controllers.launch.py \

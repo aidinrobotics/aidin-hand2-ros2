@@ -55,7 +55,7 @@ def generate_launch_description():
     use_right = IfCondition(LaunchConfiguration("use_right_hand"))
 
     return LaunchDescription([
-        DeclareLaunchArgument("use_left_hand", default_value="false"),
+        DeclareLaunchArgument("use_left_hand", default_value="true"),
         DeclareLaunchArgument("use_right_hand", default_value="true"),
         DeclareLaunchArgument("controller_manager", default_value="/controller_manager"),
 
