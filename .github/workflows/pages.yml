@@ -6,7 +6,8 @@ name: Pages
 # the deploy path for one command is not worth it. The cost of committing it is that it can fall
 # behind aidin_hand2_description without anyone noticing, so the first job regenerates it and
 # fails if what is committed no longer matches. That check needs xacro, which is a ROS package
-# and is absent from the runner image, hence the container.
+# and is absent from the runner image, hence the container. ros-base does not carry xacro
+# either, so it is installed on top rather than pulling the far larger desktop image.
 #
 # The meshes are not committed: aidin_hand2_description already holds the same bytes, and a
 # second copy would be 45 MB for everyone cloning the ROS packages. They are copied into the
@@ -37,6 +38,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Install xacro
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ros-humble-xacro
 
       # The xacro resolves $(find aidin_hand2_description), so the package has to be on the
       # ament index. It installs files and builds no code, so this takes seconds.
