@@ -14,6 +14,18 @@ AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. con
 
 </div>
 
+## System requirements
+
+아래는 wrapper의 빌드·실행이 검증된 구성입니다.
+
+| Component | Requirement |
+|---|---|
+| Operating System | Ubuntu 22.04 |
+| ROS 2 | Humble |
+| Control framework | `ros2_control` |
+| SDK | `aidin_hand2` 0.6.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
+| CAN interface | 로봇 핸드 구동 시 USB CAN-FD adapter (SocketCAN), nominal 1 Mbit/s, data phase 5 Mbit/s |
+
 ## Architecture
 
 [ros2_control](https://control.ros.org/humble/index.html)을 기반으로 로봇 핸드 제어를 위한 controller와 상태 관측을 위한 broadcaster를 제공합니다.
@@ -74,17 +86,13 @@ effort 상한과 filter·gain은 hardware node의 ROS parameter로 설정합니�
 | 실행 중인 로봇 핸드 제어 | [Control guide](docs/ko/05_control_guide.md) — 상태 확인 → homing → 목표 전송 → 관측·정지 |
 | 기존 로봇에 통합 | 단독 [Bringup](docs/ko/04_bringup.md) 확인 → [Add to your robot](aidin_hand2_bringup/README.ko.md#7-add-to-your-robot) |
 
-## System requirements
+문서에서 쓰는 관절 이름과 회전 방향은 아래 뷰어에서 직접 움직여 확인할 수 있습니다.
 
-아래는 wrapper의 빌드·실행이 검증된 구성입니다.
+<div align="center">
 
-| Component | Requirement |
-|---|---|
-| Operating System | Ubuntu 22.04 |
-| ROS 2 | Humble |
-| Control framework | `ros2_control` |
-| SDK | `aidin_hand2` 0.6.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
-| CAN interface | 로봇 핸드 구동 시 USB CAN-FD adapter (SocketCAN), nominal 1 Mbit/s, data phase 5 Mbit/s |
+<a href="https://aidinrobotics.github.io/aidin-hand2-ros2/"><img src="docs/assets/viewer_preview.webp" alt="AIDIN Hand Gen2 joint viewer"></a>
+
+</div>
 
 ## Documentation
 

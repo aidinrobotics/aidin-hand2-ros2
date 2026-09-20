@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIDIN Hand Gen2 viewer</title>
+<link rel="stylesheet" href="tokens.css">
+<style>@font-face {
+    font-family: "Pretendard Variable";
+    src: url("vendor/pretendard-subset.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  :root {
+    --sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+            "Apple SD Gothic Neo", "Segoe UI", system-ui, sans-serif;
+
+    --font-size-base: clamp(8.5px, 1.62vh, 15px);
+    --rail: min(22.4em, 24vw);
+
+    --r-lg: 14px;
+    --r-md: 10px;
+    --r-sm: 7px;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .04), 0 0 0 .5px rgba(0, 0, 0, .04);
+    --shadow-2: 0 6px 20px rgba(0, 0, 0, .10), 0 0 0 .5px rgba(0, 0, 0, .05);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: grid;
+    grid-template-columns: var(--rail) 1fr var(--rail);
+    grid-template-rows: auto 1fr;
+    background: var(--bg-0);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: var(--font-size-base);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    height: 3.3em;
+    padding-left: 1.1em;
+
+    background: color-mix(in srgb, var(--bg-0) 72%, var(--bg-1));
+    border-bottom: .5px solid var(--border-strong);
+  }
+  a.brand {
+    display: flex;
+    align-items: center;
+    gap: 1.1em;
+    text-decoration: none;
+    color: inherit;
+  }
+  .brand img { height: 1.5em; display: block; }
+
+  .brand span {
+    align-self: stretch;
+    display: flex;
+    align-items: flex-end;
+    padding-left: 1.1em;
+    border-left: .5px solid var(--border-strong);
+    font-size: 1.32em;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -.3px;
+  }
+
+  .panel {
+    overflow-y: auto;
+    padding: 0.8em;
+    background: var(--bg-0);
+  }
+  .panel:first-of-type { border-right: .5px solid var(--border); }
+  .panel:last-of-type { border-left: .5px solid var(--border); }
+
+  .panel h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.55em;
+    margin: 0 0 0.7em;
+    padding: 0 0.13em;
+    font-size: 1.12em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: var(--fg);
+  }
+  .panel h2 .name { margin-right: auto; }
+
+  .panel h2 .jog, .panel h2 > button { margin-top: 0.22em; }
+  .panel h2 > button {
+    display: grid;
+    place-items: center;
+    width: 1.75em; height: 1.75em;
+    flex: none;
+    border: none;
+    border-radius: 50%;
+    background: var(--bg-1);
+    box-shadow: var(--shadow-1);
+    color: var(--fg-dim);
+    cursor: pointer;
+    transition: background .12s, color .12s, transform .06s, box-shadow .12s;
+  }
+  .panel h2 > button svg { width: 0.95em; height: 0.95em; }
+  .panel h2 > button:hover { background: #fff; color: var(--accent); }
+  .panel h2 > button:active { transform: scale(.9); box-shadow: none; background: var(--bg-3); }
+
+  .jog { display: flex; align-items: center; gap: 0.45em; }
+  .jog-label {
+    font-size: 0.66em;
+    font-weight: 600;
+    letter-spacing: .5px;
+    color: var(--fg-mut);
+  }
+  .seg {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: var(--r-sm);
+    background: var(--bg-2);
+    box-shadow: inset 0 0 0 .5px var(--border-strong);
+  }
+  .seg button {
+    border: none;
+    border-radius: calc(var(--r-sm) - 2px);
+    background: none;
+    color: var(--fg-dim);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.7em;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    line-height: 1;
+    padding: 0.32em 0.5em;
+    transition: background .12s, color .12s, box-shadow .12s;
+  }
+  .seg button:hover { color: var(--fg); }
+
+  .seg button[aria-checked="true"] {
+    background: var(--bg-1);
+    box-shadow: var(--shadow-1);
+    color: var(--fg);
+  }
+
+  .group {
+    margin-bottom: 0.7em;
+    padding: 0.5em 0.5em 0.4em 0.8em;
+    background: var(--bg-1);
+    border-left: 0.2em solid var(--border-strong);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-1);
+  }
+  .group h3 {
+    margin: 0 0 0.27em 0.13em;
+    font-size: 0.82em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--fg);
+  }
+
+  .jogrow {
+    display: grid;
+    grid-template-columns: 3.9em 1.35em 1fr 1.35em 2.7em auto auto;
+    align-items: center;
+    gap: 0.2em;
+    padding: 0.13em;
+    border-radius: 0.27em;
+    min-height: 1.8em;
+  }
+  .jogrow:hover { background: var(--bg-2); }
+  .jr-label {
+    color: var(--fg-dim);
+    font-size: 0.85em;
+    font-weight: 700;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .jr-step, .jr-zero {
+    background: var(--bg-2);
+    border: none;
+    border-radius: var(--r-sm);
+    box-shadow: inset 0 0 0 .5px var(--border-strong);
+    color: var(--fg);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0;
+    height: 1.35em;
+    transition: background .12s, transform .06s, box-shadow .12s;
+  }
+  .jr-zero {
+    display: grid;
+    place-items: center;
+    width: 1.35em;
+    margin-left: 0.2em;
+    color: var(--fg-dim);
+  }
+  .jr-zero svg { width: 0.75em; height: 0.75em; }
+  .jr-step:hover, .jr-zero:hover { background: #fff; color: var(--accent); }
+  .jr-step:active, .jr-zero:active { transform: scale(.94); background: var(--bg-3); }
+
+  .jr-slider {
+    --fill-from: 0%;
+    --fill-to: 0%;
+    --open-from: 0%;
+    --open-to: 100%;
+    --shut: #d3d3da;
+    --open: color-mix(in srgb, var(--accent) 34%, var(--bg-2));
+    --track: linear-gradient(to right,
+        var(--shut) 0, var(--shut) var(--open-from),
+        var(--open) var(--open-from), var(--open) var(--fill-from),
+        var(--accent) var(--fill-from), var(--accent) var(--fill-to),
+        var(--open) var(--fill-to), var(--open) var(--open-to),
+        var(--shut) var(--open-to), var(--shut) 100%);
+    width: 100%;
+    height: 1.2em;
+    font-size: inherit;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  .jr-slider::-webkit-slider-runnable-track {
+    height: 0.27em;
+    border-radius: 0.14em;
+    background: var(--track);
+    box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .10);
+  }
+  .jr-slider::-webkit-slider-thumb {
+    appearance: none;
+    margin-top: -0.225em;
+    width: 0.72em; height: 0.72em;
+    border: none;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .30), 0 0 0 .5px rgba(60, 60, 67, .30);
+    transition: transform .06s;
+  }
+  .jr-slider:active::-webkit-slider-thumb { transform: scale(1.12); }
+  .jr-slider::-moz-range-track {
+    height: 0.27em; border-radius: 0.14em; background: var(--track);
+    box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .10);
+  }
+  .jr-slider::-moz-range-thumb {
+    width: 0.72em; height: 0.72em; border: none; border-radius: 50%; background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .30), 0 0 0 .5px rgba(60, 60, 67, .30);
+  }
+
+  .jr-value {
+    background: var(--bg-2);
+    border: none;
+    border-radius: var(--r-sm);
+    box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .08);
+    color: var(--fg);
+    font: inherit;
+    font-size: 0.84em;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    padding: 0.13em 0.33em;
+    min-width: 0;
+  }
+  input.jr-value { cursor: text; }
+  input.jr-value:focus {
+    background: #fff;
+    outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent);
+    outline-offset: -1px;
+  }
+  .jr-unit { color: var(--fg-mut); font-size: 0.76em; padding-left: 2px; }
+
+  .jogrow.coupled .jr-value {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--accent) 35%, transparent);
+    color: var(--accent);
+    font-weight: 600;
+    cursor: help;
+  }
+
+  .jogrow.passive .jr-passive {
+    grid-column: 2 / 5;
+    text-align: center;
+    color: var(--fg-dim);
+    font-size: 0.8em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+  }
+  .jogrow.passive .jr-value { background: transparent; box-shadow: none; color: var(--fg-dim); }
+
+  .stage { position: relative; background: var(--viewer-bg); }
+  #view { display: block; width: 100%; height: 100%; }
+
+  #reset-view {
+    position: absolute;
+    top: var(--s3);
+    left: var(--s3);
+    display: grid;
+    place-items: center;
+    width: 38px; height: 38px;
+    border: none;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--bg-1) 85%, transparent);
+    backdrop-filter: saturate(180%) blur(12px);
+    box-shadow: var(--shadow-1);
+    color: var(--fg-dim);
+    cursor: pointer;
+    transition: background .12s, color .12s, transform .06s;
+  }
+  #reset-view:hover { background: #fff; color: var(--accent); }
+  #reset-view:active { transform: scale(.92); }
+
+  .axes {
+    position: absolute;
+    right: var(--s3);
+    top: var(--s3);
+    margin: 0;
+    padding: 7px 10px;
+    list-style: none;
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--bg-1) 80%, transparent);
+    backdrop-filter: saturate(180%) blur(12px);
+    box-shadow: var(--shadow-1);
+    font-size: 0.78em;
+  }
+  .axes li { display: flex; align-items: center; gap: 6px; color: var(--fg-dim); line-height: 1.7; }
+  .axes i { width: 13px; height: 3px; display: inline-block; border-radius: 2px; }
+  .axes .x { background: #ff0000; }
+  .axes .y { background: #00c800; }
+  .axes .z { background: #0040ff; }
+
+  #status {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--fg-mut);
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.min.js",
+    "three/examples/jsm/loaders/STLLoader.js": "./vendor/STLLoader.js",
+    "three/examples/jsm/loaders/ColladaLoader.js": "./vendor/ColladaLoader-stub.js",
+    "three/examples/jsm/controls/OrbitControls.js": "./vendor/OrbitControls.js"
+  }
+}
+</script>
+</head>
+<body>
+<header>
+  <a class="brand" href="https://www.aidinrobotics.co.kr/">
+    <img src="aidin-robotics-logo.png" alt="AIDIN ROBOTICS">
+    <span>AIDIN Hand Gen2</span>
+  </a>
+</header>
+
+<aside class="panel" id="left-panel"></aside>
+
+<div class="stage">
+  <canvas id="view"></canvas>
+
+  <button id="reset-view" title="시점을 처음으로">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 10.5 12 3l9 7.5"/>
+      <path d="M5.5 9.7V20h13V9.7"/>
+    </svg>
+  </button>
+  <ul class="axes">
+    <li><i class="x"></i>X</li>
+    <li><i class="y"></i>Y</li>
+    <li><i class="z"></i>Z</li>
+  </ul>
+  <p id="status">모델을 불러오는 중입니다…</p>
+</div>
+
+<aside class="panel" id="right-panel"></aside>
+
+<script type="module" src="viewer.js"></script>
+</body>
+</html>

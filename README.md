@@ -14,6 +14,18 @@ that runs without the robot hand, plus URDF and launch configuration for integra
 
 </div>
 
+## System requirements
+
+We verify that the wrapper builds and runs on the configuration below.
+
+| Component | Requirement |
+|---|---|
+| Operating System | Ubuntu 22.04 |
+| ROS 2 | Humble |
+| Control framework | `ros2_control` |
+| SDK | `aidin_hand2` 0.6.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
+| CAN interface | For the robot hand: USB CAN-FD adapter (SocketCAN), 1 Mbit/s nominal, 5 Mbit/s data phase |
+
 ## Architecture
 
 Built on [ros2_control](https://control.ros.org/humble/index.html), this wrapper provides controllers for commanding the robot hand and broadcasters for observing its state.
@@ -80,17 +92,14 @@ The detailed guides are currently in Korean.
 | Control a running robot hand | [Control guide](docs/ko/05_control_guide.md) — Check state → home → send targets → observe and stop |
 | Integrate into your robot | Verify standalone [Bringup](docs/ko/04_bringup.md) → [Add to your robot](aidin_hand2_bringup/README.ko.md#7-add-to-your-robot) |
 
-## System requirements
+The joint names this documentation uses and each joint's rotation direction can be
+checked by moving them in the viewer below.
 
-We verify that the wrapper builds and runs on the configuration below.
+<div align="center">
 
-| Component | Requirement |
-|---|---|
-| Operating System | Ubuntu 22.04 |
-| ROS 2 | Humble |
-| Control framework | `ros2_control` |
-| SDK | `aidin_hand2` 0.6.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
-| CAN interface | For the robot hand: USB CAN-FD adapter (SocketCAN), 1 Mbit/s nominal, 5 Mbit/s data phase |
+<a href="https://aidinrobotics.github.io/aidin-hand2-ros2/"><img src="docs/assets/viewer_preview.webp" alt="AIDIN Hand Gen2 joint viewer"></a>
+
+</div>
 
 ## Documentation
 

@@ -1,0 +1,84 @@
+name: Pages
+
+# Publishes viewer/ as the joint viewer at https://aidinrobotics.github.io/aidin-hand2-ros2/.
+#
+# viewer/model/*.urdf is committed because a browser cannot run xacro and putting a ROS image in
+# the deploy path for one command is not worth it. The cost of committing it is that it can fall
+# behind aidin_hand2_description without anyone noticing, so the first job regenerates it and
+# fails if what is committed no longer matches. That check needs xacro, which is a ROS package
+# and is absent from the runner image, hence the container.
+#
+# The meshes are not committed: aidin_hand2_description already holds the same bytes, and a
+# second copy would be 45 MB for everyone cloning the ROS packages. They are copied into the
+# artifact here instead, so the published viewer follows the geometry automatically.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# deploy-pages needs these; the checks alone do not, but the token is shared by both jobs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. Cancelling a run in progress would leave the site half replaced.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  model:
+    name: viewer URDF matches the xacro
+    runs-on: ubuntu-24.04
+    container: ros:humble-ros-base
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # The xacro resolves $(find aidin_hand2_description), so the package has to be on the
+      # ament index. It installs files and builds no code, so this takes seconds.
+      - name: Build the description package
+        shell: bash
+        run: |
+          . /opt/ros/humble/setup.bash
+          colcon build --packages-select aidin_hand2_description
+
+      - name: Check
+        shell: bash
+        run: |
+          . /opt/ros/humble/setup.bash
+          . install/setup.bash
+          ./viewer/build-model --check
+
+  deploy:
+    name: deploy to Pages
+    needs: model
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Add the meshes the URDF asks for
+        run: |
+          mkdir -p viewer/model/meshes/visual
+          cp aidin_hand2_description/meshes/*_aidin_hand2/visual/*.STL viewer/model/meshes/visual/
+          echo "$(ls viewer/model/meshes/visual | wc -l) meshes, $(du -sh viewer | cut -f1) total"
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: viewer
+
+      - name: Deploy
+        id: deploy
+        uses: actions/deploy-pages@v4

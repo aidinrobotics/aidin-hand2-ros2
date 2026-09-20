@@ -1,0 +1,689 @@
+<?xml version="1.0"?>
+<!--
+  GENERATED from aidin_hand2_description by viewer/build-model.
+  Do not edit. The workflow in .github/workflows/pages.yml fails when this file no longer
+  matches the xacro.
+
+  Visual geometry only, for the browser viewer. Collision, inertial and ros2_control are
+  dropped, and mesh paths name the viewer's package rather than the ROS package.
+-->
+<robot name="aidin_hand2_right">
+  <link name="right_hand_base_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_hand_base_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_palm_tactile_top_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_palm_tactile_top_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_palm_tactile_bottom_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_palm_tactile_bottom_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="right_palm_tactile_top_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0.0305 0 0.0669" />
+    <parent link="right_hand_base_link" />
+    <child link="right_palm_tactile_top_link" />
+    <axis xyz="0 0 0" />
+  </joint>
+  <joint name="right_palm_tactile_bottom_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0.0305 -0.0205 0.0289" />
+    <parent link="right_hand_base_link" />
+    <child link="right_palm_tactile_bottom_link" />
+    <axis xyz="0 0 0" />
+  </joint>
+  <link name="right_thumb_link0">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_thumb_link0.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_thumb_link1">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_thumb_link1.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_thumb_link2">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_thumb_link2.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_thumb_link3">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_thumb_link3.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_thumb_link4">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_thumb_link4.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_thumb_tactile_link2">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_thumb_tactile_link2.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_thumb_tactile_link3">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_thumb_tactile_link3.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_thumb_tactile_link4">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_thumb_tactile_link4.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="right_thumb_joint0" type="revolute">
+    <origin rpy="-1.5708 0 0.090448" xyz="0.02105 0.023 0.0369" />
+    <parent link="right_hand_base_link" />
+    <child link="right_thumb_link0" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.9084" velocity="1.57" />
+  </joint>
+  <joint name="right_thumb_joint1" type="revolute">
+    <origin rpy="0 0.3155 -1.5708" xyz="0 0 0.035" />
+    <parent link="right_thumb_link0" />
+    <child link="right_thumb_link1" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.2645" velocity="1.57" />
+  </joint>
+  <joint name="right_thumb_joint2" type="revolute">
+    <origin rpy="0 0 -1.5708" xyz="0 0 0" />
+    <parent link="right_thumb_link1" />
+    <child link="right_thumb_link2" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="-0.63668" upper="0.63668" velocity="1.57" />
+  </joint>
+  <joint name="right_thumb_joint3" type="revolute">
+    <origin rpy="0 0.046129 1.5708" xyz="0 0.0069 0.0705" />
+    <parent link="right_thumb_link2" />
+    <child link="right_thumb_link3" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.1019" velocity="1.57" />
+  </joint>
+  <joint name="right_thumb_joint4" type="revolute">
+    <origin rpy="0 -0.076672 0" xyz="0 0 0.04124" />
+    <parent link="right_thumb_link3" />
+    <child link="right_thumb_link4" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.4479" velocity="1.57" />
+  </joint>
+  <joint name="right_thumb_tactile_joint2" type="fixed">
+    <origin rpy="0 0.0523598775598231 1.5707963267949" xyz="0 0.024139399339534 0.0310143898850769" />
+    <parent link="right_thumb_link2" />
+    <child link="right_thumb_tactile_link2" />
+    <axis xyz="0.933097971633087 0 0.359622267572822" />
+  </joint>
+  <joint name="right_thumb_tactile_joint3" type="fixed">
+    <origin rpy="0 -0.191986217719377 0" xyz="0.0106632417851801 0 0.0210317263835529" />
+    <parent link="right_thumb_link3" />
+    <child link="right_thumb_tactile_link3" />
+    <axis xyz="0.985644595148996 0 0.168833444712748" />
+  </joint>
+  <joint name="right_thumb_tactile_joint4" type="fixed">
+    <origin rpy="0 0 0" xyz="0.00149999999999995 0 0.01" />
+    <parent link="right_thumb_link4" />
+    <child link="right_thumb_tactile_link4" />
+    <axis xyz="0.959672924339344 0 0.2811189753289" />
+  </joint>
+  <link name="right_index_link1">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_index_link1.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.772549019607843 0.756862745098039 0.737254901960784 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_index_link2">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_index_link2.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_index_link3">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_index_link3.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_index_link4">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_index_link4.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_index_tactile_link2">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_index_tactile_link2.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_index_tactile_link3">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_index_tactile_link3.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_index_tactile_link4">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_index_tactile_link4.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="right_index_joint1" type="revolute">
+    <origin rpy="0 0 -1.5708" xyz="0.0129 0.0345 0.1239" />
+    <parent link="right_hand_base_link" />
+    <child link="right_index_link1" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="-0.5236" upper="0.5236" velocity="1.57" />
+  </joint>
+  <joint name="right_index_joint2" type="revolute">
+    <origin rpy="0 0 1.5708" xyz="0 0 0" />
+    <parent link="right_index_link1" />
+    <child link="right_index_link2" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.6581" velocity="1.57" />
+  </joint>
+  <joint name="right_index_joint3" type="revolute">
+    <origin rpy="0 0.018277 0" xyz="0.0021114 0 0.045191" />
+    <parent link="right_index_link2" />
+    <child link="right_index_link3" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.5533" velocity="1.57" />
+  </joint>
+  <joint name="right_index_joint4" type="revolute">
+    <origin rpy="0 -0.059717 0" xyz="0 0 0.0275" />
+    <parent link="right_index_link3" />
+    <child link="right_index_link4" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.6319" velocity="1.57" />
+  </joint>
+  <joint name="right_index_tactile_joint2" type="fixed">
+    <origin rpy="0 -0.180205000269536 0" xyz="0.0119225617897384 0 0.0187385496303734" />
+    <parent link="right_index_link2" />
+    <child link="right_index_tactile_link2" />
+    <axis xyz="0 0 0" />
+  </joint>
+  <joint name="right_index_tactile_joint3" type="fixed">
+    <origin rpy="0 -0.0182770454595492 0" xyz="0.00453544006933306 0 0.00781843299808993" />
+    <parent link="right_index_link3" />
+    <child link="right_index_tactile_link3" />
+    <axis xyz="0 0 0" />
+  </joint>
+  <joint name="right_index_tactile_joint4" type="fixed">
+    <origin rpy="0 0.0414403956381318 0" xyz="-0.000950000000000003 0 0.00450000000000003" />
+    <parent link="right_index_link4" />
+    <child link="right_index_tactile_link4" />
+    <axis xyz="0 0 0" />
+  </joint>
+  <link name="right_middle_link1">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_middle_link1.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.772549019607843 0.756862745098039 0.737254901960784 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_middle_link2">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_middle_link2.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_middle_link3">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_middle_link3.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_middle_link4">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_middle_link4.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_middle_tactile_link2">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_middle_tactile_link2.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_middle_tactile_link3">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_middle_tactile_link3.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_middle_tactile_link4">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_middle_tactile_link4.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="right_middle_joint1" type="revolute">
+    <origin rpy="0 0 -1.5708" xyz="0.0129 0.0115 0.1239" />
+    <parent link="right_hand_base_link" />
+    <child link="right_middle_link1" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="-0.5236" upper="0.5236" velocity="1.57" />
+  </joint>
+  <joint name="right_middle_joint2" type="revolute">
+    <origin rpy="0 0 1.5708" xyz="0 0 0" />
+    <parent link="right_middle_link1" />
+    <child link="right_middle_link2" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.6581" velocity="1.57" />
+  </joint>
+  <joint name="right_middle_joint3" type="revolute">
+    <origin rpy="0 0.018277 0" xyz="0.0021114 0 0.045191" />
+    <parent link="right_middle_link2" />
+    <child link="right_middle_link3" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.5533" velocity="1.57" />
+  </joint>
+  <joint name="right_middle_joint4" type="revolute">
+    <origin rpy="0 -0.059717 0" xyz="0 0 0.0275" />
+    <parent link="right_middle_link3" />
+    <child link="right_middle_link4" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.6319" velocity="1.57" />
+  </joint>
+  <joint name="right_middle_tactile_joint2" type="fixed">
+    <origin rpy="0 -0.180205000269536 0" xyz="0.0119225617897384 0 0.0187385496303734" />
+    <parent link="right_middle_link2" />
+    <child link="right_middle_tactile_link2" />
+    <axis xyz="0 0 0" />
+  </joint>
+  <joint name="right_middle_tactile_joint3" type="fixed">
+    <origin rpy="0 -0.0698131700797666 0" xyz="0.00453544006933306 0 0.00781843299808993" />
+    <parent link="right_middle_link3" />
+    <child link="right_middle_tactile_link3" />
+    <axis xyz="0 0 0" />
+  </joint>
+  <joint name="right_middle_tactile_joint4" type="fixed">
+    <origin rpy="0 0.0414403956381318 0" xyz="-0.000950000000000006 0 0.0045" />
+    <parent link="right_middle_link4" />
+    <child link="right_middle_tactile_link4" />
+    <axis xyz="0 0 0" />
+  </joint>
+  <link name="right_ring_link1">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_ring_link1.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.772549019607843 0.756862745098039 0.737254901960784 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_ring_link2">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_ring_link2.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_ring_link3">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_ring_link3.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_ring_link4">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_ring_link4.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_ring_tactile_link2">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_ring_tactile_link2.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_ring_tactile_link3">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_ring_tactile_link3.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_ring_tactile_link4">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_ring_tactile_link4.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="right_ring_joint1" type="revolute">
+    <origin rpy="0 0 -1.5708" xyz="0.0129 -0.0115 0.1239" />
+    <parent link="right_hand_base_link" />
+    <child link="right_ring_link1" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="-0.5236" upper="0.5236" velocity="1.57" />
+  </joint>
+  <joint name="right_ring_joint2" type="revolute">
+    <origin rpy="0 0.046688 1.5708" xyz="0 0 0" />
+    <parent link="right_ring_link1" />
+    <child link="right_ring_link2" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.6581" velocity="1.57" />
+  </joint>
+  <joint name="right_ring_joint3" type="revolute">
+    <origin rpy="0 -0.028411 0" xyz="0 0 0.04524" />
+    <parent link="right_ring_link2" />
+    <child link="right_ring_link3" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.5533" velocity="1.57" />
+  </joint>
+  <joint name="right_ring_joint4" type="revolute">
+    <origin rpy="0 -0.059717 0" xyz="0 0 0.0275" />
+    <parent link="right_ring_link3" />
+    <child link="right_ring_link4" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.6319" velocity="1.57" />
+  </joint>
+  <joint name="right_ring_tactile_joint2" type="fixed">
+    <origin rpy="0 -0.226892802759263 0" xyz="0.0110350261338632 0 0.0192745666645207" />
+    <parent link="right_ring_link2" />
+    <child link="right_ring_tactile_link2" />
+    <axis xyz="0 0 0" />
+  </joint>
+  <joint name="right_ring_tactile_joint3" type="fixed">
+    <origin rpy="0 -0.0698131700797666 0" xyz="0.00453544006933306 0 0.00781843299808993" />
+    <parent link="right_ring_link3" />
+    <child link="right_ring_tactile_link3" />
+    <axis xyz="0 0 0" />
+  </joint>
+  <joint name="right_ring_tactile_joint4" type="fixed">
+    <origin rpy="0 0 0" xyz="-0.00095000000000001 0 0.0045" />
+    <parent link="right_ring_link4" />
+    <child link="right_ring_tactile_link4" />
+    <axis xyz="0 0 0" />
+  </joint>
+  <link name="right_baby_link1">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_baby_link1.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.772549019607843 0.756862745098039 0.737254901960784 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_baby_link2">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_baby_link2.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_baby_link3">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_baby_link3.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_baby_link4">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_baby_link4.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_baby_tactile_link2">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_baby_tactile_link2.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_baby_tactile_link3">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_baby_tactile_link3.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <link name="right_baby_tactile_link4">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0" />
+      <geometry>
+        <mesh filename="package://viewer_model/meshes/visual/right_baby_tactile_link4.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="right_baby_joint1" type="revolute">
+    <origin rpy="0 0 -1.5708" xyz="0.0129 -0.0345 0.1239" />
+    <parent link="right_hand_base_link" />
+    <child link="right_baby_link1" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="-0.5236" upper="0.5236" velocity="1.57" />
+  </joint>
+  <joint name="right_baby_joint2" type="revolute">
+    <origin rpy="0 0.046688 1.5708" xyz="0 0 0" />
+    <parent link="right_baby_link1" />
+    <child link="right_baby_link2" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.6581" velocity="1.57" />
+  </joint>
+  <joint name="right_baby_joint3" type="revolute">
+    <origin rpy="0 -0.028411 0" xyz="0 0 0.04524" />
+    <parent link="right_baby_link2" />
+    <child link="right_baby_link3" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.5533" velocity="1.57" />
+  </joint>
+  <joint name="right_baby_joint4" type="revolute">
+    <origin rpy="0 -0.059717 0" xyz="0 0 0.0275" />
+    <parent link="right_baby_link3" />
+    <child link="right_baby_link4" />
+    <axis xyz="0 1 0" />
+    <limit effort="1.2" lower="0" upper="1.6319" velocity="1.57" />
+  </joint>
+  <joint name="right_baby_tactile_joint2" type="fixed">
+    <origin rpy="0 -0.226892802759263 0" xyz="0.0110350261338632 0 0.0192745666645207" />
+    <parent link="right_baby_link2" />
+    <child link="right_baby_tactile_link2" />
+    <axis xyz="0 0 0" />
+  </joint>
+  <joint name="right_baby_tactile_joint3" type="fixed">
+    <origin rpy="0 -0.0698131700797666 0" xyz="0.00453544006933306 0 0.00781843299808993" />
+    <parent link="right_baby_link3" />
+    <child link="right_baby_tactile_link3" />
+    <axis xyz="0 0 0" />
+  </joint>
+  <joint name="right_baby_tactile_joint4" type="fixed">
+    <origin rpy="0 0.0414403956381318 0" xyz="-0.000950000000000006 0 0.0045" />
+    <parent link="right_baby_link4" />
+    <child link="right_baby_tactile_link4" />
+    <axis xyz="0 0 0" />
+  </joint>
+</robot>

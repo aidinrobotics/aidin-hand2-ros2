@@ -1,0 +1,24 @@
+:root {
+
+  --bg-0: #dde3ec;
+  --bg-1: #ffffff;
+  --bg-2: #f2f2f7;
+  --bg-3: #e3e3e8;
+
+  --fg: #000000;
+  --fg-dim: rgba(60, 60, 67, .74);
+  --fg-mut: rgba(60, 60, 67, .52);
+
+  --border: rgba(60, 60, 67, .09);
+  --border-strong: rgba(60, 60, 67, .18);
+
+  --accent: #ff3b30;
+  --accent-dim: #d70015;
+  --on-accent: #ffffff;
+
+  --viewer-bg: #eef1f6;
+
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, Menlo, monospace;
+}

@@ -1,0 +1,134 @@
+#!/usr/bin/env python3
+"""Resolve the description's xacro into the plain URDF the static viewer loads.
+
+A browser cannot run xacro, so the viewer needs a resolved file. Generating it in CI would put
+a ROS 2 image in the deploy path for one command, so the result is committed and --check
+compares it against a fresh run. That is what keeps it from going stale silently.
+
+The viewer draws visual geometry only, so collision, inertial and the ros2_control block are
+dropped. That also keeps the --check diff readable when the geometry changes.
+
+    viewer/build-model            # write viewer/model/{right,left}.urdf and the meshes
+    viewer/build-model --check    # exit 1 if the committed URDF is stale
+"""
+
+import re
+import shutil
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+# .../aidin-hand2-ros2/viewer/build-model
+REPO = Path(__file__).resolve().parents[1]
+DESCRIPTION = REPO / 'aidin_hand2_description'
+VIEWER_MODEL = REPO / 'viewer/model'
+
+# urdf-loader resolves package:// through its own map, so the package name is the viewer's, not
+# the ROS package's. The meshes sit beside the URDF in the deployed artifact.
+VIEWER_PACKAGE = 'viewer_model'
+
+HEADER = """\
+<!--
+  GENERATED from aidin_hand2_description by viewer/build-model.
+  Do not edit. The workflow in .github/workflows/pages.yml fails when this file no longer
+  matches the xacro.
+
+  Visual geometry only, for the browser viewer. Collision, inertial and ros2_control are
+  dropped, and mesh paths name the viewer's package rather than the ROS package.
+-->
+"""
+
+
+def resolve(side):
+    """Run xacro with only one hand enabled and return the parsed tree."""
+    other = 'right' if side == 'left' else 'left'
+    result = subprocess.run(
+        ['xacro', str(DESCRIPTION / 'urdf/aidin_hand2.urdf.xacro'), f'use_{other}_hand:=false'],
+        capture_output=True, text=True)
+    if result.returncode != 0:
+        sys.exit(f'xacro failed for the {side} hand:\n{result.stderr}')
+    return ET.fromstring(result.stdout)
+
+
+def strip(root, side):
+    """Keep the visual half of one hand and point its meshes at the viewer's package."""
+    for block in root.findall('ros2_control') + root.findall('transmission'):
+        root.remove(block)
+
+    keep = f'{side}_'
+    for link in list(root.findall('link')):
+        if not link.get('name').startswith(keep):     # the world link the macro attaches to
+            root.remove(link)
+            continue
+        for tag in ('collision', 'inertial'):
+            for node in link.findall(tag):
+                link.remove(node)
+
+    # The macro attaches the hand to a world link that is gone with the other hand, so the joint
+    # holding it there goes too and hand_base_link becomes the root. A joint left pointing at a
+    # missing parent makes the file invalid.
+    names = {link.get('name') for link in root.findall('link')}
+    for joint in list(root.findall('joint')):
+        if joint.find('parent').get('link') not in names:
+            root.remove(joint)
+
+    for mesh in root.iter('mesh'):
+        mesh.set('filename', re.sub(r'^package://[^/]+/meshes/[^/]+/visual/',
+                                    f'package://{VIEWER_PACKAGE}/meshes/visual/',
+                                    mesh.get('filename')))
+    root.set('name', f'aidin_hand2_{side}')
+    return root
+
+
+def render(side):
+    root = strip(resolve(side), side)
+    ET.indent(root, '  ')
+    return '<?xml version="1.0"?>\n' + HEADER + ET.tostring(root, encoding='unicode') + '\n'
+
+
+def copy_meshes():
+    target = VIEWER_MODEL / 'meshes/visual'
+    if target.exists():
+        shutil.rmtree(target)
+    target.mkdir(parents=True)
+
+    count = 0
+    for side in ('right', 'left'):
+        source = DESCRIPTION / f'meshes/{side}_aidin_hand2/visual'
+        if not source.is_dir():
+            sys.exit(f'no visual meshes at {source}')
+        for mesh in sorted(source.iterdir()):
+            shutil.copy2(mesh, target / mesh.name)
+            count += 1
+    print(f'copied {count} meshes into {target.relative_to(REPO)}')
+
+
+def main():
+    check = '--check' in sys.argv[1:]
+    stale = []
+    for side in ('right', 'left'):
+        path = VIEWER_MODEL / f'{side}.urdf'
+        text = render(side)
+        if check:
+            if not path.exists() or path.read_text() != text:
+                stale.append(path)
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
+            print(f'wrote {path.relative_to(REPO)}')
+
+    if not check:
+        copy_meshes()
+
+    if check:
+        for path in stale:
+            print(f'  STALE  {path.relative_to(REPO)}')
+        print(f'{len(stale)} file(s) no longer match the xacro'
+              if stale else 'both files match the xacro')
+        return 1 if stale else 0
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

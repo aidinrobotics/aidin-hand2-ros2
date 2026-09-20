@@ -7,3 +7,7 @@ log/
 __pycache__/
 *.bak
 compile_commands.json
+
+# Local copy for opening viewer/index.html directly; the Pages workflow copies these
+# from aidin_hand2_description at deploy time.
+viewer/model/meshes/
