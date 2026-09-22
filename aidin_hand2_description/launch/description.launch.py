@@ -18,7 +18,7 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
     pkg_share = get_package_share_directory('aidin_hand2_description')
-    xacro_file = os.path.join(pkg_share, 'urdf', 'aidin_hand2.urdf.xacro')
+    xacro_file = os.path.join(pkg_share, 'xacro', 'aidin_hand2.urdf.xacro')
     rviz_config = os.path.join(pkg_share, 'rviz', 'view_robot.rviz')
 
     use_left_hand = LaunchConfiguration('use_left_hand')

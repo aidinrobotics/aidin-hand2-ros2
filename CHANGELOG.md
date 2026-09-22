@@ -7,6 +7,48 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-22
+
+Each hand ships as a plain URDF that a tool without `package://` resolution can open, the model
+xacro moves to `xacro/` to make room for it, and `HandState` carries its readings at the width the
+sensors and drives send them. Requires SDK 0.7.x, and anything that subscribes to `HandState` has
+to be rebuilt: the tactile and actuator arrays are integers now.
+
+### Added
+
+- **`urdf/aidin_hand2_left.urdf` and `urdf/aidin_hand2_right.urdf` carry one hand each as plain
+  URDF.** Tools that do not resolve `package://` — MuJoCo, PyBullet, pinocchio, browser viewers —
+  could not load this description at all: reaching a file they can open took a ROS 2 installation
+  to run xacro, then a rewrite of all 78 mesh URIs. Each file is rooted at its
+  `{side}_hand_base_link` and names its meshes relative to itself, so a tool opens it where it
+  sits. Every finger's `joint4` follows its `joint3` through a four-bar linkage that URDF cannot
+  state, so constrain that pair in your own tool.
+
+### Changed
+
+- **The model xacro moved from `urdf/` to `xacro/`.** `urdf/` now holds the plain URDF above, and
+  keeping both kinds in one directory would have left two files per hand whose names differ only
+  by extension. A robot that includes the hand updates two lines, and its
+  `ros2_control/aidin_hand2.ros2_control.xacro` include stays as it is.
+
+  ```xml
+  <xacro:include filename="$(find aidin_hand2_description)/xacro/aidin_hand2_left.urdf.xacro"/>
+  <xacro:include filename="$(find aidin_hand2_description)/xacro/aidin_hand2_right.urdf.xacro"/>
+  ```
+
+- **Breaking: requires SDK 0.7.x.** `find_package(aidin_hand2 0.7 REQUIRED)` fails at configure
+  time against 0.6, and `aidin_hand2.repos` pins `v0.7.0`. That release narrows the observation
+  fields in `HandState` and drops two joint arrays, so both the struct layout and the soname move.
+
+- **Breaking: `HandState` carries its readings at the width the wire carries them.** The eight
+  tactile arrays become `uint16[]`, `actuator_position` and `actuator_velocity` become `int32[]`,
+  and `actuator_current` becomes `int16[]`. Nothing converts these values on the way, so the wider
+  type carried no more information while it added 1082 bytes to every message: a snapshot is 1540
+  bytes instead of 2622, and the hand publishes one on every broadcaster tick. `joint_position`
+  stays `float64[]`, because forward kinematics computes it rather than reading it. Rebuild any
+  subscriber and read the narrowed fields as integers. The state interfaces are unchanged, because
+  ros2_control carries every interface value as a `double`.
+
 ## [0.6.0] - 2026-09-18
 
 A command is a `sensor_msgs/JointState` on `~/cmd`, so anything standard can drive the hand and the
@@ -303,7 +345,8 @@ of it. Glove teleop is gone. The URDF joint limits were wrong and are corrected.
 
 - Initial release.
 
-[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.6.0-humble...develop
+[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.0-humble...develop
+[0.7.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.6.0-humble...v0.7.0-humble
 [0.6.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.4.0-humble...v0.6.0-humble
 [0.4.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.3.2-humble...v0.4.0-humble
 [0.3.2]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.3.1-humble...v0.3.2-humble

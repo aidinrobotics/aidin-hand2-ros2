@@ -8,7 +8,7 @@ A `ros2_control` wrapper for controlling AIDIN Hand Gen2 from ROS 2. Send target
 read state topics, and use services for homing, stopping and recovery. The wrapper provides a mock
 that runs without the robot hand, plus URDF and launch configuration for integration into your robot.
 
-[![version](https://img.shields.io/badge/version-0.6.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.6.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
+[![version](https://img.shields.io/badge/version-0.7.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.7.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
 
 [Install](docs/ko/03_installation.md) | [Documentation](#documentation) | [Changelog](CHANGELOG.md) | [Official Site](https://www.aidinrobotics.co.kr/) | English | [한국어](README.ko.md)
 
@@ -23,7 +23,7 @@ We verify that the wrapper builds and runs on the configuration below.
 | Operating System | Ubuntu 22.04 |
 | ROS 2 | Humble |
 | Control framework | `ros2_control` |
-| SDK | `aidin_hand2` 0.6.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
+| SDK | `aidin_hand2` 0.7.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
 | CAN interface | For the robot hand: USB CAN-FD adapter (SocketCAN), 1 Mbit/s nominal, 5 Mbit/s data phase |
 
 ## Architecture
@@ -119,7 +119,7 @@ Follow the common guides for installation, the first run and control. Package RE
 | Package | Guide |
 |---|---|
 | [aidin_hand2_bringup](aidin_hand2_bringup/README.ko.md) | Launch arguments, defaults, configuration files, adding the robot hand to your robot |
-| [aidin_hand2_description](aidin_hand2_description/README.ko.md) | URDF and xacro file locations, macro calls and arguments, RViz preview |
+| [aidin_hand2_description](aidin_hand2_description/README.ko.md) | xacro and URDF file locations, macro calls and arguments, RViz preview, the plain URDF |
 | [aidin_hand2_controllers](aidin_hand2_controllers/README.ko.md) | Controller selection, commands, switching, chaining, YAML and parameters |
 | [aidin_hand2_hardware](aidin_hand2_hardware/README.ko.md) | Homing, stop and recovery services, runtime tuning and initial values |
 | [aidin_hand2_msgs](aidin_hand2_msgs/README.ko.md) | Command and state message fields, units, joint and actuator array order |

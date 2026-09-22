@@ -173,6 +173,14 @@ private:
 
   ah2::HandState state_{};
   std::array<double, ah2::kJointCount> joint_position_rad_{};
+
+  // The SDK carries these as integers, while a state interface is always a double
+  std::array<double, ah2::kActuatorCount> actuator_position_cnt_{};
+  std::array<double, ah2::kActuatorCount> actuator_velocity_rpm_{};
+  std::array<double, ah2::kActuatorCount> actuator_current_ma_{};
+  std::array<std::array<double, ah2::kTactileTaxelsPerFinger>, ah2::kFingerCount> tactile_fingers_{};
+  std::array<double, ah2::kPalmTactileCount> tactile_palm_{};
+
   std::array<double, ah2::kActuatorCount> actuator_enabled_{};
   std::array<double, ah2::kActuatorCount> actuator_fault_{};
   std::array<double, 7> diagnostics_values_{};

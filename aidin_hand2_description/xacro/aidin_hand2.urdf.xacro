@@ -19,8 +19,8 @@
   <!-- ============================= Hand URDF ============================ -->
 
   <!-- Link, joint and mesh of each hand -->
-  <xacro:include filename="$(find aidin_hand2_description)/urdf/aidin_hand2_left.urdf.xacro"/>
-  <xacro:include filename="$(find aidin_hand2_description)/urdf/aidin_hand2_right.urdf.xacro"/>
+  <xacro:include filename="$(find aidin_hand2_description)/xacro/aidin_hand2_left.urdf.xacro"/>
+  <xacro:include filename="$(find aidin_hand2_description)/xacro/aidin_hand2_right.urdf.xacro"/>
 
   <xacro:if value="$(arg use_left_hand)">
     <xacro:aidin_hand2_left

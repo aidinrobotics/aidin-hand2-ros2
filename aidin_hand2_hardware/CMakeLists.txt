@@ -13,7 +13,7 @@ find_package(rclcpp_lifecycle REQUIRED)
 find_package(rcl_interfaces REQUIRED)
 find_package(std_srvs REQUIRED)
 # C++ SDK, not a ROS package. Point at it with CMAKE_PREFIX_PATH or aidin_hand2_DIR
-find_package(aidin_hand2 0.6 REQUIRED)  # 0.x treats a minor bump as breaking
+find_package(aidin_hand2 0.7 REQUIRED)  # 0.x treats a minor bump as breaking
 
 add_library(${PROJECT_NAME} SHARED
   src/aidin_hand2_system_interface.cpp
