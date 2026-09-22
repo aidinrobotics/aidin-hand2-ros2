@@ -69,7 +69,7 @@ def _setup(context, *_):
 
     description_share = get_package_share_directory("aidin_hand2_description")
     bringup_share = get_package_share_directory("aidin_hand2_bringup")
-    xacro_file = os.path.join(description_share, "urdf", "aidin_hand2.urdf.xacro")
+    xacro_file = os.path.join(description_share, "xacro", "aidin_hand2.urdf.xacro")
     controllers_yaml = os.path.join(bringup_share, "config", "controllers.yaml")
 
     use_left_hand = LaunchConfiguration("use_left_hand")

@@ -42,7 +42,7 @@ def _spawn(controller_name, condition=None, param_file=None):
 def generate_launch_description():
     description_share = get_package_share_directory("aidin_hand2_description")
     bringup_share = get_package_share_directory("aidin_hand2_bringup")
-    xacro_file = os.path.join(description_share, "urdf", "aidin_hand2.urdf.xacro")
+    xacro_file = os.path.join(description_share, "xacro", "aidin_hand2.urdf.xacro")
     controllers_yaml = os.path.join(bringup_share, "config", "controllers_mock.yaml")
     rviz_config = os.path.join(description_share, "rviz", "view_robot.rviz")
 
