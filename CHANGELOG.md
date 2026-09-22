@@ -10,9 +10,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [0.7.0] - 2026-09-22
 
 Each hand ships as a plain URDF that a tool without `package://` resolution can open, the model
-xacro moves to `xacro/` to make room for it, and `HandState` carries its readings at the width the
-sensors and drives send them. Requires SDK 0.7.x, and anything that subscribes to `HandState` has
-to be rebuilt: the tactile and actuator arrays are integers now.
+xacro moves to `xacro/` to make room for it, the two palm tactile frames take the board numbering
+the readings already use, and `HandState` carries its readings at the width the sensors and drives
+send them. Requires SDK 0.7.x, and anything that subscribes to `HandState` has to be rebuilt: the
+tactile and actuator arrays are integers now.
 
 ### Added
 
@@ -35,6 +36,17 @@ to be rebuilt: the tactile and actuator arrays are integers now.
   <xacro:include filename="$(find aidin_hand2_description)/xacro/aidin_hand2_left.urdf.xacro"/>
   <xacro:include filename="$(find aidin_hand2_description)/xacro/aidin_hand2_right.urdf.xacro"/>
   ```
+
+- **Breaking: the palm tactile links and joints carry the board number the readings use.**
+  `{side}_palm_tactile_top_link` and `{side}_palm_tactile_bottom_link` become
+  `{side}_palm1_tactile_link` and `{side}_palm2_tactile_link`, their joints follow, and the four
+  meshes are renamed to match. The description was the only place that called the two boards top
+  and bottom: every reading that comes off them is numbered — `tactile_palm1_upper`,
+  `tactile_palm1_lower` and `tactile_palm2` in `HandState`, `palm1_upper_1..20`,
+  `palm1_lower_1..20` and `palm2_1..18` on the `{side}_palm_sensor` component — so nothing tied
+  the frame a contact was drawn in to the array it came from. The new names also match the
+  `{side}_{finger}_tactile_link{2,3,4}` the fingers already use. Update any TF lookup, RViz
+  display or SRDF that names these frames.
 
 - **Breaking: requires SDK 0.7.x.** `find_package(aidin_hand2 0.7 REQUIRED)` fails at configure
   time against 0.6, and `aidin_hand2.repos` pins `v0.7.0`. That release narrows the observation

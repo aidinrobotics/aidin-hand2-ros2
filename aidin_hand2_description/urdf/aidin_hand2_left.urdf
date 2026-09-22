@@ -31,7 +31,7 @@
       </geometry>
     </collision>
   </link>
-  <link name="left_palm_tactile_top_link">
+  <link name="left_palm1_tactile_link">
     <inertial>
       <origin rpy="0 0 0" xyz="0.000674762753468287 0.000606142354499798 0.0168891754218837"/>
       <mass value="0.00740660791592135"/>
@@ -40,7 +40,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/left_aidin_hand2/visual/left_palm_tactile_top_link.STL"/>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_palm1_tactile_link.STL"/>
       </geometry>
       <material name="">
         <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
@@ -49,11 +49,11 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/left_aidin_hand2/collision/left_palm_tactile_top_link.STL"/>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_palm1_tactile_link.STL"/>
       </geometry>
     </collision>
   </link>
-  <link name="left_palm_tactile_bottom_link">
+  <link name="left_palm2_tactile_link">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.0305 -0.0205 -0.0289"/>
       <mass value="2.63186785647137E-09"/>
@@ -62,7 +62,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/left_aidin_hand2/visual/left_palm_tactile_bottom_link.STL"/>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_palm2_tactile_link.STL"/>
       </geometry>
       <material name="">
         <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
@@ -71,20 +71,20 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/left_aidin_hand2/collision/left_palm_tactile_bottom_link.STL"/>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_palm2_tactile_link.STL"/>
       </geometry>
     </collision>
   </link>
-  <joint name="left_palm_tactile_top_joint" type="fixed">
+  <joint name="left_palm1_tactile_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0.0305 0 0.0669"/>
     <parent link="left_hand_base_link"/>
-    <child link="left_palm_tactile_top_link"/>
+    <child link="left_palm1_tactile_link"/>
     <axis xyz="0 0 0"/>
   </joint>
-  <joint name="left_palm_tactile_bottom_joint" type="fixed">
+  <joint name="left_palm2_tactile_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0.0305 0.0205 0.0289"/>
     <parent link="left_hand_base_link"/>
-    <child link="left_palm_tactile_bottom_link"/>
+    <child link="left_palm2_tactile_link"/>
     <axis xyz="0 0 0"/>
   </joint>
   <!-- ============================== Thumb ============================= -->

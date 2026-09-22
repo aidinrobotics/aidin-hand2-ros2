@@ -43,7 +43,7 @@
         </geometry>
       </collision>
     </link>
-    <link name="${prefix}palm_tactile_top_link">
+    <link name="${prefix}palm1_tactile_link">
       <inertial>
         <origin xyz="0.000674762753468287 0.000606142354499799 0.0168891754218837" rpy="0 0 0"/>
         <mass value="0.00740660791592135"/>
@@ -55,7 +55,7 @@
       <visual>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
-          <mesh filename="package://aidin_hand2_description/meshes/right_aidin_hand2/visual/right_palm_tactile_top_link.STL"/>
+          <mesh filename="package://aidin_hand2_description/meshes/right_aidin_hand2/visual/right_palm1_tactile_link.STL"/>
         </geometry>
         <material name="">
           <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
@@ -64,11 +64,11 @@
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
-          <mesh filename="package://aidin_hand2_description/meshes/right_aidin_hand2/collision/right_palm_tactile_top_link.STL"/>
+          <mesh filename="package://aidin_hand2_description/meshes/right_aidin_hand2/collision/right_palm1_tactile_link.STL"/>
         </geometry>
       </collision>
     </link>
-    <link name="${prefix}palm_tactile_bottom_link">
+    <link name="${prefix}palm2_tactile_link">
       <inertial>
         <origin xyz="0.000649300878208026 0.000641439582478615 0.0169329552007083" rpy="0 0 0"/>
         <mass value="0.00310671585401556"/>
@@ -80,7 +80,7 @@
       <visual>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
-          <mesh filename="package://aidin_hand2_description/meshes/right_aidin_hand2/visual/right_palm_tactile_bottom_link.STL"/>
+          <mesh filename="package://aidin_hand2_description/meshes/right_aidin_hand2/visual/right_palm2_tactile_link.STL"/>
         </geometry>
         <material name="">
           <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
@@ -89,20 +89,20 @@
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
-          <mesh filename="package://aidin_hand2_description/meshes/right_aidin_hand2/collision/right_palm_tactile_bottom_link.STL"/>
+          <mesh filename="package://aidin_hand2_description/meshes/right_aidin_hand2/collision/right_palm2_tactile_link.STL"/>
         </geometry>
       </collision>
     </link>
-    <joint name="${prefix}palm_tactile_top_joint" type="fixed">
+    <joint name="${prefix}palm1_tactile_joint" type="fixed">
       <origin xyz="0.0305 0 0.0669" rpy="0 0 0"/>
       <parent link="${prefix}hand_base_link"/>
-      <child link="${prefix}palm_tactile_top_link"/>
+      <child link="${prefix}palm1_tactile_link"/>
       <axis xyz="0 0 0"/>
     </joint>
-    <joint name="${prefix}palm_tactile_bottom_joint" type="fixed">
+    <joint name="${prefix}palm2_tactile_joint" type="fixed">
       <origin xyz="0.0305 -0.0205 0.0289" rpy="0 0 0"/>
       <parent link="${prefix}hand_base_link"/>
-      <child link="${prefix}palm_tactile_bottom_link"/>
+      <child link="${prefix}palm2_tactile_link"/>
       <axis xyz="0 0 0"/>
     </joint>
 

@@ -19,38 +19,38 @@
       </material>
     </visual>
   </link>
-  <link name="left_palm_tactile_top_link">
+  <link name="left_palm1_tactile_link">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://viewer_model/meshes/visual/left_palm_tactile_top_link.STL" />
+        <mesh filename="package://viewer_model/meshes/visual/left_palm1_tactile_link.STL" />
       </geometry>
       <material name="">
         <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
       </material>
     </visual>
   </link>
-  <link name="left_palm_tactile_bottom_link">
+  <link name="left_palm2_tactile_link">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="package://viewer_model/meshes/visual/left_palm_tactile_bottom_link.STL" />
+        <mesh filename="package://viewer_model/meshes/visual/left_palm2_tactile_link.STL" />
       </geometry>
       <material name="">
         <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1" />
       </material>
     </visual>
   </link>
-  <joint name="left_palm_tactile_top_joint" type="fixed">
+  <joint name="left_palm1_tactile_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0.0305 0 0.0669" />
     <parent link="left_hand_base_link" />
-    <child link="left_palm_tactile_top_link" />
+    <child link="left_palm1_tactile_link" />
     <axis xyz="0 0 0" />
   </joint>
-  <joint name="left_palm_tactile_bottom_joint" type="fixed">
+  <joint name="left_palm2_tactile_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0.0305 0.0205 0.0289" />
     <parent link="left_hand_base_link" />
-    <child link="left_palm_tactile_bottom_link" />
+    <child link="left_palm2_tactile_link" />
     <axis xyz="0 0 0" />
   </joint>
   <link name="left_thumb_link0">
