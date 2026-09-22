@@ -316,32 +316,38 @@ controller_interface::return_type HandStateBroadcaster::update(
   for (std::size_t i = 0; i < ah2::kJointCount; ++i) {
     message.joint_position[i] = state_interfaces_[kJointOffset + i].get_value();
   }
+  // A state interface is always a double, so each reading returns to its wire width here
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
-    message.actuator_position[i] = state_interfaces_[kActuatorPositionOffset + i].get_value();
-    message.actuator_velocity[i] = state_interfaces_[kActuatorVelocityOffset + i].get_value();
-    message.actuator_current[i] = state_interfaces_[kActuatorCurrentOffset + i].get_value();
+    message.actuator_position[i] =
+      static_cast<std::int32_t>(state_interfaces_[kActuatorPositionOffset + i].get_value());
+    message.actuator_velocity[i] =
+      static_cast<std::int32_t>(state_interfaces_[kActuatorVelocityOffset + i].get_value());
+    message.actuator_current[i] =
+      static_cast<std::int16_t>(state_interfaces_[kActuatorCurrentOffset + i].get_value());
   }
+
+  const auto taxel = [this](std::size_t index) {
+    return static_cast<std::uint16_t>(state_interfaces_[index].get_value());
+  };
 
   for (std::size_t i = 0; i < ah2::kTactileTaxelsPerFinger; ++i) {
     const std::size_t block = kFingerTactileOffset + i;
     const std::size_t stride = ah2::kTactileTaxelsPerFinger;
-    message.tactile_thumb[i] = state_interfaces_[block + 0 * stride].get_value();
-    message.tactile_index[i] = state_interfaces_[block + 1 * stride].get_value();
-    message.tactile_middle[i] = state_interfaces_[block + 2 * stride].get_value();
-    message.tactile_ring[i] = state_interfaces_[block + 3 * stride].get_value();
-    message.tactile_baby[i] = state_interfaces_[block + 4 * stride].get_value();
+    message.tactile_thumb[i] = taxel(block + 0 * stride);
+    message.tactile_index[i] = taxel(block + 1 * stride);
+    message.tactile_middle[i] = taxel(block + 2 * stride);
+    message.tactile_ring[i] = taxel(block + 3 * stride);
+    message.tactile_baby[i] = taxel(block + 4 * stride);
   }
   for (std::size_t i = 0; i < ah2::kPalm1UpperCount; ++i) {
-    message.tactile_palm1_upper[i] = state_interfaces_[kPalmTactileOffset + i].get_value();
+    message.tactile_palm1_upper[i] = taxel(kPalmTactileOffset + i);
   }
   for (std::size_t i = 0; i < ah2::kPalm1LowerCount; ++i) {
-    message.tactile_palm1_lower[i] =
-      state_interfaces_[kPalmTactileOffset + ah2::kPalm1UpperCount + i].get_value();
+    message.tactile_palm1_lower[i] = taxel(kPalmTactileOffset + ah2::kPalm1UpperCount + i);
   }
   for (std::size_t i = 0; i < ah2::kPalm2Count; ++i) {
     message.tactile_palm2[i] =
-      state_interfaces_[
-        kPalmTactileOffset + ah2::kPalm1UpperCount + ah2::kPalm1LowerCount + i].get_value();
+      taxel(kPalmTactileOffset + ah2::kPalm1UpperCount + ah2::kPalm1LowerCount + i);
   }
 
   auto & command = message.command_state;

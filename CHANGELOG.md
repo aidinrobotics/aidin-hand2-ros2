@@ -29,6 +29,19 @@ project adheres to [Semantic Versioning](https://semver.org/).
   <xacro:include filename="$(find aidin_hand2_description)/xacro/aidin_hand2_right.urdf.xacro"/>
   ```
 
+- **Breaking: requires SDK 0.7.x.** `find_package(aidin_hand2 0.7 REQUIRED)` fails at configure
+  time against 0.6, and `aidin_hand2.repos` pins `v0.7.0`. That release narrows the observation
+  fields in `HandState` and drops two joint arrays, so both the struct layout and the soname move.
+
+- **Breaking: `HandState` carries its readings at the width the wire carries them.** The eight
+  tactile arrays become `uint16[]`, `actuator_position` and `actuator_velocity` become `int32[]`,
+  and `actuator_current` becomes `int16[]`. Nothing converts these values on the way, so the wider
+  type carried no more information while it added 1082 bytes to every message: a snapshot is 1540
+  bytes instead of 2622, and the hand publishes one on every broadcaster tick. `joint_position`
+  stays `float64[]`, because forward kinematics computes it rather than reading it. Rebuild any
+  subscriber and read the narrowed fields as integers. The state interfaces are unchanged, because
+  ros2_control carries every interface value as a `double`.
+
 ## [0.6.0] - 2026-09-18
 
 A command is a `sensor_msgs/JointState` on `~/cmd`, so anything standard can drive the hand and the

@@ -9,18 +9,19 @@ float64[21] joint_position
 
 # Order = thumb_actuator0..3, then index_actuator1..3, middle_actuator1..3,
 # ring_actuator1..3, baby_actuator1..3
-float64[16] actuator_position   # encoder count
-float64[16] actuator_velocity   # rpm
-float64[16] actuator_current    # mA
+int32[16] actuator_position     # encoder count
+int32[16] actuator_velocity     # rpm
+int16[16] actuator_current      # mA
 
-float64[17] tactile_thumb
-float64[17] tactile_index
-float64[17] tactile_middle
-float64[17] tactile_ring
-float64[17] tactile_baby
-float64[20] tactile_palm1_upper
-float64[20] tactile_palm1_lower
-float64[18] tactile_palm2
+# Raw 16-bit readings, no unit and no normalization
+uint16[17] tactile_thumb
+uint16[17] tactile_index
+uint16[17] tactile_middle
+uint16[17] tactile_ring
+uint16[17] tactile_baby
+uint16[20] tactile_palm1_upper
+uint16[20] tactile_palm1_lower
+uint16[18] tactile_palm2
 
 # The output is not proof the drives applied it, selected_source says which path ran
 CommandState command_state

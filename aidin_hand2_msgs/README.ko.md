@@ -64,12 +64,12 @@ joint 목표는 SDK가 finger별 도달 범위로 투영한 뒤 변환합니다.
 | `header.stamp` | `builtin_interfaces/Time` | — | SDK가 state를 관측한 시각(`CLOCK_REALTIME`). 발행 시각이 아닙니다 |
 | `hand_side` | `string` | — | `left` 또는 `right` |
 | `joint_position` | `float64[21]` | rad | forward kinematics 결과. passive `joint4` 포함 |
-| `actuator_position` | `float64[16]` | encoder count | drive가 보고한 위치 |
-| `actuator_velocity` | `float64[16]` | rpm | drive가 보고한 속도 |
-| `actuator_current` | `float64[16]` | mA | drive가 보고한 전류 |
-| `tactile_thumb` · `tactile_index` · `tactile_middle` · `tactile_ring` · `tactile_baby` | `float64[17]` | raw value | finger별 taxel |
-| `tactile_palm1_upper` · `tactile_palm1_lower` | `float64[20]` | raw value | palm1 taxel |
-| `tactile_palm2` | `float64[18]` | raw value | palm2 taxel |
+| `actuator_position` | `int32[16]` | encoder count | drive가 보고한 위치 |
+| `actuator_velocity` | `int32[16]` | rpm | drive가 보고한 속도 |
+| `actuator_current` | `int16[16]` | mA | drive가 보고한 전류 |
+| `tactile_thumb` · `tactile_index` · `tactile_middle` · `tactile_ring` · `tactile_baby` | `uint16[17]` | raw value | finger별 taxel |
+| `tactile_palm1_upper` · `tactile_palm1_lower` | `uint16[20]` | raw value | palm1 taxel |
+| `tactile_palm2` | `uint16[18]` | raw value | palm2 taxel |
 | `command_state` | `CommandState` | — | 같은 cycle에 적용된 command. [3.2 CommandState](#32-commandstate) |
 
 `header.stamp` 필드는 SDK가 아직 state를 채우지 않아 `0`일 때만 broadcaster의 update 시각으로
