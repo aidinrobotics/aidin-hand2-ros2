@@ -119,7 +119,7 @@ Follow the common guides for installation, the first run and control. Package RE
 | Package | Guide |
 |---|---|
 | [aidin_hand2_bringup](aidin_hand2_bringup/README.ko.md) | Launch arguments, defaults, configuration files, adding the robot hand to your robot |
-| [aidin_hand2_description](aidin_hand2_description/README.ko.md) | URDF and xacro file locations, macro calls and arguments, RViz preview |
+| [aidin_hand2_description](aidin_hand2_description/README.ko.md) | xacro and URDF file locations, macro calls and arguments, RViz preview, the plain URDF |
 | [aidin_hand2_controllers](aidin_hand2_controllers/README.ko.md) | Controller selection, commands, switching, chaining, YAML and parameters |
 | [aidin_hand2_hardware](aidin_hand2_hardware/README.ko.md) | Homing, stop and recovery services, runtime tuning and initial values |
 | [aidin_hand2_msgs](aidin_hand2_msgs/README.ko.md) | Command and state message fields, units, joint and actuator array order |

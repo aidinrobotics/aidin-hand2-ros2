@@ -44,7 +44,7 @@ def resolve(side):
     """Run xacro with only one hand enabled and return the parsed tree."""
     other = 'right' if side == 'left' else 'left'
     result = subprocess.run(
-        ['xacro', str(DESCRIPTION / 'urdf/aidin_hand2.urdf.xacro'), f'use_{other}_hand:=false'],
+        ['xacro', str(DESCRIPTION / 'xacro/aidin_hand2.urdf.xacro'), f'use_{other}_hand:=false'],
         capture_output=True, text=True)
     if result.returncode != 0:
         sys.exit(f'xacro failed for the {side} hand:\n{result.stderr}')

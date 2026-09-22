@@ -1,0 +1,1126 @@
+<?xml version="1.0"?>
+<!--
+  AIDIN Hand Gen2 left hand, rooted at left_hand_base_link with relative mesh
+  paths, for tools that do not resolve package:// URIs. ROS 2 builds the model
+  from xacro/aidin_hand2.urdf.xacro instead.
+
+  Each finger joint4 follows its joint3 through a four-bar linkage that this
+  file cannot state: constrain it in your own tool.
+-->
+<robot name="aidin_hand2_left">
+  <!-- ============================ Base link =========================== -->
+  <link name="left_hand_base_link">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.00112900319101962 -0.000654709257800466 0.0477993752418005"/>
+      <mass value="0.200555844551245"/>
+      <inertia ixx="0.00018231692021459" ixy="-2.30409801745255E-07" ixz="-9.55605011249849E-07" iyy="0.000110054551030555" iyz="4.54625088991344E-06" izz="0.000150549981411924"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_hand_base_link.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_hand_base_link.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_palm_tactile_top_link">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.000674762753468287 0.000606142354499798 0.0168891754218837"/>
+      <mass value="0.00740660791592135"/>
+      <inertia ixx="5.31401179825433E-06" ixy="-3.38325185098855E-10" ixz="-2.1687309555648E-10" iyy="7.98284716819682E-07" iyz="1.74718767974592E-09" izz="4.51808635096857E-06"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_palm_tactile_top_link.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_palm_tactile_top_link.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_palm_tactile_bottom_link">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.0305 -0.0205 -0.0289"/>
+      <mass value="2.63186785647137E-09"/>
+      <inertia ixx="7.49450015306718E-13" ixy="-1.57583383285962E-16" ixz="1.20748625558926E-16" iyy="3.09128508139386E-13" iyz="-2.11408592851147E-14" izz="4.44014404594315E-13"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_palm_tactile_bottom_link.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_palm_tactile_bottom_link.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_palm_tactile_top_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0.0305 0 0.0669"/>
+    <parent link="left_hand_base_link"/>
+    <child link="left_palm_tactile_top_link"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <joint name="left_palm_tactile_bottom_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0.0305 0.0205 0.0289"/>
+    <parent link="left_hand_base_link"/>
+    <child link="left_palm_tactile_bottom_link"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <!-- ============================== Thumb ============================= -->
+  <link name="left_thumb_link0">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-2.04529594044107E-05 -0.0036917238386656 0.0215358561772485"/>
+      <mass value="0.0175117847223968"/>
+      <inertia ixx="2.74153385446541E-06" ixy="-3.48140106171521E-09" ixz="1.15689831220349E-08" iyy="2.61724678840433E-06" iyz="7.04056345733139E-07" izz="6.42238676991707E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_thumb_link0.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_thumb_link0.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_thumb_link1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="3.46944695195361E-18 0 -1.38777878078145E-17"/>
+      <mass value="0.00173685390848987"/>
+      <inertia ixx="1.60398098537176E-08" ixy="3.87740912134232E-24" ixz="-7.85175347071819E-25" iyy="8.83849653734709E-09" iyz="-6.72084247699335E-25" izz="1.2667791817983E-08"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_thumb_link1.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_thumb_link1.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_thumb_link2">
+    <inertial>
+      <origin rpy="0 0 0" xyz="2.72781485055433E-05 -0.0010633450190935 0.0366448131549096"/>
+      <mass value="0.0306656546978785"/>
+      <inertia ixx="6.50266677995518E-06" ixy="8.67689746732147E-09" ixz="-1.88920869630403E-09" iyy="7.52035679754067E-06" iyz="1.00843909703269E-07" izz="4.07281004231722E-06"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_thumb_link2.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_thumb_link2.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_thumb_link3">
+    <inertial>
+      <origin rpy="0 0 0" xyz="6.3329481398873E-05 1.48616055370421E-06 0.0219809085256264"/>
+      <mass value="0.0201937490110632"/>
+      <inertia ixx="2.04793315056244E-06" ixy="-4.26002969599587E-08" ixz="-2.95529913508848E-07" iyy="2.43224674957065E-06" iyz="-1.14296385060062E-08" izz="6.38342422611227E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_thumb_link3.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_thumb_link3.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_thumb_link4">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-8.13507476343303E-05 6.53313213021603E-06 0.0125489245833013"/>
+      <mass value="0.0111473616667527"/>
+      <inertia ixx="8.82920873346288E-07" ixy="-3.57279017168599E-08" ixz="7.22553841879569E-08" iyy="7.73222675658295E-07" iyz="1.24168999943475E-07" izz="4.20743520963829E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_thumb_link4.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_thumb_link4.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_thumb_tactile_link2">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00324776330394302 0.000160674203724266 0.0105206453579296"/>
+      <mass value="0.00197158860531171"/>
+      <inertia ixx="1.1095086185982E-07" ixy="7.73965616235978E-10" ixz="9.55396920752724E-11" iyy="7.72325483152603E-08" iyz="6.88587177292641E-11" izz="4.67035800534061E-08"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_thumb_tactile_link2.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_thumb_tactile_link2.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_thumb_tactile_link3">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00402433958626983 3.63916216605809E-10 0.00549999923047306"/>
+      <mass value="6.39299774482251E-10"/>
+      <inertia ixx="3.73656390346653E-14" ixy="-1.44586493401505E-21" ixz="-1.64162584188864E-20" iyy="1.02586581914774E-14" iyz="1.38967187941937E-19" izz="3.14387262901213E-14"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_thumb_tactile_link3.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_thumb_tactile_link3.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_thumb_tactile_link4">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.0057049172967979 1.80724836890828E-07 0.00947905147360462"/>
+      <mass value="0.00146518417215946"/>
+      <inertia ixx="1.19404184462453E-07" ixy="5.77375218934238E-13" ixz="6.69190832679089E-09" iyy="6.43689353378316E-08" iyz="-2.59620169084154E-12" izz="7.11326029501145E-08"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_thumb_tactile_link4.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_thumb_tactile_link4.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_thumb_joint0" type="revolute">
+    <origin rpy="1.5708 0 -0.090443" xyz="0.02105 -0.023 0.0369"/>
+    <parent link="left_hand_base_link"/>
+    <child link="left_thumb_link0"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.9084" velocity="1.57"/>
+  </joint>
+  <joint name="left_thumb_joint1" type="revolute">
+    <origin rpy="0 0.3155 1.5708" xyz="0 0 0.035"/>
+    <parent link="left_thumb_link0"/>
+    <child link="left_thumb_link1"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.2645" velocity="1.57"/>
+  </joint>
+  <joint name="left_thumb_joint2" type="revolute">
+    <origin rpy="0 0 1.5708" xyz="0 0 0"/>
+    <parent link="left_thumb_link1"/>
+    <child link="left_thumb_link2"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="-0.63668" upper="0.63668" velocity="1.57"/>
+  </joint>
+  <joint name="left_thumb_joint3" type="revolute">
+    <origin rpy="0 0.046129 -1.5708" xyz="0 -0.0069 0.0705"/>
+    <parent link="left_thumb_link2"/>
+    <child link="left_thumb_link3"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.1019" velocity="1.57"/>
+  </joint>
+  <joint name="left_thumb_joint4" type="revolute">
+    <origin rpy="0 -0.076672 0" xyz="0 0 0.04124"/>
+    <parent link="left_thumb_link3"/>
+    <child link="left_thumb_link4"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.4479" velocity="1.57"/>
+  </joint>
+  <joint name="left_thumb_tactile_joint2" type="fixed">
+    <origin rpy="0 0.0523598775598218 -1.5707963267949" xyz="0 -0.0241393993395338 0.0310143898850768"/>
+    <parent link="left_thumb_link2"/>
+    <child link="left_thumb_tactile_link2"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <joint name="left_thumb_tactile_joint3" type="fixed">
+    <origin rpy="0 -0.191986217719377 0" xyz="0.0106632417851801 0 0.0210317263835529"/>
+    <parent link="left_thumb_link3"/>
+    <child link="left_thumb_tactile_link3"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <joint name="left_thumb_tactile_joint4" type="fixed">
+    <origin rpy="0 0 0" xyz="0.00150000000000001 0 0.00999999999999998"/>
+    <parent link="left_thumb_link4"/>
+    <child link="left_thumb_tactile_link4"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <!-- ========================== Index finger ========================== -->
+  <link name="left_index_link1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="6.93889390390723E-18 0.00573415418967848 -7.4849501585747E-05"/>
+      <mass value="0.00373585630830409"/>
+      <inertia ixx="4.76116410082424E-08" ixy="1.31903159349452E-23" ixz="8.09840820881549E-24" iyy="1.10013297422609E-07" iyz="-2.19052806342323E-10" izz="1.38941854814581E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_index_link1.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.772549019607843 0.756862745098039 0.737254901960784 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_index_link1.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_index_link2">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00069373483656021 1.12580322427572E-05 0.0250311711489133"/>
+      <mass value="0.0178860170151228"/>
+      <inertia ixx="2.01189385656528E-06" ixy="-4.80919534611724E-08" ixz="-2.3874581495309E-07" iyy="2.30879435364762E-06" iyz="-3.68266066905783E-08" izz="5.50526513906395E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_index_link2.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_index_link2.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_index_link3">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.00175646015685035 -4.11766871639199E-05 0.0132461173846273"/>
+      <mass value="0.00820715239033152"/>
+      <inertia ixx="6.10555261983736E-07" ixy="-1.82131892874025E-08" ixz="1.19430724571701E-07" iyy="7.2415211302243E-07" iyz="1.50594226452346E-08" izz="2.0999693244138E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_index_link3.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_index_link3.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_index_link4">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.00173324085998484 -2.16115524884625E-05 0.00843415680108475"/>
+      <mass value="0.00519386526873273"/>
+      <inertia ixx="2.75990821340783E-07" ixy="-1.24478012052296E-08" ixz="2.74175327400599E-08" iyy="2.4311507909317E-07" iyz="3.23513056218213E-08" izz="1.30104278026004E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_index_link4.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_index_link4.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_index_tactile_link2">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00425357238561334 2.00221852986182E-10 0.00799999986500846"/>
+      <mass value="8.52157452018806E-10"/>
+      <inertia ixx="6.16390545598157E-14" ixy="3.52883417457612E-21" ixz="2.07308983573775E-20" iyy="2.49954227012168E-14" iyz="3.51088406100311E-20" izz="4.23253520766066E-14"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_index_tactile_link2.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_index_tactile_link2.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_index_tactile_link3">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00362757247683021 -2.60194683923687E-08 0.00551091832119666"/>
+      <mass value="6.04937762002497E-10"/>
+      <inertia ixx="3.32308184150737E-14" ixy="2.3954360909385E-20" ixz="1.7208917357588E-16" iyy="9.92905246821043E-15" iyz="-7.50111488215953E-20" izz="2.78163649985033E-14"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_index_tactile_link3.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_index_tactile_link3.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_index_tactile_link4">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00506603814777084 6.93535278650792E-08 0.00874610204842524"/>
+      <mass value="0.0011066526352442"/>
+      <inertia ixx="6.66787385042311E-08" ixy="1.54829882054412E-13" ixz="6.10018898312929E-09" iyy="4.10874627463205E-08" iyz="-7.12959488629777E-13" izz="3.91933465827513E-08"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_index_tactile_link4.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_index_tactile_link4.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_index_joint1" type="revolute">
+    <origin rpy="0 0 1.5708" xyz="0.0129 -0.0345 0.1239"/>
+    <parent link="left_hand_base_link"/>
+    <child link="left_index_link1"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="-0.5236" upper="0.5236" velocity="1.57"/>
+  </joint>
+  <joint name="left_index_joint2" type="revolute">
+    <origin rpy="0 0 -1.5708" xyz="0 0 0"/>
+    <parent link="left_index_link1"/>
+    <child link="left_index_link2"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.6581" velocity="1.57"/>
+  </joint>
+  <joint name="left_index_joint3" type="revolute">
+    <origin rpy="0 0.018277 0" xyz="0.0021114 0 0.045191"/>
+    <parent link="left_index_link2"/>
+    <child link="left_index_link3"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.5533" velocity="1.57"/>
+  </joint>
+  <joint name="left_index_joint4" type="revolute">
+    <origin rpy="0 -0.059717 0" xyz="0 0 0.0275"/>
+    <parent link="left_index_link3"/>
+    <child link="left_index_link4"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.6319" velocity="1.57"/>
+  </joint>
+  <joint name="left_index_tactile_joint2" type="fixed">
+    <origin rpy="0 -0.180205000269536 0" xyz="0.0119225617897384 0 0.0187385496303734"/>
+    <parent link="left_index_link2"/>
+    <child link="left_index_tactile_link2"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <joint name="left_index_tactile_joint3" type="fixed">
+    <origin rpy="0 -0.0182770454595492 0" xyz="0.00453544006933306 0 0.00781843299808993"/>
+    <parent link="left_index_link3"/>
+    <child link="left_index_tactile_link3"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <joint name="left_index_tactile_joint4" type="fixed">
+    <origin rpy="0 0.0414403956381318 0" xyz="-0.000950000000000006 0 0.0045"/>
+    <parent link="left_index_link4"/>
+    <child link="left_index_tactile_link4"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <!-- ========================== Middle finger ========================= -->
+  <link name="left_middle_link1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="1.73472347597681E-18 0.00573415418967848 -7.48495015857192E-05"/>
+      <mass value="0.00373585630830408"/>
+      <inertia ixx="4.76116410082423E-08" ixy="1.48486908199878E-23" ixz="2.84606745649475E-24" iyy="1.10013297422609E-07" iyz="-2.19052806342325E-10" izz="1.38941854814581E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_middle_link1.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.772549019607843 0.756862745098039 0.737254901960784 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_middle_link1.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_middle_link2">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.000693734836560198 1.12580322427728E-05 0.0250311711489133"/>
+      <mass value="0.0178860170151228"/>
+      <inertia ixx="2.01189385656527E-06" ixy="-4.80919534611725E-08" ixz="-2.38745814953089E-07" iyy="2.30879435364761E-06" iyz="-3.68266066905782E-08" izz="5.50526513906394E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_middle_link2.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_middle_link2.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_middle_link3">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.00175646015685039 -4.11767293875976E-05 0.0132461173846272"/>
+      <mass value="0.0082071523903316"/>
+      <inertia ixx="6.10555261984564E-07" ixy="-1.82131892874048E-08" ixz="1.194307245717E-07" iyy="7.24152113022437E-07" iyz="1.50594226452715E-08" izz="2.09996932442203E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_middle_link3.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_middle_link3.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_middle_link4">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.0017332408599848 -2.16115524884989E-05 0.00843415680108478"/>
+      <mass value="0.00519386526873275"/>
+      <inertia ixx="2.75990821340793E-07" ixy="-1.24478012052295E-08" ixz="2.74175327400587E-08" iyy="2.43115079093179E-07" iyz="3.2351305621825E-08" izz="1.30104278026005E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_middle_link4.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_middle_link4.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_middle_tactile_link2">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00425357238561334 2.00221851251459E-10 0.00799999986500843"/>
+      <mass value="8.52157452018806E-10"/>
+      <inertia ixx="6.16390545598156E-14" ixy="3.52883417940781E-21" ixz="2.07308983479112E-20" iyy="2.49954227012168E-14" iyz="3.51088406033544E-20" izz="4.23253520766065E-14"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_middle_tactile_link2.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_middle_tactile_link2.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_middle_tactile_link3">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00390664184626786 -2.60194683594089E-08 0.00531673323597731"/>
+      <mass value="6.04937762002502E-10"/>
+      <inertia ixx="3.32341567324474E-14" ixy="2.00584839941515E-20" ixz="-1.07370272377768E-16" iyy="9.92905246821046E-15" iyz="-7.61455256155106E-20" izz="2.78130266811299E-14"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_middle_tactile_link3.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_middle_tactile_link3.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_middle_tactile_link4">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00506603814777085 6.93535278858959E-08 0.00874610204842505"/>
+      <mass value="0.00110665263524419"/>
+      <inertia ixx="6.6678738504229E-08" ixy="1.54829881999556E-13" ixz="6.10018898312905E-09" iyy="4.10874627463179E-08" iyz="-7.12959488170241E-13" izz="3.91933465827518E-08"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_middle_tactile_link4.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_middle_tactile_link4.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_middle_joint1" type="revolute">
+    <origin rpy="0 0 1.5708" xyz="0.0129 -0.0115 0.1239"/>
+    <parent link="left_hand_base_link"/>
+    <child link="left_middle_link1"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="-0.5236" upper="0.5236" velocity="1.57"/>
+  </joint>
+  <joint name="left_middle_joint2" type="revolute">
+    <origin rpy="0 0 -1.5708" xyz="0 0 0"/>
+    <parent link="left_middle_link1"/>
+    <child link="left_middle_link2"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.6581" velocity="1.57"/>
+  </joint>
+  <joint name="left_middle_joint3" type="revolute">
+    <origin rpy="0 0.018277 0" xyz="0.0021114 0 0.045191"/>
+    <parent link="left_middle_link2"/>
+    <child link="left_middle_link3"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.5533" velocity="1.57"/>
+  </joint>
+  <joint name="left_middle_joint4" type="revolute">
+    <origin rpy="0 -0.059717 0" xyz="0 0 0.0275"/>
+    <parent link="left_middle_link3"/>
+    <child link="left_middle_link4"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.6319" velocity="1.57"/>
+  </joint>
+  <joint name="left_middle_tactile_joint2" type="fixed">
+    <origin rpy="0 -0.180205000269536 0" xyz="0.0119225617897384 0 0.0187385496303734"/>
+    <parent link="left_middle_link2"/>
+    <child link="left_middle_tactile_link2"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <joint name="left_middle_tactile_joint3" type="fixed">
+    <origin rpy="0 -0.0698131700797666 0" xyz="0.00453544006933306 0 0.00781843299808993"/>
+    <parent link="left_middle_link3"/>
+    <child link="left_middle_tactile_link3"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <joint name="left_middle_tactile_joint4" type="fixed">
+    <origin rpy="0 0.0414403956381318 0" xyz="-0.000950000000000006 0 0.0045"/>
+    <parent link="left_middle_link4"/>
+    <child link="left_middle_tactile_link4"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <!-- =========================== Ring finger ========================== -->
+  <link name="left_ring_link1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="1.73472347597681E-18 0.00573415418967848 -7.4849501585747E-05"/>
+      <mass value="0.00373585630830409"/>
+      <inertia ixx="4.76116410082424E-08" ixy="-1.23365161439591E-23" ixz="-3.09941273580075E-25" iyy="1.10013297422609E-07" iyz="-2.19052806342322E-10" izz="1.38941854814581E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_ring_link1.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.772549019607843 0.756862745098039 0.737254901960784 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_ring_link1.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_ring_link2">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.000475246976089952 1.12580245902692E-05 0.0250362724503111"/>
+      <mass value="0.0178860170294316"/>
+      <inertia ixx="2.03097141006929E-06" ixy="-4.63208202443338E-08" ixz="-1.69576830309588E-07" iyy="2.30879435727354E-06" iyz="-3.90309692918322E-08" izz="5.31448963782369E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_ring_link2.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_ring_link2.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_ring_link3">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.00175646015685036 -4.11767716113082E-05 0.0132461173846272"/>
+      <mass value="0.00820715239033156"/>
+      <inertia ixx="6.10555261986345E-07" ixy="-1.82131892874051E-08" ixz="1.19430724571699E-07" iyy="7.24152113022435E-07" iyz="1.50594226452502E-08" izz="2.09996932443985E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_ring_link3.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_ring_link3.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_ring_link4">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.001733240859985 -2.16115524882821E-05 0.00843415680108064"/>
+      <mass value="0.00519386526873207"/>
+      <inertia ixx="2.75990821340526E-07" ixy="-1.24478012052374E-08" ixz="2.74175327400662E-08" iyy="2.43115079092904E-07" iyz="3.23513056216928E-08" izz="1.30104278026014E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_ring_link4.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_ring_link4.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_ring_tactile_link2">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00425357238561334 2.00221880741758E-10 0.00799999986500843"/>
+      <mass value="8.52157452018802E-10"/>
+      <inertia ixx="6.16390545598154E-14" ixy="3.52883418678207E-21" ixz="2.07308983723659E-20" iyy="2.49954227012168E-14" iyz="3.51088406351264E-20" izz="4.23253520766064E-14"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_ring_tactile_link2.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_ring_tactile_link2.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_ring_tactile_link3">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00390664184626786 -2.60194683767562E-08 0.00531673323597731"/>
+      <mass value="6.04937762002499E-10"/>
+      <inertia ixx="3.32341567324472E-14" ixy="2.00584839886898E-20" ixz="-1.07370272377754E-16" iyy="9.92905246821044E-15" iyz="-7.61455256270245E-20" izz="2.78130266811297E-14"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_ring_tactile_link3.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_ring_tactile_link3.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_ring_tactile_link4">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00542402700118967 6.93535277453833E-08 0.00852871471245795"/>
+      <mass value="0.00110665263524418"/>
+      <inertia ixx="6.71365745333473E-08" ixy="1.2516008820093E-13" ixz="4.94154723787949E-09" iyy="4.10874627463158E-08" iyz="-7.18761767186132E-13" izz="3.87355105536323E-08"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_ring_tactile_link4.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_ring_tactile_link4.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_ring_joint1" type="revolute">
+    <origin rpy="0 0 1.5708" xyz="0.0129 0.0115 0.1239"/>
+    <parent link="left_hand_base_link"/>
+    <child link="left_ring_link1"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="-0.5236" upper="0.5236" velocity="1.57"/>
+  </joint>
+  <joint name="left_ring_joint2" type="revolute">
+    <origin rpy="0 0.046688 -1.5708" xyz="0 0 0"/>
+    <parent link="left_ring_link1"/>
+    <child link="left_ring_link2"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.6581" velocity="1.57"/>
+  </joint>
+  <joint name="left_ring_joint3" type="revolute">
+    <origin rpy="0 -0.028411 0" xyz="0 0 0.04524"/>
+    <parent link="left_ring_link2"/>
+    <child link="left_ring_link3"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.5533" velocity="1.57"/>
+  </joint>
+  <joint name="left_ring_joint4" type="revolute">
+    <origin rpy="0 -0.059717 0" xyz="0 0 0.0275"/>
+    <parent link="left_ring_link3"/>
+    <child link="left_ring_link4"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.6319" velocity="1.57"/>
+  </joint>
+  <joint name="left_ring_tactile_joint2" type="fixed">
+    <origin rpy="0 -0.226892802759263 0" xyz="0.0110350261338632 0 0.0192745666645207"/>
+    <parent link="left_ring_link2"/>
+    <child link="left_ring_tactile_link2"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <joint name="left_ring_tactile_joint3" type="fixed">
+    <origin rpy="0 -0.0698131700797666 0" xyz="0.00453544006933306 0 0.00781843299808993"/>
+    <parent link="left_ring_link3"/>
+    <child link="left_ring_tactile_link3"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <joint name="left_ring_tactile_joint4" type="fixed">
+    <origin rpy="0 0 0" xyz="-0.000950000000000006 0 0.0045"/>
+    <parent link="left_ring_link4"/>
+    <child link="left_ring_tactile_link4"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <!-- =========================== Baby finger ========================== -->
+  <link name="left_baby_link1">
+    <inertial>
+      <origin rpy="0 0 0" xyz="6.93889390390723E-18 0.00573415418967848 -7.48495015857331E-05"/>
+      <mass value="0.00373585630830408"/>
+      <inertia ixx="4.76116410082424E-08" ixy="1.23845528916327E-23" ixz="7.99031393517672E-24" iyy="1.10013297422609E-07" iyz="-2.19052806342323E-10" izz="1.38941854814581E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_baby_link1.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.772549019607843 0.756862745098039 0.737254901960784 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_baby_link1.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_baby_link2">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.000475246970516299 1.12580322428127E-05 0.0250362724347428"/>
+      <mass value="0.0178860170151229"/>
+      <inertia ixx="2.03097140710094E-06" ixy="-4.63208199612503E-08" ixz="-1.69576831826889E-07" iyy="2.30879435364762E-06" iyz="-3.90309695776511E-08" izz="5.31448963370741E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_baby_link2.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_baby_link2.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_baby_link3">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.00175646015685033 -4.117681383492E-05 0.0132461173846273"/>
+      <mass value="0.00820715239033152"/>
+      <inertia ixx="6.10555261983365E-07" ixy="-1.82131892874055E-08" ixz="1.19430724571699E-07" iyy="7.24152113022429E-07" iyz="1.50594226453557E-08" izz="2.09996932441011E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_baby_link3.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_baby_link3.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_baby_link4">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.00173324085998482 -2.16115524884833E-05 0.00843415680108472"/>
+      <mass value="0.00519386526873273"/>
+      <inertia ixx="2.75990821340783E-07" ixy="-1.24478012052295E-08" ixz="2.74175327400598E-08" iyy="2.43115079093171E-07" iyz="3.23513056218213E-08" izz="1.30104278026005E-07"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_baby_link4.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.223529411764706 0.223529411764706 0.223529411764706 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_baby_link4.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_baby_tactile_link2">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00425357238561334 2.00221859925076E-10 0.00799999986500846"/>
+      <mass value="8.52157452018808E-10"/>
+      <inertia ixx="6.16390545598157E-14" ixy="3.52883415776276E-21" ixz="2.07308983352894E-20" iyy="2.49954227012169E-14" iyz="3.51088405989175E-20" izz="4.23253520766066E-14"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_baby_tactile_link2.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_baby_tactile_link2.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_baby_tactile_link3">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00390664184626787 -2.60194683784909E-08 0.00531673323597731"/>
+      <mass value="6.04937762002503E-10"/>
+      <inertia ixx="3.32341567324474E-14" ixy="2.00584839876015E-20" ixz="-1.0737027237777E-16" iyy="9.92905246821048E-15" iyz="-7.61455256156095E-20" izz="2.78130266811299E-14"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_baby_tactile_link3.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_baby_tactile_link3.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_baby_tactile_link4">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.00506603814777081 6.93535278234458E-08 0.0087461020484253"/>
+      <mass value="0.00110665263524421"/>
+      <inertia ixx="6.66787385042317E-08" ixy="1.54829881951474E-13" ixz="6.10018898312953E-09" iyy="4.10874627463211E-08" iyz="-7.12959488503221E-13" izz="3.91933465827515E-08"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/visual/left_baby_tactile_link4.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.274509803921569 0.274509803921569 0.274509803921569 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="../meshes/left_aidin_hand2/collision/left_baby_tactile_link4.STL"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_baby_joint1" type="revolute">
+    <origin rpy="0 0 1.5708" xyz="0.0129 0.0345 0.1239"/>
+    <parent link="left_hand_base_link"/>
+    <child link="left_baby_link1"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="-0.5236" upper="0.5236" velocity="1.57"/>
+  </joint>
+  <joint name="left_baby_joint2" type="revolute">
+    <origin rpy="0 0.046688 -1.5708" xyz="0 0 0"/>
+    <parent link="left_baby_link1"/>
+    <child link="left_baby_link2"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.6581" velocity="1.57"/>
+  </joint>
+  <joint name="left_baby_joint3" type="revolute">
+    <origin rpy="0 -0.028411 0" xyz="0 0 0.04524"/>
+    <parent link="left_baby_link2"/>
+    <child link="left_baby_link3"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.5533" velocity="1.57"/>
+  </joint>
+  <joint name="left_baby_joint4" type="revolute">
+    <origin rpy="0 -0.059717 0" xyz="0 0 0.0275"/>
+    <parent link="left_baby_link3"/>
+    <child link="left_baby_link4"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="1.2" lower="0" upper="1.6319" velocity="1.57"/>
+  </joint>
+  <joint name="left_baby_tactile_joint2" type="fixed">
+    <origin rpy="0 -0.226892802759263 0" xyz="0.0110350261338632 0 0.0192745666645207"/>
+    <parent link="left_baby_link2"/>
+    <child link="left_baby_tactile_link2"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <joint name="left_baby_tactile_joint3" type="fixed">
+    <origin rpy="0 -0.0698131700797666 0" xyz="0.00453544006933306 0 0.00781843299808993"/>
+    <parent link="left_baby_link3"/>
+    <child link="left_baby_tactile_link3"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <joint name="left_baby_tactile_joint4" type="fixed">
+    <origin rpy="0 0.0414403956381318 0" xyz="-0.000950000000000006 0 0.0045"/>
+    <parent link="left_baby_link4"/>
+    <child link="left_baby_tactile_link4"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+  <!-- =========================== Helper macro =========================== -->
+  <!-- =========================== System macro =========================== -->
+</robot>

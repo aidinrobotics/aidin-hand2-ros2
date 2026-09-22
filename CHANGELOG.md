@@ -7,6 +7,28 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **`urdf/aidin_hand2_left.urdf` and `urdf/aidin_hand2_right.urdf` carry one hand each as plain
+  URDF.** Tools that do not resolve `package://` — MuJoCo, PyBullet, pinocchio, browser viewers —
+  could not load this description at all: reaching a file they can open took a ROS 2 installation
+  to run xacro, then a rewrite of all 78 mesh URIs. Each file is rooted at its
+  `{side}_hand_base_link` and names its meshes relative to itself, so a tool opens it where it
+  sits. Every finger's `joint4` follows its `joint3` through a four-bar linkage that URDF cannot
+  state, so constrain that pair in your own tool.
+
+### Changed
+
+- **The model xacro moved from `urdf/` to `xacro/`.** `urdf/` now holds the plain URDF above, and
+  keeping both kinds in one directory would have left two files per hand whose names differ only
+  by extension. A robot that includes the hand updates two lines, and its
+  `ros2_control/aidin_hand2.ros2_control.xacro` include stays as it is.
+
+  ```xml
+  <xacro:include filename="$(find aidin_hand2_description)/xacro/aidin_hand2_left.urdf.xacro"/>
+  <xacro:include filename="$(find aidin_hand2_description)/xacro/aidin_hand2_right.urdf.xacro"/>
+  ```
+
 ## [0.6.0] - 2026-09-18
 
 A command is a `sensor_msgs/JointState` on `~/cmd`, so anything standard can drive the hand and the
