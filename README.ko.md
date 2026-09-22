@@ -112,7 +112,7 @@ effort 상한과 filter·gain은 hardware node의 ROS parameter로 설정합니�
 | Package | Guide |
 |---|---|
 | [aidin_hand2_bringup](aidin_hand2_bringup/README.ko.md) | launch 인자·기본값, 설정 파일, 기존 로봇에 추가하는 순서 |
-| [aidin_hand2_description](aidin_hand2_description/README.ko.md) | URDF·xacro 파일 위치, 매크로 호출·인자, RViz 시각화 |
+| [aidin_hand2_description](aidin_hand2_description/README.ko.md) | xacro·URDF 파일 위치, 매크로 호출·인자, RViz 시각화, 다른 도구용 전개본 |
 | [aidin_hand2_controllers](aidin_hand2_controllers/README.ko.md) | controller 선택·입력·전환, chaining, controller YAML·설정값 |
 | [aidin_hand2_hardware](aidin_hand2_hardware/README.ko.md) | homing·정지·복구 service, effort·filter·gain 변경과 초기 설정 |
 | [aidin_hand2_msgs](aidin_hand2_msgs/README.ko.md) | command·상태 message 필드·단위, joint·actuator 배열 순서 |

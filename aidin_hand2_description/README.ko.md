@@ -2,9 +2,10 @@
 
 [전체 문서](../README.ko.md#documentation) | [English overview](README.md)
 
-`aidin_hand2_description` package는 로봇 핸드의 URDF·xacro와 mesh를 제공합니다.
+`aidin_hand2_description` package는 로봇 핸드의 xacro·URDF와 mesh를 제공합니다.
 이 문서에서는 파일 위치를 확인하고, 사용자 URDF에 로봇 핸드를 부착하며, 매크로 인자를 설정합니다.
-모델만 보려면 [3. description.launch.py](#3-descriptionlaunchpy)를 실행합니다.
+모델만 보려면 [3. description.launch.py](#3-descriptionlaunchpy)를 실행합니다. ROS 2 없이 다른
+도구에서 열려면 [4. Plain URDF for other tools](#4-plain-urdf-for-other-tools)를 보십시오.
 
 ## Contents
 
@@ -12,22 +13,23 @@
 &nbsp;&nbsp;[**2. Add the robot hand to the URDF**](#2-add-the-robot-hand-to-the-urdf)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[2.1 Files and macro calls](#21-files-and-macro-calls)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[2.2 Macro settings](#22-macro-settings)<br>
-&nbsp;&nbsp;[**3. description.launch.py**](#3-descriptionlaunchpy)
+&nbsp;&nbsp;[**3. description.launch.py**](#3-descriptionlaunchpy)<br>
+&nbsp;&nbsp;[**4. Plain URDF for other tools**](#4-plain-urdf-for-other-tools)
 
 ## 1. Files
 
-아래 경로는 이 저장소 기준입니다. 모델은 한 손에 joint 21개와 actuator 16개를 포함합니다.
+아래 경로는 이 package 디렉터리 기준입니다. 모델은 한 손에 joint 21개와 actuator 16개를 포함합니다.
 각 finger의 `joint4`는 four-bar로 같은 finger의 `joint3`에 연결된 수동 joint이므로 actuator가
 없습니다. 촉각 센서는 finger마다 셋, 손바닥에 둘, 합쳐 한 손에 링크 17개이고 모두 fixed joint로
 붙습니다. actuator가 없고 TF에서 각 패드의 위치를 얻기 위한 것입니다.
 
-| File or directory | Purpose |
+| Directory | Purpose |
 |---|---|
-| [aidin_hand2_description/urdf/aidin_hand2.urdf.xacro](urdf/aidin_hand2.urdf.xacro) | 좌우 모델과 제어 설정을 모두 불러오는 최상위 URDF |
-| [aidin_hand2_description/urdf/](urdf) | 왼손·오른손 모델 매크로 |
-| [aidin_hand2_description/ros2_control/aidin_hand2.ros2_control.xacro](ros2_control/aidin_hand2.ros2_control.xacro) | 로봇 핸드·mock 제어 설정 매크로 |
-| [aidin_hand2_description/meshes/](meshes) | 손별 visual·collision mesh. 파일 이름이 그 mesh를 그리는 링크 이름과 같습니다 |
-| [aidin_hand2_description/launch/description.launch.py](launch/description.launch.py) | 모델 시각화 |
+| [xacro/](xacro) | ROS 2가 모델을 만드는 원본. 최상위 [aidin_hand2.urdf.xacro](xacro/aidin_hand2.urdf.xacro)가 왼손·오른손 모델 매크로와 제어 설정을 모두 불러옵니다 |
+| [ros2_control/](ros2_control) | 로봇 핸드·mock 제어 설정 매크로 |
+| [urdf/](urdf) | `package://`를 해석하지 않는 도구용 전개본. [4. Plain URDF for other tools](#4-plain-urdf-for-other-tools) |
+| [meshes/](meshes) | 손별 visual·collision mesh. 파일 이름이 그 mesh를 그리는 링크 이름과 같습니다 |
+| [launch/](launch) | [description.launch.py](launch/description.launch.py)로 모델을 시각화합니다 |
 
 ## 2. Add the robot hand to the URDF
 
@@ -50,9 +52,9 @@ xacro 매크로는 이름을 붙여 재사용할 수 있게 만든 XML 묶음입
 
 | Purpose | Macro name | Definition file |
 |---|---|---|
-| 왼손의 링크·joint·mesh와 부착 위치 | `aidin_hand2_left` | [aidin_hand2_description/urdf/aidin_hand2_left.urdf.xacro](urdf/aidin_hand2_left.urdf.xacro) |
-| 오른손의 링크·joint·mesh와 부착 위치 | `aidin_hand2_right` | [aidin_hand2_description/urdf/aidin_hand2_right.urdf.xacro](urdf/aidin_hand2_right.urdf.xacro) |
-| 좌우 구분·CAN 연결 등 제어 설정 | `aidin_hand2_ros2_control` | [aidin_hand2_description/ros2_control/aidin_hand2.ros2_control.xacro](ros2_control/aidin_hand2.ros2_control.xacro) |
+| 왼손의 링크·joint·mesh와 부착 위치 | `aidin_hand2_left` | [xacro/aidin_hand2_left.urdf.xacro](xacro/aidin_hand2_left.urdf.xacro) |
+| 오른손의 링크·joint·mesh와 부착 위치 | `aidin_hand2_right` | [xacro/aidin_hand2_right.urdf.xacro](xacro/aidin_hand2_right.urdf.xacro) |
+| 좌우 구분·CAN 연결 등 제어 설정 | `aidin_hand2_ros2_control` | [ros2_control/aidin_hand2.ros2_control.xacro](ros2_control/aidin_hand2.ros2_control.xacro) |
 
 다음은 양손을 붙이는 예제입니다. 모델 파일은 손마다 하나씩 불러오고, 제어 설정 파일은 좌우가
 같은 매크로를 쓰므로 한 번만 불러옵니다. `$(find aidin_hand2_description)`은 설치된 package의
@@ -67,8 +69,8 @@ xacro 매크로는 이름을 붙여 재사용할 수 있게 만든 XML 묶음입
   <!-- 기존 로봇의 링크·joint 정의는 유지합니다. -->
 
   <!-- 제공된 매크로 정의를 불러옵니다. -->
-  <xacro:include filename="$(find aidin_hand2_description)/urdf/aidin_hand2_left.urdf.xacro"/>
-  <xacro:include filename="$(find aidin_hand2_description)/urdf/aidin_hand2_right.urdf.xacro"/>
+  <xacro:include filename="$(find aidin_hand2_description)/xacro/aidin_hand2_left.urdf.xacro"/>
+  <xacro:include filename="$(find aidin_hand2_description)/xacro/aidin_hand2_right.urdf.xacro"/>
   <xacro:include filename="$(find aidin_hand2_description)/ros2_control/aidin_hand2.ros2_control.xacro"/>
 
   <!-- 왼손 모델을 기존 로봇의 링크에 붙입니다. -->
@@ -168,8 +170,8 @@ xacro 매크로는 이름을 붙여 재사용할 수 있게 만든 XML 묶음입
 
 ## 3. description.launch.py
 
-`description.launch.py`는 hardware 없이 URDF만 RViz에 표시합니다. `use_mock:=true`로 description을 만들고
-`robot_state_publisher`, `joint_state_publisher_gui`, `rviz2`를 올립니다.
+`description.launch.py`는 hardware 없이 URDF만 RViz에 표시합니다. `use_mock:=true`로 `robot_description`을
+만들고 `robot_state_publisher`, `joint_state_publisher_gui`, `rviz2`를 올립니다.
 
 | Argument | Default | Description |
 |---|---|---|
@@ -188,3 +190,38 @@ ros2 launch aidin_hand2_description description.launch.py
 ```bash
 ros2 launch aidin_hand2_description description.launch.py use_right_hand:=false
 ```
+
+## 4. Plain URDF for other tools
+
+`package://`를 해석하지 않는 도구에서 로봇 핸드를 여는 파일입니다. MuJoCo·PyBullet·pinocchio와
+브라우저 뷰어가 여기에 해당합니다. ROS 2에서는 이 파일을 쓰지 않고 `xacro/aidin_hand2.urdf.xacro`로
+모델을 만듭니다. RViz와 MoveIt은 mesh를 `package://`나 `file://`로만 찾으므로, 이 파일을 그대로
+쓰면 링크는 나타나도 mesh가 표시되지 않습니다.
+
+| File | Contents |
+|---|---|
+| [urdf/aidin_hand2_left.urdf](urdf/aidin_hand2_left.urdf) | 왼손 하나. root 링크는 `left_hand_base_link` |
+| [urdf/aidin_hand2_right.urdf](urdf/aidin_hand2_right.urdf) | 오른손 하나. root 링크는 `right_hand_base_link` |
+
+mesh 경로는 파일 기준 상대 경로입니다. 다른 곳으로 옮길 때는 `urdf/`와 `meshes/`의 위치 관계를
+유지하십시오.
+
+> [!IMPORTANT]
+> 각 finger의 `joint4`는 실제 로봇 핸드에서 four-bar로 같은 finger의 `joint3`에 딸려 움직이지만,
+> URDF는 이 폐루프를 표현하지 못합니다. 이 파일에서 `joint4`는 독립 joint이므로 사용하는 도구에서
+> 구속을 지정하십시오. MuJoCo는 `equality`로, `<mimic>`을 읽는 도구는 mimic으로 지정합니다.
+
+> [!NOTE]
+> visual mesh와 collision mesh는 파일 이름이 같고 디렉터리로만 구분됩니다. MuJoCo처럼 mesh 파일
+> 이름에서 경로를 떼는 도구에서는 `compiler`의 `strippath` 값을 `false`로 지정해야 두 mesh를
+> 구별합니다.
+
+xacro를 고치면 이 파일도 다시 만듭니다.
+
+```bash
+xacro xacro/aidin_hand2.urdf.xacro use_left_hand:=false > urdf/aidin_hand2_right.urdf
+```
+
+전개한 결과에서 `<ros2_control>` 블록과 `world` 링크·그 고정 joint를 지우고,
+`package://aidin_hand2_description/`를 `../`로 바꾸고, `<robot>`의 `name` 값을 `aidin_hand2_right`로
+고칩니다. 왼손은 `use_right_hand:=false`로 전개하고 이름을 `aidin_hand2_left`로 고칩니다.
