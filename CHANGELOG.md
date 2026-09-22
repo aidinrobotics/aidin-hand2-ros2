@@ -7,6 +7,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-22
+
+Each hand ships as a plain URDF that a tool without `package://` resolution can open, the model
+xacro moves to `xacro/` to make room for it, and `HandState` carries its readings at the width the
+sensors and drives send them. Requires SDK 0.7.x, and anything that subscribes to `HandState` has
+to be rebuilt: the tactile and actuator arrays are integers now.
+
 ### Added
 
 - **`urdf/aidin_hand2_left.urdf` and `urdf/aidin_hand2_right.urdf` carry one hand each as plain
@@ -338,7 +345,8 @@ of it. Glove teleop is gone. The URDF joint limits were wrong and are corrected.
 
 - Initial release.
 
-[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.6.0-humble...develop
+[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.0-humble...develop
+[0.7.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.6.0-humble...v0.7.0-humble
 [0.6.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.4.0-humble...v0.6.0-humble
 [0.4.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.3.2-humble...v0.4.0-humble
 [0.3.2]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.3.1-humble...v0.3.2-humble
