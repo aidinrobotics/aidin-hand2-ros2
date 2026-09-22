@@ -369,9 +369,9 @@ AidinHand2SystemInterface::export_state_interfaces()
   // Actuator motion and sensing, while enabled and fault go to the diagnostics gpio
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
     const std::string joint = prefix_ + kActuatorBaseNames[i];
-    interfaces.emplace_back(joint, kPositionCountInterface, &state_.actuators.position_count[i]);
-    interfaces.emplace_back(joint, kVelocityRpmInterface, &state_.actuators.velocity_rpm[i]);
-    interfaces.emplace_back(joint, kCurrentMilliampInterface, &state_.actuators.current_mA[i]);
+    interfaces.emplace_back(joint, kPositionCountInterface, &actuator_position_cnt_[i]);
+    interfaces.emplace_back(joint, kVelocityRpmInterface, &actuator_velocity_rpm_[i]);
+    interfaces.emplace_back(joint, kCurrentMilliampInterface, &actuator_current_ma_[i]);
   }
 
   for (std::size_t i = 0; i < ah2::kJointCount; ++i) {
@@ -382,7 +382,7 @@ AidinHand2SystemInterface::export_state_interfaces()
     const std::string sensor = prefix_ + kFingerNames[finger] + "_sensor";
     for (std::size_t cell = 0; cell < ah2::kTactileTaxelsPerFinger; ++cell) {
       interfaces.emplace_back(sensor, "tactile_" + std::to_string(cell + 1),
-                              &state_.tactile.fingers[finger][cell]);
+                              &tactile_fingers_[finger][cell]);
     }
   }
 
@@ -392,7 +392,7 @@ AidinHand2SystemInterface::export_state_interfaces()
   const auto add_palm_region = [&](const char * region_prefix, std::size_t count) {
     for (std::size_t cell = 0; cell < count; ++cell) {
       interfaces.emplace_back(palm, region_prefix + std::to_string(cell + 1),
-                              &state_.tactile.palm[palm_offset + cell]);
+                              &tactile_palm_[palm_offset + cell]);
     }
     palm_offset += count;
   };
@@ -552,6 +552,20 @@ hardware_interface::return_type AidinHand2SystemInterface::read(
   try {
     state_ = hand_->get_state();
     joint_position_rad_ = state_.joints.position_rad;
+
+    for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+      actuator_position_cnt_[i] = state_.actuators.position_count[i];
+      actuator_velocity_rpm_[i] = state_.actuators.velocity_rpm[i];
+      actuator_current_ma_[i] = state_.actuators.current_mA[i];
+    }
+    for (std::size_t finger = 0; finger < ah2::kFingerCount; ++finger) {
+      for (std::size_t cell = 0; cell < ah2::kTactileTaxelsPerFinger; ++cell) {
+        tactile_fingers_[finger][cell] = state_.tactile.fingers[finger][cell];
+      }
+    }
+    for (std::size_t cell = 0; cell < ah2::kPalmTactileCount; ++cell) {
+      tactile_palm_[cell] = state_.tactile.palm[cell];
+    }
 
     // NaN marks a field the active input or output type does not carry
     const double unused = std::numeric_limits<double>::quiet_NaN();
