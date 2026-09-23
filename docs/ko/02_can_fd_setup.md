@@ -72,7 +72,7 @@ sudo ip link set can0 down 2>/dev/null || true
 sudo ip link set can0 type can \
   bitrate 1000000 sample-point 0.875 sjw 10 \
   dbitrate 5000000 dsample-point 0.875 dsjw 2 \
-  fd on restart-ms 100
+  fd on
 sudo ip link set can0 up
 sudo ip link set can0 txqueuelen 1000
 ```
@@ -84,14 +84,10 @@ sudo ip link set can1 down 2>/dev/null || true
 sudo ip link set can1 type can \
   bitrate 1000000 sample-point 0.875 sjw 10 \
   dbitrate 5000000 dsample-point 0.875 dsjw 2 \
-  fd on restart-ms 100
+  fd on
 sudo ip link set can1 up
 sudo ip link set can1 txqueuelen 1000
 ```
-
-> [!NOTE]
-> `restart-ms`는 bus-off 발생 시 자동복구까지의 대기 시간(ms)입니다. 0이면 자동복구가 꺼져,
-> 전원이 순간 끊길 때 컨트롤러가 bus-off로 정지한 뒤 SDK의 auto-reconnect도 회복하지 못합니다.
 
 ### 1.4 Verify the link
 
@@ -112,7 +108,7 @@ ip -details -statistics link show "$CAN"
 
 ```text
 # <FD> = CAN-FD, ERROR-ACTIVE = 정상 버스, berr-counter 0 = error 안 오름
-can <FD> state ERROR-ACTIVE (berr-counter tx 0 rx 0) restart-ms 100
+can <FD> state ERROR-ACTIVE (berr-counter tx 0 rx 0)
 # nominal: bitrate 1 Mbit/s, sample-point 0.875
   bitrate 1000000 sample-point 0.875
 # data phase: bitrate 5 Mbit/s, sample-point 0.875
