@@ -163,12 +163,12 @@ joint position controller와 broadcaster는 `active`, 나머지 command controll
 ## 5. gui_bridge.launch.py
 
 `gui_bridge.launch.py`는 GUI의 `web_bridge`가 접속하는 `rosbridge_websocket`을 올립니다. GUI 프로필의
-`ip`에는 이 PC의 주소와 port를 적습니다. GUI가 같은 PC에서 실행되면 `localhost:9090`, 같은 network의
-다른 PC에서 실행되면 이 PC의 IP(예: `192.168.0.10:9090`)입니다.
+`ip`에는 이 PC의 주소를 적습니다. GUI가 같은 PC에서 실행되면 `localhost`, 같은 network의 다른 PC에서
+실행되면 이 PC의 IP(예: `192.168.0.10`)입니다. port를 적지 않으면 GUI가 기본 port인 `26351`을 붙입니다.
 
 | Argument | Default | Description |
 |---|---|---|
-| `port` | `9090` | 접속을 받을 port. 바꾸면 GUI 프로필의 주소도 바꿉니다 |
+| `port` | `26351` | 접속을 받을 port. 바꾸면 GUI 프로필의 주소에 그 port를 적습니다(예: `192.168.0.10:26352`) |
 | `address` | `""` | 접속을 받을 주소. 빈 값은 모든 network interface, `127.0.0.1`은 이 PC만 |
 
 rosbridge는 GUI가 쓰는 이름으로만 구독·발행·호출을 받습니다. 그 밖의 이름은 rosbridge가

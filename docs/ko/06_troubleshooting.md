@@ -250,11 +250,27 @@ ros2 launch aidin_hand2_bringup gui_bridge.launch.py
 
 ```bash
 ros2 node list | grep rosbridge
-ss -ltn | grep 9090
+ss -ltnp | grep 26351
+```
+
+rosbridge log에 다음 메시지가 5초마다 반복되면 다른 프로그램이 이미 그 port를 쓰고 있습니다. 이때도
+`ros2 node list`에는 `/rosbridge_websocket`이 나오지만 rosbridge는 접속을 받지 못합니다. 그 프로그램이
+HTTP로 응답하면 GUI 프로필 화면에는 `another program may hold the port`가 나옵니다.
+
+```text
+Unable to start server: [Errno 98] Address already in use Retrying in 5.0s.
+```
+
+`ss -ltnp` 출력의 `users:` 항목에서 그 port를 쓰는 프로그램을 확인합니다. 다른 사용자가 실행한
+프로그램은 `sudo ss -ltnp`로 확인합니다. 그 프로그램을 끄거나, rosbridge를 다른 port로 올리고 GUI 프로필의
+주소에 그 port를 적습니다(예: `192.168.0.10:26352`).
+
+```bash
+ros2 launch aidin_hand2_bringup gui_bridge.launch.py port:=26352
 ```
 
 GUI 프로필의 주소로 접속하는 것은 GUI의 `web_bridge`입니다. GUI가 다른 PC에서 실행되면 `localhost`가
-아니라 robot host의 IP를 적습니다(예: `192.168.0.10:9090`). `address:=127.0.0.1`로 올렸다면 다른 PC에서는
+아니라 robot host의 IP를 적습니다(예: `192.168.0.10`). `address:=127.0.0.1`로 올렸다면 다른 PC에서는
 접속할 수 없습니다. port를 신뢰할 수 없는 network에 열지 마십시오.
 
 GUI 프로필 화면의 확인란이 이름마다 상태를 보여 줍니다. rosbridge log에 `No match found`가 있으면 GUI가
