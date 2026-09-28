@@ -12,8 +12,8 @@ The path is ~/cmd -> joint_position_controller -> mock hardware -> /joint_states
 The command topic is /<side>_joint_position_controller/cmd, a sensor_msgs/JointState whose name
 entries select the joints.
 
-aidin_hand2_controllers.launch.py is not included here, it also spawns the hand state and
-diagnostics broadcasters, which controllers_mock.yaml leaves out.
+The hand state and diagnostics broadcasters run too, so the GUI can follow the mock through
+gui_bridge.launch.py: zero tactile, Running and homed, joint position commands only.
 """
 import os
 
@@ -89,9 +89,13 @@ def generate_launch_description():
         # One for the whole robot, spawned once
         _spawn("joint_state_broadcaster"),
 
-        # One joint_position_controller per hand, nothing else
+        # One joint_position_controller per hand, and the two broadcasters a GUI follows
         _spawn("left_joint_position_controller", IfCondition(use_left_hand)),
         _spawn("right_joint_position_controller", IfCondition(use_right_hand)),
+        _spawn("left_hand_state_broadcaster", IfCondition(use_left_hand)),
+        _spawn("left_diagnostics_broadcaster", IfCondition(use_left_hand)),
+        _spawn("right_hand_state_broadcaster", IfCondition(use_right_hand)),
+        _spawn("right_diagnostics_broadcaster", IfCondition(use_right_hand)),
 
         Node(package="rviz2", executable="rviz2",
              arguments=["-d", rviz_config],

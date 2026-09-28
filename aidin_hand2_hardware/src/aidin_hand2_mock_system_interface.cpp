@@ -5,12 +5,15 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <optional>
 #include <set>
+#include <string>
 
 #include <aidin_hand2/hand/hand_kinematics.hpp>
 #include <aidin_hand2/types/command.hpp>
+#include <aidin_hand2/types/state.hpp>
 
 #include "rclcpp/rclcpp.hpp"
 
@@ -92,6 +95,23 @@ constexpr std::array<const char *, ah2::kJointCount> kJointBaseNames = {
   "baby_joint3",
   "baby_joint4",
 };
+
+// The names the real hardware exports and the broadcasters claim
+constexpr std::array<const char *, ah2::kFingerCount> kFingerNames = {
+  "thumb", "index", "middle", "ring", "baby"};
+constexpr std::array<const char *, 7> kDiagnosticsInterfaceNames = {
+  "lifecycle",
+  "nan_command_count",
+  "control_cycles",
+  "deadline_misses",
+  "last_period_ms",
+  "last_compute_ms",
+  "homing_state",
+};
+constexpr std::size_t kLifecycleField = 0;
+constexpr std::size_t kControlCyclesField = 2;
+constexpr std::size_t kLastPeriodField = 4;
+constexpr std::size_t kHomingStateField = 6;
 
 std::string command_component(const std::string & side, ah2::CommandMode mode)
 {
@@ -210,7 +230,41 @@ hardware_interface::CallbackReturn AidinHand2MockSystemInterface::on_init(
 
   const std::array<int, ah2::kActuatorCount> zero_encoder{};
   joint_position_rad_ = ah2::fk_actuator_to_joint(zero_encoder);
+
+  // Up and homed from the start: the mock has no link to bring up and no homing to run
+  diagnostics_values_[kLifecycleField] =
+    static_cast<double>(static_cast<int>(ah2::HandLifecycle::Running));
+  diagnostics_values_[kHomingStateField] =
+    static_cast<double>(static_cast<int>(ah2::HomingState::Succeeded));
+  actuator_enabled_.fill(1.0);
+  commanded_max_effort_pct_.fill(max_effort_pct_);
+  echo_command({}, {});
   return hardware_interface::CallbackReturn::SUCCESS;
+}
+
+// The command echo the real hardware reads back from the SDK, for a joint position command only
+void AidinHand2MockSystemInterface::echo_command(
+  const std::optional<std::array<double, ah2::kActiveJointCount>> & joint_target,
+  const std::optional<std::array<int, ah2::kActuatorCount>> & encoder)
+{
+  const double unused = std::numeric_limits<double>::quiet_NaN();
+  controller_input_target_rad_.fill(unused);
+  controller_input_target_position_cnt_.fill(unused);
+  controller_input_target_effort_pct_.fill(unused);
+  controller_output_target_position_cnt_.fill(unused);
+  controller_output_target_effort_pct_.fill(unused);
+  controller_input_mode_ = static_cast<double>(static_cast<int>(command_mode_));
+  controller_output_type_ = 0.0;
+  selected_source_ = static_cast<double>(static_cast<int>(
+    command_mode_ == ah2::CommandMode::Idle ? ah2::CommandSource::None :
+    ah2::CommandSource::Controller));
+  if (joint_target) controller_input_target_rad_ = *joint_target;
+  if (encoder) {
+    controller_output_type_ = 1.0;  // ActuatorPositionSetpoint
+    for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+      controller_output_target_position_cnt_[i] = static_cast<double>((*encoder)[i]);
+    }
+  }
 }
 
 std::vector<hardware_interface::StateInterface>
@@ -227,6 +281,65 @@ AidinHand2MockSystemInterface::export_state_interfaces()
     interfaces.emplace_back(
       prefix_ + kJointBaseNames[i], kPositionInterface, &joint_position_rad_[i]);
   }
+
+  for (std::size_t finger = 0; finger < ah2::kFingerCount; ++finger) {
+    const std::string sensor = prefix_ + kFingerNames[finger] + "_sensor";
+    for (std::size_t cell = 0; cell < ah2::kTactileTaxelsPerFinger; ++cell) {
+      interfaces.emplace_back(sensor, "tactile_" + std::to_string(cell + 1),
+                              &tactile_fingers_[finger][cell]);
+    }
+  }
+  const std::string palm = prefix_ + "palm_sensor";
+  std::size_t palm_offset = 0;
+  const auto add_palm_region = [&](const char * region_prefix, std::size_t count) {
+    for (std::size_t cell = 0; cell < count; ++cell) {
+      interfaces.emplace_back(palm, region_prefix + std::to_string(cell + 1),
+                              &tactile_palm_[palm_offset + cell]);
+    }
+    palm_offset += count;
+  };
+  add_palm_region("palm1_upper_", ah2::kPalm1UpperCount);
+  add_palm_region("palm1_lower_", ah2::kPalm1LowerCount);
+  add_palm_region("palm2_", ah2::kPalm2Count);
+
+  const std::string diagnostics = prefix_ + "diagnostics";
+  for (std::size_t i = 0; i < kDiagnosticsInterfaceNames.size(); ++i) {
+    interfaces.emplace_back(diagnostics, kDiagnosticsInterfaceNames[i], &diagnostics_values_[i]);
+  }
+  for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+    interfaces.emplace_back(
+      diagnostics, std::string("enabled_") + kActuatorBaseNames[i], &actuator_enabled_[i]);
+  }
+  for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+    interfaces.emplace_back(
+      diagnostics, std::string("fault_") + kActuatorBaseNames[i], &actuator_fault_[i]);
+  }
+
+  const std::string commanded = prefix_ + "commanded";
+  interfaces.emplace_back(commanded, "controller_input_mode", &controller_input_mode_);
+  interfaces.emplace_back(commanded, "controller_output_type", &controller_output_type_);
+  interfaces.emplace_back(commanded, "selected_source", &selected_source_);
+  for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+    interfaces.emplace_back(
+      commanded, std::string("controller_input_target_position_rad.") + kActiveJointBaseNames[i],
+      &controller_input_target_rad_[i]);
+  }
+  for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+    const std::string suffix = std::string(".") + kActuatorBaseNames[i];
+    interfaces.emplace_back(commanded, "controller_input_target_position_cnt" + suffix,
+                            &controller_input_target_position_cnt_[i]);
+    interfaces.emplace_back(commanded, "controller_input_target_effort_pct" + suffix,
+                            &controller_input_target_effort_pct_[i]);
+    interfaces.emplace_back(commanded, "controller_output_target_position_cnt" + suffix,
+                            &controller_output_target_position_cnt_[i]);
+    interfaces.emplace_back(commanded, "controller_output_target_effort_pct" + suffix,
+                            &controller_output_target_effort_pct_[i]);
+    interfaces.emplace_back(commanded, "max_effort_pct" + suffix, &commanded_max_effort_pct_[i]);
+  }
+
+  const std::string timestamp = prefix_ + "timestamp";
+  interfaces.emplace_back(timestamp, "sec", &observed_stamp_sec_);
+  interfaces.emplace_back(timestamp, "nanosec", &observed_stamp_nanosec_);
   return interfaces;
 }
 
@@ -330,10 +443,17 @@ hardware_interface::return_type AidinHand2MockSystemInterface::perform_command_m
   return hardware_interface::return_type::OK;
 }
 
-// Nothing to read, write() advances the state
+// write() advances the pose. read() only stamps the cycle, as the observation clock the real
+// hardware takes from the SDK
 hardware_interface::return_type AidinHand2MockSystemInterface::read(
-  const rclcpp::Time &, const rclcpp::Duration &)
+  const rclcpp::Time & time, const rclcpp::Duration & period)
 {
+  const std::int64_t ns = time.nanoseconds();
+  observed_stamp_sec_ = static_cast<double>(ns / 1000000000LL);
+  observed_stamp_nanosec_ = static_cast<double>(ns % 1000000000LL);
+  control_cycles_ += 1.0;
+  diagnostics_values_[kControlCyclesField] = control_cycles_;
+  diagnostics_values_[kLastPeriodField] = period.seconds() * 1000.0;
   return hardware_interface::return_type::OK;
 }
 
@@ -341,6 +461,7 @@ hardware_interface::return_type AidinHand2MockSystemInterface::write(
   const rclcpp::Time &, const rclcpp::Duration &)
 {
   std::array<int, ah2::kActuatorCount> encoder{};
+  echo_command({}, {});
   if (command_mode_ == ah2::CommandMode::JointPosition) {
     if (!all_nan(joint_position_target_rad_)) {
       for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
@@ -355,6 +476,7 @@ hardware_interface::return_type AidinHand2MockSystemInterface::write(
     command.target = held_joint_target_rad_;
     command.clamp();
     encoder = ah2::ik_joint_to_actuator(command.target);
+    echo_command(held_joint_target_rad_, encoder);
   } else if (command_mode_ == ah2::CommandMode::JointImpedance) {
     if (!all_nan(joint_impedance_target_rad_)) {
       for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {

@@ -5,6 +5,7 @@
 #define AIDIN_HAND2_HARDWARE__AIDIN_HAND2_MOCK_SYSTEM_INTERFACE_HPP_
 
 #include <array>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -40,6 +41,10 @@ public:
     const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
 private:
+  void echo_command(
+    const std::optional<std::array<double, aidin_hand2::kActiveJointCount>> & joint_target,
+    const std::optional<std::array<int, aidin_hand2::kActuatorCount>> & encoder);
+
   std::string hand_side_;
   std::string prefix_;
 
@@ -58,6 +63,28 @@ private:
   std::array<double, aidin_hand2::kActuatorCount> actuator_current_ma_{};
   std::array<double, aidin_hand2::kJointCount> joint_position_rad_{};
   double max_effort_pct_{1000.0};
+
+  // What the hand state and diagnostics broadcasters claim, so a GUI can follow the mock
+  // Tactile stays at zero, the hand reports Running and homed, and only a joint position
+  // command is echoed
+  std::array<std::array<double, aidin_hand2::kTactileTaxelsPerFinger>, aidin_hand2::kFingerCount>
+  tactile_fingers_{};
+  std::array<double, aidin_hand2::kPalmTactileCount> tactile_palm_{};
+  std::array<double, 7> diagnostics_values_{};
+  std::array<double, aidin_hand2::kActuatorCount> actuator_enabled_{};
+  std::array<double, aidin_hand2::kActuatorCount> actuator_fault_{};
+  double controller_input_mode_{};
+  double controller_output_type_{};
+  double selected_source_{};
+  std::array<double, aidin_hand2::kActiveJointCount> controller_input_target_rad_{};
+  std::array<double, aidin_hand2::kActuatorCount> controller_input_target_position_cnt_{};
+  std::array<double, aidin_hand2::kActuatorCount> controller_input_target_effort_pct_{};
+  std::array<double, aidin_hand2::kActuatorCount> controller_output_target_position_cnt_{};
+  std::array<double, aidin_hand2::kActuatorCount> controller_output_target_effort_pct_{};
+  std::array<double, aidin_hand2::kActuatorCount> commanded_max_effort_pct_{};
+  double observed_stamp_sec_{};
+  double observed_stamp_nanosec_{};
+  double control_cycles_{};
 
   aidin_hand2::CommandMode command_mode_{aidin_hand2::CommandMode::Idle};
   aidin_hand2::CommandMode pending_mode_{aidin_hand2::CommandMode::Idle};
