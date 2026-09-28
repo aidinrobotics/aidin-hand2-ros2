@@ -16,6 +16,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
   which waits up to 4 s for the drives, no longer holds the hand's state back.
   `address:=127.0.0.1` takes connections from this PC only.
 
+### Fixed
+
+- **The joint limits are the SDK clamp bounds again, not the CAD values.** Rebuilding the hands
+  from the 260918 CAD revision gave every `<limit>` the range the CAD model allows, not the range
+  the hand is driven through: `thumb_joint0` read 109.34° where the SDK clamps at 110°, and the
+  long-finger `joint1` ±30° where it clamps at ±27.5°. A planner or slider that trusted the URDF
+  asked for positions the SDK cut short, or never reached ones it allows. The active 16 follow
+  `joint_clamp.cpp`, and each passive `joint4` is what the SDK's kinematics gives at the `joint3`
+  bound.
+
 ## [0.7.0] - 2026-09-22
 
 Each hand ships as a plain URDF that a tool without `package://` resolution can open, the model
