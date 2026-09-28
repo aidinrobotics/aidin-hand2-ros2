@@ -253,8 +253,13 @@ ros2 node list | grep rosbridge
 ss -ltn | grep 9090
 ```
 
-다른 컴퓨터의 browser에서 `localhost`는 robot host가 아니라 browser가 실행되는 컴퓨터입니다. robot
-host의 IP를 쓰되, port를 신뢰할 수 없는 network에 열지 마십시오.
+GUI 프로필의 주소로 접속하는 것은 GUI의 `web_bridge`입니다. GUI가 다른 PC에서 실행되면 `localhost`가
+아니라 robot host의 IP를 적습니다(예: `192.168.0.10:9090`). `address:=127.0.0.1`로 올렸다면 다른 PC에서는
+접속할 수 없습니다. port를 신뢰할 수 없는 network에 열지 마십시오.
+
+GUI 프로필 화면의 확인란이 이름마다 상태를 보여 줍니다. rosbridge log에 `No match found`가 있으면 GUI가
+쓰지 않는 이름으로 요청이 온 것입니다. launch에서 이름을 바꿨다면
+[gui_bridge.launch.py](../../aidin_hand2_bringup/README.ko.md#5-gui_bridgelaunchpy)의 이름으로 remap합니다.
 
 ## 4. Controllers
 
