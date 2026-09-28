@@ -7,6 +7,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking: `gui_bridge.launch.py` serves the GUI's web_bridge and takes only the names it
+  uses.** The GUI no longer reaches rosbridge from the browser; its web_bridge follows the hands
+  through this rosbridge, so a GUI on another PC enters this PC's address, `192.168.0.10:9090`
+  say, in its profile. Clients may subscribe, publish and call only the GUI's names and rosapi,
+  and anything else is refused with a `No match found` warning in the rosbridge log, so a tool
+  that used this rosbridge for other topics starts a rosbridge_server of its own. Service calls
+  run in their own threads: `~/run` waits up to 4 s for the drives, and on rosbridge's main thread
+  it held the hand's state back from the GUI for as long. A new `address` argument narrows where
+  connections are taken, `address:=127.0.0.1` for this PC only.
+
 ## [0.7.0] - 2026-09-22
 
 Each hand ships as a plain URDF that a tool without `package://` resolution can open, the model
