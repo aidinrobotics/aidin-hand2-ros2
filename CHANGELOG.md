@@ -7,6 +7,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-09-29
+
+`gui_bridge.launch.py` becomes the rosbridge for the GUI alone: it takes only the names the GUI
+uses and listens on a port of its own, and the URDF joint limits are the SDK clamp bounds again.
+Requires SDK 0.7.x as 0.7.0 did. A GUI profile that names port 9090 has to name 26351 or no port.
+
 ### Changed
 
 - **`gui_bridge.launch.py` takes only the names the GUI uses.** The GUI's web_bridge,
@@ -15,6 +21,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
   starts a rosbridge_server of its own. Service calls run in their own threads, so `~/run`,
   which waits up to 4 s for the drives, no longer holds the hand's state back.
   `address:=127.0.0.1` takes connections from this PC only.
+- **`gui_bridge.launch.py` listens on port 26351 instead of 9090.** 9090 is rosbridge_server's own
+  default, and Cockpit and Prometheus take it by default too, so gui_bridge could not start while
+  one of them ran. 26351 also sits below the ports Linux hands out to outgoing connections
+  (32768-60999). A GUI profile whose address ends in `:9090` has to end in `:26351` or name no
+  port, since the GUI adds 26351 to an address without one. `port:=9090` brings the old port back.
 
 ### Fixed
 
@@ -376,7 +387,8 @@ of it. Glove teleop is gone. The URDF joint limits were wrong and are corrected.
 
 - Initial release.
 
-[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.0-humble...develop
+[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.1-humble...develop
+[0.7.1]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.0-humble...v0.7.1-humble
 [0.7.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.6.0-humble...v0.7.0-humble
 [0.6.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.4.0-humble...v0.6.0-humble
 [0.4.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.3.2-humble...v0.4.0-humble
