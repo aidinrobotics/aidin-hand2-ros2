@@ -7,6 +7,36 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-09-29
+
+`gui_bridge.launch.py` becomes the rosbridge for the GUI alone: it takes only the names the GUI
+uses and listens on a port of its own, and the URDF joint limits are the SDK clamp bounds again.
+Requires SDK 0.7.x as 0.7.0 did. A GUI profile that names port 9090 has to name 26351 or no port.
+
+### Changed
+
+- **`gui_bridge.launch.py` takes only the names the GUI uses.** The GUI's web_bridge,
+  not the browser, now connects to this rosbridge. Any other name is refused with
+  `No match found` in the rosbridge log, so a tool that used this rosbridge for other topics
+  starts a rosbridge_server of its own. Service calls run in their own threads, so `~/run`,
+  which waits up to 4 s for the drives, no longer holds the hand's state back.
+  `address:=127.0.0.1` takes connections from this PC only.
+- **`gui_bridge.launch.py` listens on port 26351 instead of 9090.** 9090 is rosbridge_server's own
+  default, and Cockpit and Prometheus take it by default too, so gui_bridge could not start while
+  one of them ran. 26351 also sits below the ports Linux hands out to outgoing connections
+  (32768-60999). A GUI profile whose address ends in `:9090` has to end in `:26351` or name no
+  port, since the GUI adds 26351 to an address without one. `port:=9090` brings the old port back.
+
+### Fixed
+
+- **The joint limits are the SDK clamp bounds again, not the CAD values.** Rebuilding the hands
+  from the 260918 CAD revision gave every `<limit>` the range the CAD model allows, not the range
+  the hand is driven through: `thumb_joint0` read 109.34° where the SDK clamps at 110°, and the
+  long-finger `joint1` ±30° where it clamps at ±27.5°. A planner or slider that trusted the URDF
+  asked for positions the SDK cut short, or never reached ones it allows. The active 16 follow
+  `joint_clamp.cpp`, and each passive `joint4` is what the SDK's kinematics gives at the `joint3`
+  bound.
+
 ## [0.7.0] - 2026-09-22
 
 Each hand ships as a plain URDF that a tool without `package://` resolution can open, the model
@@ -357,7 +387,8 @@ of it. Glove teleop is gone. The URDF joint limits were wrong and are corrected.
 
 - Initial release.
 
-[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.0-humble...develop
+[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.1-humble...develop
+[0.7.1]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.0-humble...v0.7.1-humble
 [0.7.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.6.0-humble...v0.7.0-humble
 [0.6.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.4.0-humble...v0.6.0-humble
 [0.4.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.3.2-humble...v0.4.0-humble

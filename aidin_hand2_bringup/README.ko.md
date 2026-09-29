@@ -162,17 +162,33 @@ joint position controller와 broadcaster는 `active`, 나머지 command controll
 
 ## 5. gui_bridge.launch.py
 
-`gui_bridge.launch.py`는 desktop GUI가 접속하는 `rosbridge_websocket`을 올립니다. 인자는 `port`
-하나이고 기본값은 `9090`입니다. GUI 설정에서 `ws://<robot host>:9090`을 지정합니다.
+`gui_bridge.launch.py`는 GUI의 `web_bridge`가 접속하는 `rosbridge_websocket`을 올립니다. GUI 프로필의
+`ip`에는 이 PC의 주소를 적습니다. GUI가 같은 PC에서 실행되면 `localhost`, 같은 network의 다른 PC에서
+실행되면 이 PC의 IP(예: `192.168.0.10`)입니다. port를 적지 않으면 GUI가 기본 port인 `26351`을 붙입니다.
+
+| Argument | Default | Description |
+|---|---|---|
+| `port` | `26351` | 접속을 받을 port. 바꾸면 GUI 프로필의 주소에 그 port를 적습니다(예: `192.168.0.10:26352`) |
+| `address` | `""` | 접속을 받을 주소. 빈 값은 모든 network interface, `127.0.0.1`은 이 PC만 |
+
+rosbridge는 GUI가 쓰는 이름으로만 구독·발행·호출을 받습니다. 그 밖의 이름은 rosbridge가
+`No match found` 경고를 남기고 거절합니다.
+
+| Kind | Name |
+|---|---|
+| 구독 | `/{side}_hand_state_broadcaster/hand_state`·`/{side}_diagnostics_broadcaster/hand_diagnostics`·`/rosout` |
+| 발행·구독 | `/{side}_{joint_position,joint_impedance,actuator_position,actuator_effort}_controller/cmd` |
+| service | `/{side}_hand_control/{run,stop,home,reconnect,get_parameters,set_parameters}`·`/controller_manager/switch_controller`·`/rosapi/*` |
 
 > [!WARNING]
-> rosbridge는 인증과 TLS를 제공하지 않고 모든 network interface에 bind합니다. 신뢰할 수 있는 격리
-> network에서만 쓰십시오.
+> rosbridge는 인증과 TLS를 제공하지 않습니다. 기본값은 모든 network interface에서 접속을 받으므로,
+> 같은 network의 누구나 위 이름으로 command를 보낼 수 있습니다. 신뢰할 수 있는 격리 network에서만
+> 쓰고, GUI가 같은 PC에서만 실행되면 `address:=127.0.0.1`로 올리십시오.
 
-다음은 기본 port로 올리는 예입니다.
+다음은 기본값으로 올리는 예입니다.
 
 ```bash
-ros2 launch aidin_hand2_bringup gui_bridge.launch.py port:=9090
+ros2 launch aidin_hand2_bringup gui_bridge.launch.py
 ```
 
 ## 6. Controller config
