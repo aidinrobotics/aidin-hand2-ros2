@@ -121,6 +121,7 @@ effort 상한과 filter·gain은 hardware node의 ROS parameter로 설정합니�
 ## Related repositories
 
 - [aidin-hand2-sdk](https://github.com/aidinrobotics/aidin-hand2-sdk) — C++ SDK
+- [aidin-hand2-gui](https://github.com/aidinrobotics/aidin-hand2-gui) — GUI
 
 SDK 문서 중 wrapper 사용자가 함께 보는 것은 셋입니다.
 

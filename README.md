@@ -127,7 +127,8 @@ Follow the common guides for installation, the first run and control. Package RE
 
 ## Related repositories
 
-- [aidin-hand2-sdk](https://github.com/aidinrobotics/aidin-hand2-sdk) — the C++ SDK
+- [aidin-hand2-sdk](https://github.com/aidinrobotics/aidin-hand2-sdk) — C++ SDK
+- [aidin-hand2-gui](https://github.com/aidinrobotics/aidin-hand2-gui) — GUI
 
 Three of the SDK documents matter to a reader of this wrapper.
 
