@@ -7,6 +7,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **The joint limits follow the workspace of the new mechanical design.** The SDK clamp was
+  changed to the workspace measured after the mechanical design change, and every `<limit>`
+  takes the range in the SDK's workspace limits document again. The viewer moves within the
+  same ranges.
+
 ## [0.7.1] - 2026-09-29
 
 `gui_bridge.launch.py` becomes the rosbridge for the GUI alone: it takes only the names the GUI
