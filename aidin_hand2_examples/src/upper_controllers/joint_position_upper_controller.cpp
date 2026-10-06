@@ -307,7 +307,8 @@ protected:
   bool on_set_chained_mode(bool) override {return true;}
 
   // Standalone only, a message not yet consumed moves to the references
-  controller_interface::return_type update_reference_from_subscribers() override
+  controller_interface::return_type update_reference_from_subscribers(
+    const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/) override
   {
     const auto & command = *command_buffer_.readFromRT();
     if (command.sequence == 0 || command.sequence == consumed_sequence_) {

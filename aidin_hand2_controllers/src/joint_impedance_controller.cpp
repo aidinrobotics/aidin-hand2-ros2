@@ -210,7 +210,8 @@ bool JointImpedanceController::on_set_chained_mode(bool chained_mode)
 
 // Only a message not yet consumed moves to the references
 controller_interface::return_type
-JointImpedanceController::update_reference_from_subscribers()
+JointImpedanceController::update_reference_from_subscribers(
+  const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
   const auto & command = *command_buffer_.readFromRT();
   if (command.sequence == 0 || command.sequence == consumed_sequence_) {
