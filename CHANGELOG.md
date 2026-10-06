@@ -7,12 +7,23 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-10-06
+
+The URDF joint limits follow the workspace the SDK clamps to after the hand's mechanical design
+change, and `aidin_hand2.repos` pins SDK 0.7.1, which brings that clamp. The wrapper supports hand
+types A and B. Rebuild the SDK from the new pin and run `sudo ldconfig`.
+
 ### Changed
 
 - **The joint limits follow the workspace of the new mechanical design.** The SDK clamp was
   changed to the workspace measured after the mechanical design change, and every `<limit>`
   takes the range in the SDK's workspace limits document again. The viewer moves within the
   same ranges.
+- **`aidin_hand2.repos` pins SDK `v0.7.1`.** The joint limits above follow its clamp, while 0.7.0
+  still clamps to the old workspace, so a workspace that keeps 0.7.0 drives the hand through
+  ranges the URDF does not state.
+- **The wrapper supports hand types A and B.** The URDF limits are those of types A and B. An SDK
+  built for type C clamps to the workspace of 0.7.0, which these limits no longer match.
 
 ## [0.7.1] - 2026-09-29
 
@@ -394,7 +405,8 @@ of it. Glove teleop is gone. The URDF joint limits were wrong and are corrected.
 
 - Initial release.
 
-[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.1-humble...develop
+[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.2-humble...develop
+[0.7.2]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.1-humble...v0.7.2-humble
 [0.7.1]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.0-humble...v0.7.1-humble
 [0.7.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.6.0-humble...v0.7.0-humble
 [0.6.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.4.0-humble...v0.6.0-humble
