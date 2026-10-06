@@ -542,7 +542,7 @@
       <parent link="${prefix}hand_base_link"/>
       <child link="${prefix}index_link1"/>
       <axis xyz="0 1 0"/>
-      <limit lower="-0.541052" upper="0.541052" effort="1.2" velocity="1.57"/>
+      <limit lower="-0.523599" upper="0.523599" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}index_joint2" type="revolute">
       <origin xyz="0 0 0" rpy="0 0 -1.5708"/>
@@ -765,7 +765,7 @@
       <parent link="${prefix}hand_base_link"/>
       <child link="${prefix}middle_link1"/>
       <axis xyz="0 1 0"/>
-      <limit lower="-0.541052" upper="0.541052" effort="1.2" velocity="1.57"/>
+      <limit lower="-0.523599" upper="0.523599" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}middle_joint2" type="revolute">
       <origin xyz="0 0 0" rpy="0 0 -1.5708"/>
@@ -988,7 +988,7 @@
       <parent link="${prefix}hand_base_link"/>
       <child link="${prefix}ring_link1"/>
       <axis xyz="0 1 0"/>
-      <limit lower="-0.541052" upper="0.541052" effort="1.2" velocity="1.57"/>
+      <limit lower="-0.523599" upper="0.523599" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}ring_joint2" type="revolute">
       <origin xyz="0 0 0" rpy="0 0.046688 -1.5708"/>
@@ -1211,7 +1211,7 @@
       <parent link="${prefix}hand_base_link"/>
       <child link="${prefix}baby_link1"/>
       <axis xyz="0 1 0"/>
-      <limit lower="-0.541052" upper="0.541052" effort="1.2" velocity="1.57"/>
+      <limit lower="-0.523599" upper="0.523599" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}baby_joint2" type="revolute">
       <origin xyz="0 0 0" rpy="0 0.046688 -1.5708"/>

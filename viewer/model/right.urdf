@@ -276,7 +276,7 @@
     <parent link="right_hand_base_link" />
     <child link="right_index_link1" />
     <axis xyz="0 1 0" />
-    <limit effort="1.2" lower="-0.541052" upper="0.541052" velocity="1.57" />
+    <limit effort="1.2" lower="-0.523599" upper="0.523599" velocity="1.57" />
   </joint>
   <joint name="right_index_joint2" type="revolute">
     <origin rpy="0 0 1.5708" xyz="0 0 0" />
@@ -399,7 +399,7 @@
     <parent link="right_hand_base_link" />
     <child link="right_middle_link1" />
     <axis xyz="0 1 0" />
-    <limit effort="1.2" lower="-0.541052" upper="0.541052" velocity="1.57" />
+    <limit effort="1.2" lower="-0.523599" upper="0.523599" velocity="1.57" />
   </joint>
   <joint name="right_middle_joint2" type="revolute">
     <origin rpy="0 0 1.5708" xyz="0 0 0" />
@@ -522,7 +522,7 @@
     <parent link="right_hand_base_link" />
     <child link="right_ring_link1" />
     <axis xyz="0 1 0" />
-    <limit effort="1.2" lower="-0.541052" upper="0.541052" velocity="1.57" />
+    <limit effort="1.2" lower="-0.523599" upper="0.523599" velocity="1.57" />
   </joint>
   <joint name="right_ring_joint2" type="revolute">
     <origin rpy="0 0.046688 1.5708" xyz="0 0 0" />
@@ -645,7 +645,7 @@
     <parent link="right_hand_base_link" />
     <child link="right_baby_link1" />
     <axis xyz="0 1 0" />
-    <limit effort="1.2" lower="-0.541052" upper="0.541052" velocity="1.57" />
+    <limit effort="1.2" lower="-0.523599" upper="0.523599" velocity="1.57" />
   </joint>
   <joint name="right_baby_joint2" type="revolute">
     <origin rpy="0 0.046688 1.5708" xyz="0 0 0" />
