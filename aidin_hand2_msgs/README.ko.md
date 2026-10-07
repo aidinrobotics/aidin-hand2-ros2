@@ -75,9 +75,10 @@ joint 목표는 SDK가 finger별 도달 범위로 투영한 뒤 변환합니다.
 `header.stamp` 필드는 SDK가 아직 state를 채우지 않아 `0`일 때만 broadcaster의 update 시각으로
 대체됩니다.
 
-tactile 값은 센서가 전송한 16-bit raw value(0~65535)라 단위도 정규화도 없습니다. 접촉 판정 임계값은 SDK가
-기준을 제시하지 않으므로, 접촉이 없는 상태를 baseline으로 두고 차이를 보십시오. 필드가 `int32[]`이므로
-차이는 그대로 빼서 구하면 음수까지 나옵니다.
+tactile 값은 센서가 전송한 raw value라 단위도 정규화도 없습니다. 접촉 판정 임계값은 SDK가
+기준을 제시하지 않으므로, 접촉이 없는 상태의 값과의 차이를 보십시오. `~/set_tactile_bias` service로 bias를
+설정하면 tactile 필드가 bias와의 차이를 담으며 음수일 수 있습니다. 사용법은
+[Control guide의 4.3 Tactile bias](../docs/ko/05_control_guide.md#43-tactile-bias)에 있습니다.
 
 ### 3.2 CommandState
 

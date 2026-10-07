@@ -67,7 +67,7 @@ first. The full definitions are in the [ros2_control documentation](https://cont
 |---|---|
 | controller_manager | The node that loads, unloads and runs controllers every cycle. The launch files start it |
 | hardware component | The plugin that talks to the hardware, reads state and writes targets. The kinds are System, Actuator and Sensor; the wrapper provides one System per robot hand, which calls the SDK and is named `{side}_hand_control` |
-| hardware node | The node the hardware component starts. It offers the `~/run`, `~/stop`, `~/home` and `~/reconnect` services and the effort, filter and gain parameters |
+| hardware node | The node the hardware component starts. It offers the `~/run`, `~/stop`, `~/home`, `~/reconnect`, `~/set_tactile_bias` and `~/reset_tactile_bias` services and the effort, filter and gain parameters |
 | controller | Runs every cycle on top of the hardware component to produce targets or publish observations |
 | broadcaster | A controller that produces no target and only publishes observations |
 | `unconfigured` · `inactive` · `active` | The ROS 2 managed node states, held separately by controllers and by hardware components. An `active` controller runs every cycle; an `active` hardware component has torque on the drives so the hand can move. `inactive` means loaded but neither, and `unconfigured` comes before it |

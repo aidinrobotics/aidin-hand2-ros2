@@ -13,8 +13,8 @@ int32[16] actuator_position     # encoder count
 int32[16] actuator_velocity     # rpm
 int16[16] actuator_current      # mA
 
-# Raw 16-bit readings (0..65535), no unit and no normalization
-# Held as int32 so that a difference from a baseline can go negative
+# Raw sensor values, no unit and no normalization
+# After ~/set_tactile_bias, the difference from the bias
 int32[17] tactile_thumb
 int32[17] tactile_index
 int32[17] tactile_middle
