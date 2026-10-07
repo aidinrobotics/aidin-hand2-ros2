@@ -7,17 +7,27 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-07
+
+The tactile arrays of `HandState` are `int32[]`, and the hardware node takes a tactile bias through
+two services. Requires SDK 0.8.0, and every `HandState` subscriber has to be rebuilt.
+
 ### Added
 
 - **The hardware node offers `~/set_tactile_bias` and `~/reset_tactile_bias`.** Telling contact
   apart meant recording the no-contact values and subtracting them in every subscriber. After
   `~/set_tactile_bias`, the tactile fields of `HandState` carry the difference from the values of
   that moment, negative included, and `~/reset_tactile_bias` brings the raw values back. Both are
-  `std_srvs/Trigger`, need `Connected`, `Running` or `Stopped`, and answer as soon as the SDK accepts
-  the request, which takes effect from its next cycle. The bias stays until it is reset, across `~/stop` and `~/reconnect`. No topic or
-  service reports the bias in effect, so record when it was set if a bag has to be read later.
+  `std_srvs/Trigger`, need `Connected`, `Running` or `Stopped`, and answer as soon as the SDK
+  accepts the request, which takes effect from its next cycle. The bias stays until it is reset,
+  across `~/stop` and `~/reconnect`. No topic or service reports the bias in effect, so record when
+  it was set if a bag has to be read later.
 
 ### Changed
+
+- **Breaking: requires SDK 0.8.x.** `find_package(aidin_hand2 0.8 REQUIRED)` fails at configure
+  time against 0.7, and `aidin_hand2.repos` pins `v0.8.0`. That release changes the tactile type
+  and adds the bias, so both the struct layout and the soname move.
 
 - **Breaking: the eight tactile arrays in `HandState` are `int32[]` instead of `uint16[]`.** The
   values are still the raw sensor readings. A reading is used as a difference from a
@@ -426,7 +436,8 @@ of it. Glove teleop is gone. The URDF joint limits were wrong and are corrected.
 
 - Initial release.
 
-[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.2-humble...develop
+[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.8.0-humble...develop
+[0.8.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.2-humble...v0.8.0-humble
 [0.7.2]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.1-humble...v0.7.2-humble
 [0.7.1]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.0-humble...v0.7.1-humble
 [0.7.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.6.0-humble...v0.7.0-humble
