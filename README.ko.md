@@ -14,6 +14,16 @@ AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. con
 
 </div>
 
+## Latest release
+
+- [0.8.0](CHANGELOG.md#080---2026-10-07)
+  - `HandState`의 tactile 배열이 `uint16[]`에서 `int32[]`로 바뀌었습니다.
+  - tactile bias service(`~/set_tactile_bias`·`~/reset_tactile_bias`)가 추가되었습니다.
+- [0.7.2](CHANGELOG.md#072---2026-10-06)
+  - URDF joint limit이 SDK workspace clamp 범위를 따르도록 변경되었습니다.
+
+전체 변경은 [CHANGELOG](CHANGELOG.md)에 있습니다.
+
 ## System requirements
 
 아래는 wrapper의 빌드·실행이 검증된 구성입니다.
@@ -24,7 +34,6 @@ AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. con
 | ROS 2 | Humble |
 | Control framework | `ros2_control` |
 | SDK | `aidin_hand2` 0.8.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
-| Hand type | A, B |
 | CAN interface | 로봇 핸드 구동 시 USB CAN-FD adapter (SocketCAN), nominal 1 Mbit/s, data phase 5 Mbit/s |
 
 ## Architecture

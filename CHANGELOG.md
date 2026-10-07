@@ -41,8 +41,8 @@ two services. Requires SDK 0.8.0, and every `HandState` subscriber has to be reb
 ## [0.7.2] - 2026-10-06
 
 The URDF joint limits follow the workspace the SDK clamps to after the hand's mechanical design
-change, and `aidin_hand2.repos` pins SDK 0.7.1, which brings that clamp. The wrapper supports hand
-types A and B. Rebuild the SDK from the new pin and run `sudo ldconfig`.
+change, and `aidin_hand2.repos` pins SDK 0.7.1, which brings that clamp. Rebuild the SDK from the new pin
+and run `sudo ldconfig`.
 
 ### Changed
 
@@ -53,8 +53,6 @@ types A and B. Rebuild the SDK from the new pin and run `sudo ldconfig`.
 - **`aidin_hand2.repos` pins SDK `v0.7.1`.** The joint limits above follow its clamp, while 0.7.0
   still clamps to the old workspace, so a workspace that keeps 0.7.0 drives the hand through
   ranges the URDF does not state.
-- **The wrapper supports hand types A and B.** The URDF limits are those of types A and B. An SDK
-  built for type C clamps to the workspace of 0.7.0, which these limits no longer match.
 
 ## [0.7.1] - 2026-09-29
 

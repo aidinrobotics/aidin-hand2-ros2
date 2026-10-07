@@ -82,8 +82,7 @@ cd ~/your_ws/src/aidin-hand2-sdk
 ```
 
 SDK의 [SDK build & install](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/06_sdk_build_and_install.md)
-1~3장에 따라 의존성 설치, hand type 선택, 빌드와 설치를 수행하십시오. 이 wrapper는 hand type A·B만
-지원하므로 type A 또는 B로 빌드합니다. SDK 문서가 저장소 root를
+1~3장에 따라 의존성 설치, 빌드와 설치를 수행하십시오. SDK 문서가 저장소 root를
 요구하는 명령은 위 경로에서 실행합니다. mock만 사용할 때는 SDK 문서 머리의 RT·CAN 준비와
 4장의 로봇 핸드 실행을 수행할 필요가 없습니다.
 

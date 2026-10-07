@@ -14,6 +14,16 @@ that runs without the robot hand, plus URDF and launch configuration for integra
 
 </div>
 
+## Latest release
+
+- [0.8.0](CHANGELOG.md#080---2026-10-07)
+  - The tactile arrays of `HandState` changed from `uint16[]` to `int32[]`.
+  - Added the tactile bias services (`~/set_tactile_bias`, `~/reset_tactile_bias`).
+- [0.7.2](CHANGELOG.md#072---2026-10-06)
+  - The URDF joint limits follow the SDK workspace clamp.
+
+All changes are in the [CHANGELOG](CHANGELOG.md).
+
 ## System requirements
 
 We verify that the wrapper builds and runs on the configuration below.
@@ -24,7 +34,6 @@ We verify that the wrapper builds and runs on the configuration below.
 | ROS 2 | Humble |
 | Control framework | `ros2_control` |
 | SDK | `aidin_hand2` 0.8.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
-| Hand type | A, B |
 | CAN interface | For the robot hand: USB CAN-FD adapter (SocketCAN), 1 Mbit/s nominal, 5 Mbit/s data phase |
 
 ## Architecture

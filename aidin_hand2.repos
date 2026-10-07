@@ -1,4 +1,4 @@
-# SDK revision to clone, built for hand type A or B. Any 0.8.x builds, because the wrapper's
+# SDK revision to clone. Any 0.8.x builds, because the wrapper's
 # find_package(aidin_hand2 0.8 REQUIRED) uses SameMinorVersion.
 #   vcs import .. < aidin_hand2.repos
 repositories:
