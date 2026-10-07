@@ -18,8 +18,9 @@ launch는 계속 실행하고, 명령은 ROS와 workspace 환경을 적용한 �
 &nbsp;&nbsp;[**4. Read state**](#4-read-state)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[4.1 Topics](#41-topics)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[4.2 Observe the result](#42-observe-the-result)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[4.3 Monitoring](#43-monitoring)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[4.4 QoS](#44-qos)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[4.3 Tactile bias](#43-tactile-bias)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[4.4 Monitoring](#44-monitoring)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[4.5 QoS](#45-qos)<br>
 &nbsp;&nbsp;[**5. Stop and recover**](#5-stop-and-recover)
 
 ## 1. Lifecycle
@@ -307,7 +308,38 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once
 
 필드의 타입·단위는 [aidin_hand2_msgs](../../aidin_hand2_msgs/README.ko.md)에 있습니다.
 
-### 4.3 Monitoring
+### 4.3 Tactile bias
+
+로봇 핸드에서만 사용합니다. `hand_state` topic의 tactile 필드는 기본적으로 센서의 raw value이고,
+접촉 여부는 접촉이 없을 때의 값과 비교해야 알 수 있습니다. 아무것도 로봇 핸드에 닿지 않은 상태에서
+`~/set_tactile_bias` service를 호출하면 그 시점의 값을 bias로 잡고, 이후 tactile 필드는 bias와의 차이를
+담습니다.
+
+```bash
+ros2 service call /left_hand_control/set_tactile_bias std_srvs/srv/Trigger
+```
+
+응답의 `success` 필드가 `True`이면 SDK가 요청을 받아들인 것이며, 바로 다음 cycle부터 적용됩니다. 이후
+tactile 필드는 접촉이 없으면 `0` 근처에 머물고, 차이는 음수일 수 있습니다.
+
+```bash
+ros2 topic echo /left_hand_state_broadcaster/hand_state --once --field tactile_index
+```
+
+raw value로 되돌리려면 `~/reset_tactile_bias` service를 호출합니다.
+
+```bash
+ros2 service call /left_hand_control/reset_tactile_bias std_srvs/srv/Trigger
+```
+
+두 service는 `lifecycle` 값이 `Connected`·`Running`·`Stopped`일 때 호출할 수 있고 토크가 필요하지
+않습니다. bias는 `~/reset_tactile_bias`를 호출할 때까지 유지되며 `~/stop`과 `~/reconnect` 뒤에도
+남습니다. launch를 다시 시작하면 bias가 없는 상태로 시작합니다.
+
+지금 적용된 bias 값을 읽는 topic이나 service는 없습니다. 기록한 bag을 나중에 해석해야 하면 bias를 설정한
+시각을 application에서 함께 남기십시오.
+
+### 4.4 Monitoring
 
 topic이 계속 발행되어도 로봇 핸드의 상태가 갱신되고 있다는 뜻은 아닙니다.
 SDK가 `Faulted` 상태로 정지하면 broadcaster가 마지막 관측값을 같은 주기로 반복할 수 있습니다.
@@ -329,7 +361,7 @@ SDK가 `Faulted` 상태로 정지하면 broadcaster가 마지막 관측값을 �
 > `actuator_fault_name`·`control_cycles` 필드의 증가를 합쳐 판단해야 합니다. 마지막 예외 문구와
 > 재연결 시도 횟수도 message에 없습니다.
 
-### 4.4 QoS
+### 4.5 QoS
 
 현재 command controller 4종의 `~/cmd` 구독과 `HandStateBroadcaster`·`DiagnosticsBroadcaster`의
 발행은 `rclcpp::SystemDefaultsQoS()`를 사용합니다. 상위 controller skeleton의 `HandState` 구독도

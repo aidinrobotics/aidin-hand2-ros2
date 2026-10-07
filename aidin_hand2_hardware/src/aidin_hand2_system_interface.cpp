@@ -790,6 +790,22 @@ void AidinHand2SystemInterface::start_service_node()
       response->success = exec_reconnect(failure_message);
       response->message = response->success ? "reconnected — call ~/run to resume control" : failure_message;
     });
+  set_tactile_bias_service_ = service_node_->create_service<std_srvs::srv::Trigger>(
+    "~/set_tactile_bias",
+    [this](const std::shared_ptr<std_srvs::srv::Trigger::Request> &,
+           const std::shared_ptr<std_srvs::srv::Trigger::Response> & response) {
+      std::string failure_message;
+      response->success = exec_set_tactile_bias(failure_message);
+      response->message = response->success ? "tactile bias set — current tactile values are now zero" : failure_message;
+    });
+  reset_tactile_bias_service_ = service_node_->create_service<std_srvs::srv::Trigger>(
+    "~/reset_tactile_bias",
+    [this](const std::shared_ptr<std_srvs::srv::Trigger::Request> &,
+           const std::shared_ptr<std_srvs::srv::Trigger::Response> & response) {
+      std::string failure_message;
+      response->success = exec_reset_tactile_bias(failure_message);
+      response->message = response->success ? "tactile bias reset — tactile values are raw again" : failure_message;
+    });
   declare_tuning_parameters();
   service_executor_ = std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
   service_executor_->add_node(service_node_);
@@ -809,6 +825,8 @@ void AidinHand2SystemInterface::stop_service_node()
   stop_service_.reset();
   home_service_.reset();
   reconnect_service_.reset();
+  set_tactile_bias_service_.reset();
+  reset_tactile_bias_service_.reset();
   tuning_callback_.reset();
   if (service_executor_ && service_node_) {
     service_executor_->remove_node(service_node_);
@@ -868,6 +886,29 @@ bool AidinHand2SystemInterface::exec_reconnect(std::string & failure_message)
   try {
     hand_->reconnect();
     started_.store(false);
+    return true;
+  } catch (const ah2::Exception & exception) {
+    failure_message = exception.what();
+    return false;
+  }
+}
+
+bool AidinHand2SystemInterface::exec_set_tactile_bias(std::string & failure_message)
+{
+  // Requests only, the SDK applies it from its next cycle
+  try {
+    hand_->set_tactile_bias();
+    return true;
+  } catch (const ah2::Exception & exception) {
+    failure_message = exception.what();
+    return false;
+  }
+}
+
+bool AidinHand2SystemInterface::exec_reset_tactile_bias(std::string & failure_message)
+{
+  try {
+    hand_->reset_tactile_bias();
     return true;
   } catch (const ah2::Exception & exception) {
     failure_message = exception.what();

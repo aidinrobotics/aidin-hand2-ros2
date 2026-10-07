@@ -101,6 +101,8 @@ private:
   bool exec_stop(std::string & failure_message);
   bool exec_home(std::string & failure_message);
   bool exec_reconnect(std::string & failure_message);
+  bool exec_set_tactile_bias(std::string & failure_message);
+  bool exec_reset_tactile_bias(std::string & failure_message);
 
   // ---------------------------- Tuning parameter ----------------------------
 
@@ -241,13 +243,16 @@ private:
 
   // --------------------- Service node [service thread] ----------------------
 
-  // This component's own node, exposing ~/run, ~/stop, ~/home and ~/reconnect
+  // This component's own node, exposing ~/run, ~/stop, ~/home, ~/reconnect,
+  // ~/set_tactile_bias and ~/reset_tactile_bias
 
   rclcpp::Node::SharedPtr service_node_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr run_service_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr stop_service_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr home_service_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reconnect_service_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr set_tactile_bias_service_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_tactile_bias_service_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr tuning_callback_;
   std::unique_ptr<rclcpp::executors::SingleThreadedExecutor> service_executor_;
   std::thread service_spin_thread_;

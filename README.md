@@ -8,7 +8,7 @@ A `ros2_control` wrapper for controlling AIDIN Hand Gen2 from ROS 2. Send target
 read state topics, and use services for homing, stopping and recovery. The wrapper provides a mock
 that runs without the robot hand, plus URDF and launch configuration for integration into your robot.
 
-[![version](https://img.shields.io/badge/version-0.7.2-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.7.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
+[![version](https://img.shields.io/badge/version-0.8.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.8.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
 
 [Install](docs/ko/03_installation.md) | [Documentation](#documentation) | [Changelog](CHANGELOG.md) | [Official Site](https://www.aidinrobotics.co.kr/) | English | [한국어](README.ko.md)
 
@@ -23,7 +23,7 @@ We verify that the wrapper builds and runs on the configuration below.
 | Operating System | Ubuntu 22.04 |
 | ROS 2 | Humble |
 | Control framework | `ros2_control` |
-| SDK | `aidin_hand2` 0.7.1 or later in 0.7 ([`aidin_hand2.repos`](aidin_hand2.repos)) |
+| SDK | `aidin_hand2` 0.8.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
 | Hand type | A, B |
 | CAN interface | For the robot hand: USB CAN-FD adapter (SocketCAN), 1 Mbit/s nominal, 5 Mbit/s data phase |
 
@@ -67,7 +67,7 @@ first. The full definitions are in the [ros2_control documentation](https://cont
 |---|---|
 | controller_manager | The node that loads, unloads and runs controllers every cycle. The launch files start it |
 | hardware component | The plugin that talks to the hardware, reads state and writes targets. The kinds are System, Actuator and Sensor; the wrapper provides one System per robot hand, which calls the SDK and is named `{side}_hand_control` |
-| hardware node | The node the hardware component starts. It offers the `~/run`, `~/stop`, `~/home` and `~/reconnect` services and the effort, filter and gain parameters |
+| hardware node | The node the hardware component starts. It offers the `~/run`, `~/stop`, `~/home`, `~/reconnect`, `~/set_tactile_bias` and `~/reset_tactile_bias` services and the effort, filter and gain parameters |
 | controller | Runs every cycle on top of the hardware component to produce targets or publish observations |
 | broadcaster | A controller that produces no target and only publishes observations |
 | `unconfigured` · `inactive` · `active` | The ROS 2 managed node states, held separately by controllers and by hardware components. An `active` controller runs every cycle; an `active` hardware component has torque on the drives so the hand can move. `inactive` means loaded but neither, and `unconfigured` comes before it |

@@ -8,7 +8,7 @@ AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. con
 상태 topic으로 결과를 확인하며, service로 homing·정지·복구를 요청할 수 있습니다.
 로봇 핸드 없이 실행할 수 있는 mock과 기존 로봇에 통합하기 위한 URDF·launch 설정을 제공합니다.
 
-[![version](https://img.shields.io/badge/version-0.7.2-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.7.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
+[![version](https://img.shields.io/badge/version-0.8.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.8.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
 
 [Install](docs/ko/03_installation.md) | [Documentation](#documentation) | [Changelog](CHANGELOG.md) | [Official Site](https://www.aidinrobotics.co.kr/) | [English](README.md) | 한국어
 
@@ -23,7 +23,7 @@ AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. con
 | Operating System | Ubuntu 22.04 |
 | ROS 2 | Humble |
 | Control framework | `ros2_control` |
-| SDK | `aidin_hand2` 0.7 중 0.7.1 이상 ([`aidin_hand2.repos`](aidin_hand2.repos)) |
+| SDK | `aidin_hand2` 0.8.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
 | Hand type | A, B |
 | CAN interface | 로봇 핸드 구동 시 USB CAN-FD adapter (SocketCAN), nominal 1 Mbit/s, data phase 5 Mbit/s |
 
@@ -63,7 +63,7 @@ effort 상한과 filter·gain은 hardware node의 ROS parameter로 설정합니�
 |---|---|
 | controller_manager | controller를 올리고 내리고 매 cycle 실행하는 node입니다. 이 wrapper에서는 launch가 띄웁니다 |
 | hardware component | 하드웨어와 통신하며 상태를 읽고 목표값을 쓰는 plugin입니다. 종류는 System·Actuator·Sensor 셋이며, wrapper는 SDK를 호출하는 System을 로봇 핸드마다 하나씩 제공하고 이름은 `{side}_hand_control`입니다 |
-| hardware node | hardware component가 띄우는 node입니다. `~/run`·`~/stop`·`~/home`·`~/reconnect` service와 effort·filter·gain parameter를 제공합니다 |
+| hardware node | hardware component가 띄우는 node입니다. `~/run`·`~/stop`·`~/home`·`~/reconnect`·`~/set_tactile_bias`·`~/reset_tactile_bias` service와 effort·filter·gain parameter를 제공합니다 |
 | controller | hardware component 위에서 매 cycle 실행되어 목표값을 만들거나 관측값을 발행합니다 |
 | broadcaster | 목표값을 만들지 않고 관측값만 topic으로 발행하는 controller입니다 |
 | `unconfigured` · `inactive` · `active` | ROS 2 managed node의 상태 이름이고 controller와 hardware component가 각각 가집니다. controller가 `active`면 매 cycle 실행되고, hardware component가 `active`면 drive에 토크가 걸려 움직일 수 있습니다. `inactive`는 올라와 있지만 그렇지 않은 상태이며 `unconfigured`는 그 앞 단계입니다 |
