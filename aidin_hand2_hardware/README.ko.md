@@ -3,7 +3,7 @@
 [전체 문서](../README.ko.md#documentation) | [English overview](README.md)
 
 `aidin_hand2_hardware` package는 로봇 핸드·mock 연결을 제공합니다. 이 문서는 로봇 핸드의
-제어 시작·정지, homing, 통신 오류 복구와 effort·filter·gain 설정을 설명합니다.
+제어 시작·정지, homing, 통신 오류 복구, tactile bias와 effort·filter·gain 설정을 설명합니다.
 service는 `std_srvs/srv/Trigger` 타입이며 요청 인자는 없습니다. mock에는 제공하지 않습니다.
 
 기본 launch의 service 경로는 `/{side}_hand_control/run`처럼 구성됩니다. `{side}`는 `left` 또는
@@ -39,7 +39,8 @@ controller의 `active`·homing 상태의 차이는
 
 `~/run`·`~/stop`·`~/reconnect` service는 전이 결과를 확인한 뒤 응답합니다.
 `~/home` service는 시작만 확인하고 즉시 응답하므로 완료 상태를 별도로 읽어야 합니다.
-표의 호출 조건과 결과는 `lifecycle` 값입니다.
+`~/set_tactile_bias`·`~/reset_tactile_bias` service는 lifecycle을 바꾸지 않습니다. 요청만 확인하고
+즉시 응답하며, SDK가 다음 cycle부터 적용합니다. 표의 호출 조건과 결과는 `lifecycle` 값입니다.
 
 | Service | Precondition | Postcondition | Waits for | Timeout | Success message |
 |---|---|---|---|---|---|
@@ -47,6 +48,10 @@ controller의 `active`·homing 상태의 차이는
 | `~/stop` | `Running` · `Stopped` | `Stopped` | actuator quick stop | 500 ms | `stopped` |
 | `~/home` | `Connected` · `Running` · `Stopped` | `Running` | 없음. 시작만 확인 | 없음 | `homing started — poll diagnostics 'homing_state'` |
 | `~/reconnect` | `Faulted` | `Connected` | 첫 state 수신 | 300 ms | `reconnected — call ~/run to resume control` |
+| `~/set_tactile_bias` | `Connected` · `Running` · `Stopped` | 변화 없음 | 없음 | 없음 | `tactile bias set — current tactile values are now zero` |
+| `~/reset_tactile_bias` | `Connected` · `Running` · `Stopped` | 변화 없음 | 없음 | 없음 | `tactile bias reset — tactile values are raw again` |
+
+tactile bias의 사용법은 [4.3 Tactile bias](../docs/ko/05_control_guide.md#43-tactile-bias)에 있습니다.
 
 표에 없는 state에서 호출하거나 제한 시간 안에 확인되지 않으면 `success` 필드가 `false`이고 `message`
 필드에 SDK 예외 문구가 그대로 들어갑니다. 이미 postcondition을 만족하는 state에서 호출하면(`Running` 상태에서
@@ -171,7 +176,7 @@ service 없이 `Running` 상태로 복귀합니다. `auto_reconnect_home=true`�
   오해하지 않도록 `lifecycle` 값과 `control_cycles` 값을 함께 감시하십시오. 시한을 넘기면 `Faulted`로
   남고 `~/reconnect` service를 직접 호출해야 합니다.
 - 복구 중에는 broadcaster가 마지막 state를 같은 주기로 반복 발행합니다. 판단 기준은
-  [4.3 Monitoring](../docs/ko/05_control_guide.md#43-monitoring)에 있습니다.
+  [4.4 Monitoring](../docs/ko/05_control_guide.md#44-monitoring)에 있습니다.
 
 ## 5. Shutdown
 

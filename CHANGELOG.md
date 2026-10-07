@@ -7,6 +7,27 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **The hardware node offers `~/set_tactile_bias` and `~/reset_tactile_bias`.** Telling contact
+  apart meant recording the no-contact values and subtracting them in every subscriber. After
+  `~/set_tactile_bias`, the tactile fields of `HandState` carry the difference from the values of
+  that moment, negative included, and `~/reset_tactile_bias` brings the raw values back. Both are
+  `std_srvs/Trigger`, need `Connected`, `Running` or `Stopped`, and answer as soon as the SDK accepts
+  the request, which takes effect from its next cycle. The bias stays until it is reset, across `~/stop` and `~/reconnect`. No topic or
+  service reports the bias in effect, so record when it was set if a bag has to be read later.
+
+### Changed
+
+- **Breaking: the eight tactile arrays in `HandState` are `int32[]` instead of `uint16[]`.** The
+  values are still the raw sensor readings. A reading is used as a difference from a
+  baseline, and that difference has to go negative, but a Python subscriber that receives a
+  `uint16[]` field as a numpy `uint16` array turns `100 - 200` into `65436` without an error. A
+  snapshot grows by 286 bytes, from 1540 to 1826. Rebuild every subscriber, and read bags recorded
+  before this change with the old message definition, since the message type no longer matches.
+  The state interfaces are unchanged, because ros2_control carries every interface value as a
+  `double`.
+
 ## [0.7.2] - 2026-10-06
 
 The URDF joint limits follow the workspace the SDK clamps to after the hand's mechanical design

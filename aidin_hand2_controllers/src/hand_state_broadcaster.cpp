@@ -327,7 +327,7 @@ controller_interface::return_type HandStateBroadcaster::update(
   }
 
   const auto taxel = [this](std::size_t index) {
-    return static_cast<std::uint16_t>(state_interfaces_[index].get_value());
+    return static_cast<std::int32_t>(state_interfaces_[index].get_value());
   };
 
   for (std::size_t i = 0; i < ah2::kTactileTaxelsPerFinger; ++i) {

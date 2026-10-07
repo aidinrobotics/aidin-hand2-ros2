@@ -13,15 +13,16 @@ int32[16] actuator_position     # encoder count
 int32[16] actuator_velocity     # rpm
 int16[16] actuator_current      # mA
 
-# Raw 16-bit readings, no unit and no normalization
-uint16[17] tactile_thumb
-uint16[17] tactile_index
-uint16[17] tactile_middle
-uint16[17] tactile_ring
-uint16[17] tactile_baby
-uint16[20] tactile_palm1_upper
-uint16[20] tactile_palm1_lower
-uint16[18] tactile_palm2
+# Raw sensor values, no unit and no normalization
+# After ~/set_tactile_bias, the difference from the bias
+int32[17] tactile_thumb
+int32[17] tactile_index
+int32[17] tactile_middle
+int32[17] tactile_ring
+int32[17] tactile_baby
+int32[20] tactile_palm1_upper
+int32[20] tactile_palm1_lower
+int32[18] tactile_palm2
 
 # The output is not proof the drives applied it, selected_source says which path ran
 CommandState command_state
