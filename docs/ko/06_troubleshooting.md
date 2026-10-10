@@ -14,9 +14,8 @@
 &nbsp;&nbsp;[**3. Launch**](#3-launch)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.1 libaidin_hand2.so not found](#31-libaidin_hand2so-not-found)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.2 Package or launch file not found](#32-package-or-launch-file-not-found)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.3 robot_description deprecation warning](#33-robot_description-deprecation-warning)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.4 Hardware component fails to configure](#34-hardware-component-fails-to-configure)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.5 The hands are swapped between interfaces](#35-the-hands-are-swapped-between-interfaces)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.3 Hardware component fails to configure](#33-hardware-component-fails-to-configure)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.4 The hands are swapped between interfaces](#34-the-hands-are-swapped-between-interfaces)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.6 The robot hand moves right after launch](#36-the-robot-hand-moves-right-after-launch)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.7 GUI cannot connect to rosbridge](#37-gui-cannot-connect-to-rosbridge)<br>
 &nbsp;&nbsp;[**4. Controllers**](#4-controllers)<br>
@@ -81,7 +80,7 @@ ROS 2 환경을 source하지 않은 shell에서 `colcon build`를 실행한 경�
 필요합니다.
 
 ```bash
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
 ```
 
@@ -162,7 +161,7 @@ Package 'aidin_hand2_bringup' not found
 overlay를 source하지 않은 shell입니다. 새 terminal에서 두 setup 파일을 source합니다.
 
 ```bash
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 source ~/your_ws/install/setup.bash
 ros2 pkg prefix aidin_hand2_bringup
 ```
@@ -174,17 +173,7 @@ ros2 pkg prefix aidin_hand2_bringup
 printf '%s\n' "$AMENT_PREFIX_PATH" | tr ':' '\n'
 ```
 
-### 3.3 robot_description deprecation warning
-
-```text
-[Deprecated] Passing the robot description parameter directly to the control_manager node is deprecated.
-```
-
-launch가 `robot_description`을 `ros2_control_node`의 parameter로 직접 전달하기 때문에 Humble이 내는
-warning입니다. hardware component와 controller가 이어서 configure·activate되면 실패 원인이 아니므로
-무시합니다.
-
-### 3.4 Hardware component fails to configure
+### 3.3 Hardware component fails to configure
 
 hardware component가 `unconfigured` 상태에 머물고 `/rosout` topic에 SDK 예외가 남는 경우입니다. `ErrorCode`로
 점검 대상을 나눕니다.
@@ -209,7 +198,7 @@ CAN 층은 [6. Communication](#6-communication)으로 확인하고, 문구별 �
 [Error messages](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_error_messages.md)에
 있습니다.
 
-### 3.5 The hands are swapped between interfaces
+### 3.4 The hands are swapped between interfaces
 
 기본 config는 `left_hand_interface=can0`, `right_hand_interface=can1`로 고정되어 있고 왼손과 오른손이 어느
 interface에 있는지 검사하지 않습니다. 물리적으로 반대로 꽂혀 있거나 USB adapter의 열거 순서가 부팅마다

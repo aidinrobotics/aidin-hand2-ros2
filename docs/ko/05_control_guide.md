@@ -375,10 +375,10 @@ ros2 topic info /left_hand_state_broadcaster/hand_state --verbose
 
 publisher와 subscriber의 QoS가 호환되어야 message가 전달됩니다. 예를 들어 `best_effort` publisher는
 `reliable` subscriber와 연결되지 않습니다. 정책과 호환 조건은
-[ROS 2 Humble QoS 문서](https://github.com/ros2/ros2_documentation/blob/humble/source/Concepts/Intermediate/About-Quality-of-Service-Settings.rst)에 있습니다.
+[ROS 2 Jazzy QoS 문서](https://github.com/ros2/ros2_documentation/blob/jazzy/source/Concepts/Intermediate/About-Quality-of-Service-Settings.rst)에 있습니다.
 
 QoS는 전달 정책이며, 제어 주기의 실행 시간과 jitter를 보장하지 않습니다.
-실시간 실행의 조건은 [ROS 2 real-time programming](https://github.com/ros2/ros2_documentation/blob/humble/source/Tutorials/Demos/Real-Time-Programming.rst)을 참고하십시오.
+실시간 실행의 조건은 [ROS 2 real-time programming](https://github.com/ros2/ros2_documentation/blob/jazzy/source/Tutorials/Demos/Real-Time-Programming.rst)을 참고하십시오.
 현재 wrapper에는 command timeout에 따른 자동 정지가 없습니다. QoS의 deadline·lifespan을 설정하더라도
 이미 적용한 마지막 목표를 자동으로 해제하지 않습니다.
 

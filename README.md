@@ -8,7 +8,7 @@ A `ros2_control` wrapper for controlling AIDIN Hand Gen2 from ROS 2. Send target
 read state topics, and use services for homing, stopping and recovery. The wrapper provides a mock
 that runs without the robot hand, plus URDF and launch configuration for integration into your robot.
 
-[![version](https://img.shields.io/badge/version-0.8.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.8.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
+[![version](https://img.shields.io/badge/version-0.8.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.8.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Jazzy-brightgreen)](#system-requirements)
 
 [Install](docs/ko/03_installation.md) | [Documentation](#documentation) | [Changelog](CHANGELOG.md) | [Official Site](https://www.aidinrobotics.co.kr/) | English | [한국어](README.ko.md)
 
@@ -30,15 +30,15 @@ We verify that the wrapper builds and runs on the configuration below.
 
 | Component | Requirement |
 |---|---|
-| Operating System | Ubuntu 22.04 |
-| ROS 2 | Humble |
+| Operating System | Ubuntu 24.04 |
+| ROS 2 | Jazzy |
 | Control framework | `ros2_control` |
 | SDK | `aidin_hand2` 0.8.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
 | CAN interface | For the robot hand: USB CAN-FD adapter (SocketCAN), 1 Mbit/s nominal, 5 Mbit/s data phase |
 
 ## Architecture
 
-Built on [ros2_control](https://control.ros.org/humble/index.html), this wrapper provides controllers for commanding the robot hand and broadcasters for observing its state.
+Built on [ros2_control](https://control.ros.org/jazzy/index.html), this wrapper provides controllers for commanding the robot hand and broadcasters for observing its state.
 
 ![AIDIN Hand Gen2 ROS 2 architecture](docs/assets/aidin_hand2_ros2_architecture.webp)
 
@@ -70,7 +70,7 @@ hardware node.
 ## Terms
 
 The ros2_control terms this documentation uses throughout. If they are new to you, read them here
-first. The full definitions are in the [ros2_control documentation](https://control.ros.org/humble/index.html).
+first. The full definitions are in the [ros2_control documentation](https://control.ros.org/jazzy/index.html).
 
 | Term | Meaning |
 |---|---|

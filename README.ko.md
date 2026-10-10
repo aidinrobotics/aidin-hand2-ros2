@@ -8,7 +8,7 @@ AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. con
 상태 topic으로 결과를 확인하며, service로 homing·정지·복구를 요청할 수 있습니다.
 로봇 핸드 없이 실행할 수 있는 mock과 기존 로봇에 통합하기 위한 URDF·launch 설정을 제공합니다.
 
-[![version](https://img.shields.io/badge/version-0.8.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.8.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
+[![version](https://img.shields.io/badge/version-0.8.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.8.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Jazzy-brightgreen)](#system-requirements)
 
 [Install](docs/ko/03_installation.md) | [Documentation](#documentation) | [Changelog](CHANGELOG.md) | [Official Site](https://www.aidinrobotics.co.kr/) | [English](README.md) | 한국어
 
@@ -30,15 +30,15 @@ AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. con
 
 | Component | Requirement |
 |---|---|
-| Operating System | Ubuntu 22.04 |
-| ROS 2 | Humble |
+| Operating System | Ubuntu 24.04 |
+| ROS 2 | Jazzy |
 | Control framework | `ros2_control` |
 | SDK | `aidin_hand2` 0.8.x ([`aidin_hand2.repos`](aidin_hand2.repos)) |
 | CAN interface | 로봇 핸드 구동 시 USB CAN-FD adapter (SocketCAN), nominal 1 Mbit/s, data phase 5 Mbit/s |
 
 ## Architecture
 
-[ros2_control](https://control.ros.org/humble/index.html)을 기반으로 로봇 핸드 제어를 위한 controller와 상태 관측을 위한 broadcaster를 제공합니다.
+[ros2_control](https://control.ros.org/jazzy/index.html)을 기반으로 로봇 핸드 제어를 위한 controller와 상태 관측을 위한 broadcaster를 제공합니다.
 
 ![AIDIN Hand Gen2 ROS 2 architecture](docs/assets/aidin_hand2_ros2_architecture.webp)
 
@@ -66,7 +66,7 @@ effort 상한과 filter·gain은 hardware node의 ROS parameter로 설정합니�
 ## Terms
 
 문서 전체가 쓰는 ros2_control 용어입니다. 처음 보신다면 여기서 뜻을 확인하고 읽으십시오. 자세한
-정의는 [ros2_control 문서](https://control.ros.org/humble/index.html)에 있습니다.
+정의는 [ros2_control 문서](https://control.ros.org/jazzy/index.html)에 있습니다.
 
 | 용어 | 뜻 |
 |---|---|

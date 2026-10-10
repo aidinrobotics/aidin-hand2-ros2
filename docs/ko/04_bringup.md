@@ -8,7 +8,7 @@
 새 터미널을 열 때마다 ROS 2와 workspace 환경을 적용합니다.
 
 ```bash
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 source ~/your_ws/install/setup.bash
 ```
 

@@ -102,7 +102,7 @@ ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py use_rviz:=false
 In another terminal:
 
 ```bash
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 source ~/your_ws/install/setup.bash
 EXAMPLE_SHARE="$(ros2 pkg prefix aidin_hand2_examples)/share/aidin_hand2_examples"
 

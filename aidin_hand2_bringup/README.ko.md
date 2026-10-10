@@ -247,7 +247,7 @@ SDK를 사용자 경로에 설치했다면 launch 터미널에는 [3. Build the 
 `LD_LIBRARY_PATH` 설정도 적용하십시오.
 
 ```bash
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 source ~/your_ws/install/setup.bash
 ros2 control list_hardware_components
 ```

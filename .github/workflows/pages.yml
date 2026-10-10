@@ -34,7 +34,7 @@ jobs:
   model:
     name: viewer URDF matches the xacro
     runs-on: ubuntu-24.04
-    container: ros:humble-ros-base
+    container: ros:jazzy-ros-base
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -42,20 +42,20 @@ jobs:
       - name: Install xacro
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends ros-humble-xacro
+          apt-get install -y --no-install-recommends ros-jazzy-xacro
 
       # The xacro resolves $(find aidin_hand2_description), so the package has to be on the
       # ament index. It installs files and builds no code, so this takes seconds.
       - name: Build the description package
         shell: bash
         run: |
-          . /opt/ros/humble/setup.bash
+          . /opt/ros/jazzy/setup.bash
           colcon build --packages-select aidin_hand2_description
 
       - name: Check
         shell: bash
         run: |
-          . /opt/ros/humble/setup.bash
+          . /opt/ros/jazzy/setup.bash
           . install/setup.bash
           ./viewer/build-model --check
 

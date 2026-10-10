@@ -1,6 +1,6 @@
 # Installation
 
-Ubuntu 22.04와 ROS 2 Humble에서 SDK와 wrapper를 설치합니다. 설치를 마치면 로봇 핸드 없이 mock을
+Ubuntu 24.04와 ROS 2 Jazzy에서 SDK와 wrapper를 설치합니다. 설치를 마치면 로봇 핸드 없이 mock을
 실행할 수 있습니다. RT kernel과 CAN-FD 설정은 로봇 핸드를 실행하기 전에 준비합니다.
 
 아래 예제의 workspace는 `~/your_ws`입니다.
@@ -8,7 +8,7 @@ Ubuntu 22.04와 ROS 2 Humble에서 SDK와 wrapper를 설치합니다. 설치를 
 ## Contents
 
 &nbsp;&nbsp;[**1. Prepare the workspace**](#1-prepare-the-workspace)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.1 Check ROS 2 Humble](#11-check-ros-2-humble)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.1 Check ROS 2 Jazzy](#11-check-ros-2-jazzy)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.2 Get the source](#12-get-the-source)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.3 Install ROS dependencies](#13-install-ros-dependencies)<br>
 &nbsp;&nbsp;[**2. Install the SDK**](#2-install-the-sdk)<br>
@@ -17,17 +17,17 @@ Ubuntu 22.04와 ROS 2 Humble에서 SDK와 wrapper를 설치합니다. 설치를 
 
 ## 1. Prepare the workspace
 
-### 1.1 Check ROS 2 Humble
+### 1.1 Check ROS 2 Jazzy
 
-ROS 2가 없다면 [공식 Humble 설치 절차](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html)로
+ROS 2가 없다면 [공식 Jazzy 설치 절차](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html)로
 먼저 설치하십시오. 설치된 환경을 현재 터미널에 적용합니다.
 
 ```bash
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 printenv ROS_DISTRO
 ```
 
-출력이 `humble`이어야 합니다. 첫 명령에서 파일을 찾지 못하면 ROS 2 설치를 확인하십시오.
+출력이 `jazzy`이어야 합니다. 첫 명령에서 파일을 찾지 못하면 ROS 2 설치를 확인하십시오.
 
 ### 1.2 Get the source
 
@@ -35,7 +35,7 @@ printenv ROS_DISTRO
 
 ```bash
 sudo apt update
-sudo apt install -y git python3-vcstool ros-dev-tools ros-humble-ros2controlcli
+sudo apt install -y git python3-vcstool ros-dev-tools ros-jazzy-ros2controlcli
 ```
 
 새 workspace에 wrapper를 받습니다. 이미 clone했다면 기존 저장소를 사용하고 이 명령은 건너뜁니다.
@@ -68,7 +68,7 @@ wrapper의 `package.xml`이 선언한 ROS package를 설치합니다.
 ```bash
 cd ~/your_ws
 rosdep update
-rosdep install --from-paths src/aidin-hand2-ros2 --ignore-src --rosdistro humble -y
+rosdep install --from-paths src/aidin-hand2-ros2 --ignore-src --rosdistro jazzy -y
 ```
 
 `#All required rosdeps installed successfully`가 출력되면 다음 단계로 진행합니다.
@@ -117,7 +117,7 @@ workspace root에서 wrapper package를 빌드합니다.
 
 ```bash
 cd ~/your_ws
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 colcon build --base-paths src/aidin-hand2-ros2 --symlink-install \
   --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
 ```
