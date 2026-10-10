@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -98,6 +99,12 @@ ah2::ActuatorFault actuator_fault(double bits)
 {
   return static_cast<ah2::ActuatorFault>(static_cast<std::uint16_t>(bits));
 }
+// A value the handle could not lock reads NaN, as get_value() did before Jazzy deprecated it
+double state_value(const hardware_interface::LoanedStateInterface & state)
+{
+  return state.get_optional().value_or(std::numeric_limits<double>::quiet_NaN());
+}
+
 }  // namespace
 
 // --------------------------------- Lifecycle --------------------------------
@@ -179,21 +186,21 @@ controller_interface::return_type DiagnosticsBroadcaster::update(
   auto & message = publisher_->msg_;
   message.header.stamp = time;
   message.hand_side = hand_side_;
-  message.lifecycle = lifecycle_name(state_interfaces_[kLifecycleIndex].get_value());
+  message.lifecycle = lifecycle_name(state_value(state_interfaces_[kLifecycleIndex]));
   message.nan_command_count =
-    static_cast<std::uint64_t>(state_interfaces_[kNanCommandCountIndex].get_value());
+    static_cast<std::uint64_t>(state_value(state_interfaces_[kNanCommandCountIndex]));
   message.control_cycles =
-    static_cast<std::uint64_t>(state_interfaces_[kControlCyclesIndex].get_value());
+    static_cast<std::uint64_t>(state_value(state_interfaces_[kControlCyclesIndex]));
   message.deadline_misses =
-    static_cast<std::uint64_t>(state_interfaces_[kDeadlineMissesIndex].get_value());
-  message.last_period_ms = state_interfaces_[kLastPeriodMsIndex].get_value();
-  message.last_compute_ms = state_interfaces_[kLastComputeMsIndex].get_value();
-  message.homing_state = homing_state_name(state_interfaces_[kHomingStateIndex].get_value());
+    static_cast<std::uint64_t>(state_value(state_interfaces_[kDeadlineMissesIndex]));
+  message.last_period_ms = state_value(state_interfaces_[kLastPeriodMsIndex]);
+  message.last_compute_ms = state_value(state_interfaces_[kLastComputeMsIndex]);
+  message.homing_state = homing_state_name(state_value(state_interfaces_[kHomingStateIndex]));
 
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
-    message.actuator_enabled[i] = state_interfaces_[kEnabledOffset + i].get_value() != 0.0;
+    message.actuator_enabled[i] = state_value(state_interfaces_[kEnabledOffset + i]) != 0.0;
     message.actuator_fault_name[i] =
-      ah2::to_string(actuator_fault(state_interfaces_[kFaultOffset + i].get_value()));
+      ah2::to_string(actuator_fault(state_value(state_interfaces_[kFaultOffset + i])));
   }
 
   publisher_->unlockAndPublish();

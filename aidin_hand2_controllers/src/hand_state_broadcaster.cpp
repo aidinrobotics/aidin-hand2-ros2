@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -230,6 +231,12 @@ std::vector<std::string> all_state_interface_names(const std::string & prefix)
   names.push_back(timestamp + "/" + kStampNanosecInterface);
   return names;
 }
+// A value the handle could not lock reads NaN, as get_value() did before Jazzy deprecated it
+double state_value(const hardware_interface::LoanedStateInterface & state)
+{
+  return state.get_optional().value_or(std::numeric_limits<double>::quiet_NaN());
+}
+
 }  // namespace
 
 // --------------------------------- Lifecycle --------------------------------
@@ -303,9 +310,9 @@ controller_interface::return_type HandStateBroadcaster::update(
   // header.stamp is the wall-clock of the observation, not of this publish
   // sec = 0 is a stamp the hardware has not filled yet, and the publish time stands in
   const auto stamp_sec =
-    static_cast<std::int32_t>(state_interfaces_[kTimestampSecOffset].get_value());
+    static_cast<std::int32_t>(state_value(state_interfaces_[kTimestampSecOffset]));
   const auto stamp_nanosec =
-    static_cast<std::uint32_t>(state_interfaces_[kTimestampNanosecOffset].get_value());
+    static_cast<std::uint32_t>(state_value(state_interfaces_[kTimestampNanosecOffset]));
   if (stamp_sec > 0) {
     message.header.stamp.sec = stamp_sec;
     message.header.stamp.nanosec = stamp_nanosec;
@@ -314,20 +321,20 @@ controller_interface::return_type HandStateBroadcaster::update(
   }
 
   for (std::size_t i = 0; i < ah2::kJointCount; ++i) {
-    message.joint_position[i] = state_interfaces_[kJointOffset + i].get_value();
+    message.joint_position[i] = state_value(state_interfaces_[kJointOffset + i]);
   }
   // A state interface is always a double, so each reading returns to its wire width here
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
     message.actuator_position[i] =
-      static_cast<std::int32_t>(state_interfaces_[kActuatorPositionOffset + i].get_value());
+      static_cast<std::int32_t>(state_value(state_interfaces_[kActuatorPositionOffset + i]));
     message.actuator_velocity[i] =
-      static_cast<std::int32_t>(state_interfaces_[kActuatorVelocityOffset + i].get_value());
+      static_cast<std::int32_t>(state_value(state_interfaces_[kActuatorVelocityOffset + i]));
     message.actuator_current[i] =
-      static_cast<std::int16_t>(state_interfaces_[kActuatorCurrentOffset + i].get_value());
+      static_cast<std::int16_t>(state_value(state_interfaces_[kActuatorCurrentOffset + i]));
   }
 
   const auto taxel = [this](std::size_t index) {
-    return static_cast<std::int32_t>(state_interfaces_[index].get_value());
+    return static_cast<std::int32_t>(state_value(state_interfaces_[index]));
   };
 
   for (std::size_t i = 0; i < ah2::kTactileTaxelsPerFinger; ++i) {
@@ -352,25 +359,25 @@ controller_interface::return_type HandStateBroadcaster::update(
 
   auto & command = message.command_state;
   command.controller_input_mode =
-    static_cast<std::uint8_t>(state_interfaces_[kControllerInputModeOffset].get_value());
+    static_cast<std::uint8_t>(state_value(state_interfaces_[kControllerInputModeOffset]));
   command.controller_output_type =
-    static_cast<std::uint8_t>(state_interfaces_[kControllerOutputTypeOffset].get_value());
+    static_cast<std::uint8_t>(state_value(state_interfaces_[kControllerOutputTypeOffset]));
   command.selected_source =
-    static_cast<std::uint8_t>(state_interfaces_[kSelectedSourceOffset].get_value());
+    static_cast<std::uint8_t>(state_value(state_interfaces_[kSelectedSourceOffset]));
 
   // JointPosition and JointImpedance share one echo, the hardware exports the target once
   for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
-    const double target = state_interfaces_[kControllerInputJointOffset + i].get_value();
+    const double target = state_value(state_interfaces_[kControllerInputJointOffset + i]);
     command.joint_position_input_rad[i] = target;
     command.joint_impedance_input_rad[i] = target;
   }
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
     const std::size_t base = kCommandedActuatorOffset + i * kCommandedActuatorStride;
-    command.actuator_position_input_cnt[i] = state_interfaces_[base + 0].get_value();
-    command.actuator_effort_input_pct[i] = state_interfaces_[base + 1].get_value();
-    command.target_position_cnt[i] = state_interfaces_[base + 2].get_value();
-    command.target_effort_pct[i] = state_interfaces_[base + 3].get_value();
-    command.max_effort_pct[i] = state_interfaces_[base + 4].get_value();
+    command.actuator_position_input_cnt[i] = state_value(state_interfaces_[base + 0]);
+    command.actuator_effort_input_pct[i] = state_value(state_interfaces_[base + 1]);
+    command.target_position_cnt[i] = state_value(state_interfaces_[base + 2]);
+    command.target_effort_pct[i] = state_value(state_interfaces_[base + 3]);
+    command.max_effort_pct[i] = state_value(state_interfaces_[base + 4]);
   }
 
   publisher_->unlockAndPublish();

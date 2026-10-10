@@ -64,7 +64,9 @@ def generate_launch_description():
     control_node = Node(
         package="controller_manager",
         executable="ros2_control_node",
-        parameters=[{"robot_description": robot_description}, controllers_yaml],
+        parameters=[controllers_yaml],
+        # Jazzy takes the description from robot_state_publisher, the parameter is deprecated
+        remappings=[("~/robot_description", "/robot_description")],
         output="screen",
     )
 

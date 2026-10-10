@@ -181,9 +181,10 @@ AidinHand2SystemInterface::~AidinHand2SystemInterface()
 
 // -------------------------------- Lifecycle ---------------------------------
 
-CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::HardwareInfo & info)
+CallbackReturn AidinHand2SystemInterface::on_init(
+  const hardware_interface::HardwareComponentInterfaceParams & params)
 {
-  if (SystemInterface::on_init(info) != CallbackReturn::SUCCESS) {
+  if (SystemInterface::on_init(params) != CallbackReturn::SUCCESS) {
     return CallbackReturn::ERROR;
   }
 

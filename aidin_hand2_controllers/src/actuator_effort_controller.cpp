@@ -209,7 +209,8 @@ bool ActuatorEffortController::on_set_chained_mode(bool chained_mode)
 
 // Only a message not yet consumed moves to the references
 controller_interface::return_type
-ActuatorEffortController::update_reference_from_subscribers()
+ActuatorEffortController::update_reference_from_subscribers(
+  const rclcpp::Time &, const rclcpp::Duration &)
 {
   const auto & command = *command_buffer_.readFromRT();
   if (command.sequence == 0 || command.sequence == consumed_sequence_) {

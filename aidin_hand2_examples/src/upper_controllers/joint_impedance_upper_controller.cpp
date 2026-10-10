@@ -166,6 +166,12 @@ constexpr std::size_t kFingerTactileOffset = kActuatorCurrentOffset + ah2::kActu
 constexpr std::size_t kPalmTactileOffset =
   kFingerTactileOffset + ah2::kFingerCount * ah2::kTactileTaxelsPerFinger;
 
+// A value the handle could not lock reads NaN, as get_value() did before Jazzy deprecated it
+double state_value(const hardware_interface::LoanedStateInterface & state)
+{
+  return state.get_optional().value_or(std::numeric_limits<double>::quiet_NaN());
+}
+
 }  // namespace
 
 class JointImpedanceUpperController : public controller_interface::ChainableControllerInterface
@@ -307,7 +313,8 @@ protected:
   bool on_set_chained_mode(bool) override {return true;}
 
   // Standalone only, a message not yet consumed moves to the references
-  controller_interface::return_type update_reference_from_subscribers() override
+  controller_interface::return_type update_reference_from_subscribers(
+    const rclcpp::Time &, const rclcpp::Duration &) override
   {
     const auto & command = *command_buffer_.readFromRT();
     if (command.sequence == 0 || command.sequence == consumed_sequence_) {
@@ -366,31 +373,31 @@ private:
   void read_state()
   {
     for (std::size_t i = 0; i < ah2::kJointCount; ++i) {
-      joint_position_rad_[i] = state_interfaces_[kJointOffset + i].get_value();
+      joint_position_rad_[i] = state_value(state_interfaces_[kJointOffset + i]);
     }
     for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
-      actuator_position_cnt_[i] = state_interfaces_[kActuatorPositionOffset + i].get_value();
-      actuator_velocity_rpm_[i] = state_interfaces_[kActuatorVelocityOffset + i].get_value();
-      actuator_current_ma_[i] = state_interfaces_[kActuatorCurrentOffset + i].get_value();
+      actuator_position_cnt_[i] = state_value(state_interfaces_[kActuatorPositionOffset + i]);
+      actuator_velocity_rpm_[i] = state_value(state_interfaces_[kActuatorVelocityOffset + i]);
+      actuator_current_ma_[i] = state_value(state_interfaces_[kActuatorCurrentOffset + i]);
     }
     if (!read_tactile_) {
       return;
     }
     for (std::size_t finger = 0; finger < ah2::kFingerCount; ++finger) {
       for (std::size_t k = 0; k < ah2::kTactileTaxelsPerFinger; ++k) {
-        tactile_finger_[finger][k] = state_interfaces_[
-          kFingerTactileOffset + finger * ah2::kTactileTaxelsPerFinger + k].get_value();
+        tactile_finger_[finger][k] = state_value(state_interfaces_[
+          kFingerTactileOffset + finger * ah2::kTactileTaxelsPerFinger + k]);
       }
     }
     std::size_t index = kPalmTactileOffset;
     for (double & value : tactile_palm1_upper_) {
-      value = state_interfaces_[index++].get_value();
+      value = state_value(state_interfaces_[index++]);
     }
     for (double & value : tactile_palm1_lower_) {
-      value = state_interfaces_[index++].get_value();
+      value = state_value(state_interfaces_[index++]);
     }
     for (double & value : tactile_palm2_) {
-      value = state_interfaces_[index++].get_value();
+      value = state_value(state_interfaces_[index++]);
     }
   }
 
