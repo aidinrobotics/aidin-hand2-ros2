@@ -315,7 +315,7 @@
       <limit lower="0" upper="1.898918" effort="1.2" velocity="1.57"/>
     </joint>
     <joint name="${prefix}thumb_joint1" type="revolute">
-      <origin xyz="0 0 0.035" rpy="0 0.3155 -1.5708"/>
+      <origin xyz="0 0 0.035" rpy="0 0.248479 -1.5708"/>
       <parent link="${prefix}thumb_link0"/>
       <child link="${prefix}thumb_link1"/>
       <axis xyz="0 1 0"/>

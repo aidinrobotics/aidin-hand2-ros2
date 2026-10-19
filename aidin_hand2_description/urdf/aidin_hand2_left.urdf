@@ -272,7 +272,7 @@
     <limit effort="1.2" lower="0" upper="1.898918" velocity="1.57"/>
   </joint>
   <joint name="left_thumb_joint1" type="revolute">
-    <origin rpy="0 0.3155 1.5708" xyz="0 0 0.035"/>
+    <origin rpy="0 0.248479 1.5708" xyz="0 0 0.035"/>
     <parent link="left_thumb_link0"/>
     <child link="left_thumb_link1"/>
     <axis xyz="0 1 0"/>
