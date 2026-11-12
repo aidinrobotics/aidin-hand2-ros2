@@ -8,7 +8,7 @@ A `ros2_control` wrapper for controlling AIDIN Hand Gen2 from ROS 2. Send target
 read state topics, and use services for homing, stopping and recovery. The wrapper provides a mock
 that runs without the robot hand, plus URDF and launch configuration for integration into your robot.
 
-[![version](https://img.shields.io/badge/version-0.8.0-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.8.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
+[![version](https://img.shields.io/badge/version-0.8.1-blue)](CHANGELOG.md) [![SDK](https://img.shields.io/badge/SDK-0.8.x-blue)](aidin_hand2.repos) [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-brightgreen)](#system-requirements)
 
 [Install](docs/ko/03_installation.md) | [Documentation](#documentation) | [Changelog](CHANGELOG.md) | [Official Site](https://www.aidinrobotics.co.kr/) | English | [한국어](README.ko.md)
 
@@ -16,11 +16,11 @@ that runs without the robot hand, plus URDF and launch configuration for integra
 
 ## Latest release
 
+- [0.8.1](CHANGELOG.md#081---2026-11-12)
+  - Fixed the wrong URDF `thumb_joint1` `<origin>` pitch from 18.08° to 14.24°.
 - [0.8.0](CHANGELOG.md#080---2026-10-07)
   - The tactile arrays of `HandState` changed from `uint16[]` to `int32[]`.
   - Added the tactile bias services (`~/set_tactile_bias`, `~/reset_tactile_bias`).
-- [0.7.2](CHANGELOG.md#072---2026-10-06)
-  - The URDF joint limits follow the SDK workspace clamp.
 
 All changes are in the [CHANGELOG](CHANGELOG.md).
 

@@ -7,6 +7,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-12
+
+The wrong thumb joint1 `<origin>` pitch in the URDF is fixed. Only the description and the viewer
+change, and the SDK pin stays at `v0.8.0`, so the SDK does not need a rebuild.
+
+### Fixed
+
+- **The wrong `thumb_joint1` `<origin>` pitch of 0.3155 rad (18.08°) is fixed to 0.248479 rad
+  (14.24°).** At `thumb_joint1` = 0 the URDF thumb was 3.84° off the real hand. Joint values and
+  limits are unchanged, while the thumb link poses in TF shift by that angle. The viewer uses the
+  same value.
+
 ## [0.8.0] - 2026-10-07
 
 The tactile arrays of `HandState` are `int32[]`, and the hardware node takes a tactile bias through
@@ -434,7 +446,8 @@ of it. Glove teleop is gone. The URDF joint limits were wrong and are corrected.
 
 - Initial release.
 
-[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.8.0-humble...develop
+[Unreleased]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.8.1-humble...develop
+[0.8.1]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.8.0-humble...v0.8.1-humble
 [0.8.0]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.2-humble...v0.8.0-humble
 [0.7.2]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.1-humble...v0.7.2-humble
 [0.7.1]: https://github.com/aidinrobotics/aidin-hand2-ros2/compare/v0.7.0-humble...v0.7.1-humble
