@@ -7,6 +7,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **The wrong `thumb_joint1` `<origin>` pitch of 0.3155 rad (18.08°) is fixed to 0.248479 rad
+  (14.24°).** At `thumb_joint1` = 0 the URDF thumb was 3.84° off the real hand. Joint values and
+  limits are unchanged, while the thumb link poses in TF shift by that angle. The viewer uses the
+  same value.
+
 ## [0.8.0] - 2026-10-07
 
 The tactile arrays of `HandState` are `int32[]`, and the hardware node takes a tactile bias through
