@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,8 @@
 //   finger     ∈ {thumb, index, middle, ring, baby}
 //
 //   state interface : {side}_{joint}/position                          (rad)
+//                     {side}_{joint}/velocity                          (rad/s)
+//                     {side}_{active_joint}/effort                     (N·m)
 //                     {side}_{actuator}/position_cnt                   (encoder count)
 //                     {side}_{actuator}/velocity_rpm                   (rpm)
 //                     {side}_{actuator}/current_ma                     (mA)
@@ -29,15 +32,17 @@
 //
 //   Claim order, shared by state_interface_configuration and update
 //     [0..20]    joint position                          21
-//     [21..36]   actuator position_cnt                   16
-//     [37..52]   actuator velocity_rpm                   16
-//     [53..68]   actuator current_ma                     16
-//     [69..153]  finger tactile                          5 x 17 = 85
-//     [154..211] palm tactile                            20 + 20 + 18 = 58
-//     [212..214] command scalar, mode, type, source      3
-//     [215..230] command input joint target              16
-//     [231..310] command per-actuator, 5 interleaved     16 x 5 = 80
-//     [311..312] timestamp sec, nanosec                  2
+//     [21..41]   joint velocity                          21
+//     [42..57]   active joint effort                     16
+//     [58..73]   actuator position_cnt                   16
+//     [74..89]   actuator velocity_rpm                   16
+//     [90..105]  actuator current_ma                     16
+//     [106..190] finger tactile                          5 x 17 = 85
+//     [191..248] palm tactile                            20 + 20 + 18 = 58
+//     [249..251] command scalar, mode, type, source      3
+//     [252..267] command input joint target              16
+//     [268..331] command per-actuator, 4 interleaved     16 x 4 = 64
+//     [332..333] timestamp sec, nanosec                  2
 //
 //   The offsets below index that order, and all_state_interface_names appends in it
 
@@ -45,6 +50,7 @@ namespace aidin_hand2_controllers
 {
 
 namespace ah2 = aidin_hand2;
+using CommandState = aidin_hand2_msgs::msg::CommandState;
 
 // Interface names without the prefix
 // The position in the list is the joint index, the coupled joint4 of each digit included
@@ -92,6 +98,10 @@ constexpr std::array<const char *, ah2::kActiveJointCount> kActiveJointBaseNames
   "baby_joint3",
 };
 
+// Joint index of each active joint
+constexpr std::array<std::size_t, ah2::kActiveJointCount> kActiveToJointIndex = {
+  0, 1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19};
+
 // The position in the list is the actuator index
 constexpr std::array<const char *, ah2::kActuatorCount> kActuatorBaseNames = {
   "thumb_actuator0",
@@ -122,6 +132,8 @@ constexpr std::array<const char *, ah2::kFingerCount> kFingerNames = {
 };
 
 constexpr char kPositionInterface[] = "position";
+constexpr char kVelocityInterface[] = "velocity";
+constexpr char kEffortInterface[] = "effort";
 constexpr char kPositionCntInterface[] = "position_cnt";
 constexpr char kVelocityRpmInterface[] = "velocity_rpm";
 constexpr char kCurrentMaInterface[] = "current_ma";
@@ -143,7 +155,6 @@ constexpr char kControllerInputActuatorPositionInterface[] =
 constexpr char kControllerInputActuatorEffortInterface[] = "controller_input_target_effort_pct";
 constexpr char kControllerOutputPositionInterface[] = "controller_output_target_position_cnt";
 constexpr char kControllerOutputEffortInterface[] = "controller_output_target_effort_pct";
-constexpr char kCommandedMaxEffortInterface[] = "max_effort_pct";
 
 constexpr char kTimestampComponent[] = "timestamp";
 constexpr char kStampSecInterface[] = "sec";
@@ -152,19 +163,21 @@ constexpr char kStampNanosecInterface[] = "nanosec";
 namespace
 {
 constexpr std::size_t kJointOffset = 0;
-constexpr std::size_t kActuatorPositionOffset = 21;
-constexpr std::size_t kActuatorVelocityOffset = 37;
-constexpr std::size_t kActuatorCurrentOffset = 53;
-constexpr std::size_t kFingerTactileOffset = 69;
-constexpr std::size_t kPalmTactileOffset = 154;
-constexpr std::size_t kControllerInputModeOffset = 212;
-constexpr std::size_t kControllerOutputTypeOffset = 213;
-constexpr std::size_t kSelectedSourceOffset = 214;
-constexpr std::size_t kControllerInputJointOffset = 215;
-constexpr std::size_t kCommandedActuatorOffset = 231;
-constexpr std::size_t kCommandedActuatorStride = 5;
-constexpr std::size_t kTimestampSecOffset = 311;
-constexpr std::size_t kTimestampNanosecOffset = 312;
+constexpr std::size_t kJointVelocityOffset = 21;
+constexpr std::size_t kJointEffortOffset = 42;
+constexpr std::size_t kActuatorPositionOffset = 58;
+constexpr std::size_t kActuatorVelocityOffset = 74;
+constexpr std::size_t kActuatorCurrentOffset = 90;
+constexpr std::size_t kFingerTactileOffset = 106;
+constexpr std::size_t kPalmTactileOffset = 191;
+constexpr std::size_t kControllerInputModeOffset = 249;
+constexpr std::size_t kControllerOutputTypeOffset = 250;
+constexpr std::size_t kSelectedSourceOffset = 251;
+constexpr std::size_t kControllerInputJointOffset = 252;
+constexpr std::size_t kCommandedActuatorOffset = 268;
+constexpr std::size_t kCommandedActuatorStride = 4;
+constexpr std::size_t kTimestampSecOffset = 332;
+constexpr std::size_t kTimestampNanosecOffset = 333;
 constexpr std::size_t kStateInterfaceCount = kTimestampNanosecOffset + 1;
 
 void append_finger_tactile(std::vector<std::string> & names, const std::string & sensor)
@@ -190,6 +203,12 @@ std::vector<std::string> all_state_interface_names(const std::string & prefix)
 
   for (const char * joint : kJointBaseNames) {
     names.push_back(prefix + joint + "/" + kPositionInterface);
+  }
+  for (const char * joint : kJointBaseNames) {
+    names.push_back(prefix + joint + "/" + kVelocityInterface);
+  }
+  for (const char * joint : kActiveJointBaseNames) {
+    names.push_back(prefix + joint + "/" + kEffortInterface);
   }
   for (const char * actuator : kActuatorBaseNames) {
     names.push_back(prefix + actuator + "/" + kPositionCntInterface);
@@ -222,7 +241,6 @@ std::vector<std::string> all_state_interface_names(const std::string & prefix)
     names.push_back(commanded + "/" + kControllerInputActuatorEffortInterface + "." + actuator);
     names.push_back(commanded + "/" + kControllerOutputPositionInterface + "." + actuator);
     names.push_back(commanded + "/" + kControllerOutputEffortInterface + "." + actuator);
-    names.push_back(commanded + "/" + kCommandedMaxEffortInterface + "." + actuator);
   }
 
   const std::string timestamp = prefix + kTimestampComponent;
@@ -315,6 +333,14 @@ controller_interface::return_type HandStateBroadcaster::update(
 
   for (std::size_t i = 0; i < ah2::kJointCount; ++i) {
     message.joint_position[i] = state_interfaces_[kJointOffset + i].get_value();
+    message.joint_velocity[i] = state_interfaces_[kJointVelocityOffset + i].get_value();
+  }
+
+  // A coupled joint4 has no effort interface and stays NaN
+  message.joint_effort.fill(std::numeric_limits<double>::quiet_NaN());
+  for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+    message.joint_effort[kActiveToJointIndex[i]] =
+      state_interfaces_[kJointEffortOffset + i].get_value();
   }
   // A state interface is always a double, so each reading returns to its wire width here
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
@@ -358,19 +384,44 @@ controller_interface::return_type HandStateBroadcaster::update(
   command.selected_source =
     static_cast<std::uint8_t>(state_interfaces_[kSelectedSourceOffset].get_value());
 
-  // JointPosition and JointImpedance share one echo, the hardware exports the target once
-  for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
-    const double target = state_interfaces_[kControllerInputJointOffset + i].get_value();
-    command.joint_position_input_rad[i] = target;
-    command.joint_impedance_input_rad[i] = target;
+  // The hardware exports one array per input and output kind, and the message keeps the active one
+  // field is the per-actuator interface: 0 input position, 1 input effort, 2 output position,
+  // 3 output effort
+  const auto per_actuator = [this](std::size_t field, std::array<double, 16> & target) {
+    for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+      target[i] =
+        state_interfaces_[kCommandedActuatorOffset + i * kCommandedActuatorStride + field].get_value();
+    }
+  };
+
+  command.controller_input.fill(std::numeric_limits<double>::quiet_NaN());
+  switch (command.controller_input_mode) {
+    case CommandState::CONTROLLER_INPUT_JOINT_POSITION:
+    case CommandState::CONTROLLER_INPUT_JOINT_IMPEDANCE:
+      for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+        command.controller_input[i] = state_interfaces_[kControllerInputJointOffset + i].get_value();
+      }
+      break;
+    case CommandState::CONTROLLER_INPUT_ACTUATOR_POSITION:
+      per_actuator(0, command.controller_input);
+      break;
+    case CommandState::CONTROLLER_INPUT_ACTUATOR_EFFORT:
+      per_actuator(1, command.controller_input);
+      break;
+    default:
+      break;
   }
-  for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
-    const std::size_t base = kCommandedActuatorOffset + i * kCommandedActuatorStride;
-    command.actuator_position_input_cnt[i] = state_interfaces_[base + 0].get_value();
-    command.actuator_effort_input_pct[i] = state_interfaces_[base + 1].get_value();
-    command.target_position_cnt[i] = state_interfaces_[base + 2].get_value();
-    command.target_effort_pct[i] = state_interfaces_[base + 3].get_value();
-    command.max_effort_pct[i] = state_interfaces_[base + 4].get_value();
+
+  command.controller_output.fill(std::numeric_limits<double>::quiet_NaN());
+  switch (command.controller_output_type) {
+    case CommandState::OUTPUT_ACTUATOR_POSITION:
+      per_actuator(2, command.controller_output);
+      break;
+    case CommandState::OUTPUT_ACTUATOR_EFFORT:
+      per_actuator(3, command.controller_output);
+      break;
+    default:
+      break;
   }
 
   publisher_->unlockAndPublish();

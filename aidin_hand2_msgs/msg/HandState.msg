@@ -6,6 +6,8 @@ string hand_side          # "right" / "left"
 # FK output in rad, order = thumb_joint0..4, then index_joint1..4, middle_joint1..4,
 # ring_joint1..4, baby_joint1..4
 float64[21] joint_position
+float64[21] joint_velocity      # rad/s
+float64[21] joint_effort        # N·m estimated from the motor current, NaN on each joint4
 
 # Order = thumb_actuator0..3, then index_actuator1..3, middle_actuator1..3,
 # ring_actuator1..3, baby_actuator1..3

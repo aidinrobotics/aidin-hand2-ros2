@@ -21,6 +21,7 @@
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "std_srvs/srv/trigger.hpp"
+#include "aidin_hand2_msgs/srv/get_tactile_bias.hpp"
 
 #include <aidin_hand2/aidin_hand2.hpp>
 
@@ -103,6 +104,7 @@ private:
   bool exec_reconnect(std::string & failure_message);
   bool exec_set_tactile_bias(std::string & failure_message);
   bool exec_reset_tactile_bias(std::string & failure_message);
+  bool exec_get_tactile_bias(ah2::TactileState & bias, std::string & failure_message);
 
   // ---------------------------- Tuning parameter ----------------------------
 
@@ -141,15 +143,13 @@ private:
 
   std::string can_interface_;
   ah2::HandSide hand_side_{ah2::HandSide::Left};
+  ah2::HandModel hand_model_{ah2::HandModel::Gen2};
   bool auto_home_{true};
 
   // Defaults below match HandConfig and kDefaultMaxEffort
 
   // Rated current %, 1000 being 100%, and the node parameter default
   double max_effort_{1000.0};
-
-  // RT loop Hz
-  int control_rate_{500};
 
   // CPU to pin the RT loop to, -1 for none
   int rt_cpu_affinity_{-1};
@@ -175,6 +175,10 @@ private:
 
   ah2::HandState state_{};
   std::array<double, ah2::kJointCount> joint_position_rad_{};
+  std::array<double, ah2::kJointCount> joint_velocity_rad_s_{};
+
+  // Exported for the active joints only, a coupled joint4 has no effort
+  std::array<double, ah2::kJointCount> joint_effort_nm_{};
 
   // The SDK carries these as integers, while a state interface is always a double
   std::array<double, ah2::kActuatorCount> actuator_position_cnt_{};
@@ -185,7 +189,7 @@ private:
 
   std::array<double, ah2::kActuatorCount> actuator_enabled_{};
   std::array<double, ah2::kActuatorCount> actuator_fault_{};
-  std::array<double, 7> diagnostics_values_{};
+  std::array<double, 8> diagnostics_values_{};
 
   // Command echo, the SDK variant flattened to doubles
   double controller_input_mode_{};
@@ -196,7 +200,6 @@ private:
   std::array<double, ah2::kActuatorCount> controller_input_target_effort_pct_{};
   std::array<double, ah2::kActuatorCount> controller_output_target_position_cnt_{};
   std::array<double, ah2::kActuatorCount> controller_output_target_effort_pct_{};
-  std::array<double, ah2::kActuatorCount> commanded_max_effort_pct_{};
 
   // HandState.timestamp split in two, a double cannot hold the whole ns count
   double observed_stamp_sec_{};
@@ -222,6 +225,10 @@ private:
   // Throttles the write path warning
   rclcpp::Clock throttle_clock_{RCL_STEADY_TIME};
 
+  // The previous cycle's read() and write() failures, so a failure repeated every cycle logs once
+  std::string read_failure_;
+  std::string write_failure_;
+
   // -------------- Cross thread: atomic [CM <-> service thread] --------------
 
   // Homing is not tracked here, diagnostics.homing_state is the single source
@@ -244,7 +251,7 @@ private:
   // --------------------- Service node [service thread] ----------------------
 
   // This component's own node, exposing ~/run, ~/stop, ~/home, ~/reconnect,
-  // ~/set_tactile_bias and ~/reset_tactile_bias
+  // ~/set_tactile_bias, ~/reset_tactile_bias and ~/get_tactile_bias
 
   rclcpp::Node::SharedPtr service_node_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr run_service_;
@@ -253,6 +260,7 @@ private:
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reconnect_service_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr set_tactile_bias_service_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_tactile_bias_service_;
+  rclcpp::Service<aidin_hand2_msgs::srv::GetTactileBias>::SharedPtr get_tactile_bias_service_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr tuning_callback_;
   std::unique_ptr<rclcpp::executors::SingleThreadedExecutor> service_executor_;
   std::thread service_spin_thread_;

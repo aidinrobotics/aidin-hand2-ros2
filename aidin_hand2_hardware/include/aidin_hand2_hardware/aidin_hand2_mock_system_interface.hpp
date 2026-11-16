@@ -42,6 +42,7 @@ public:
 private:
   std::string hand_side_;
   std::string prefix_;
+  aidin_hand2::HandModel hand_model_{aidin_hand2::HandModel::Gen2};
 
   double command_lock_{};
   std::array<double, aidin_hand2::kActiveJointCount> joint_position_target_rad_{};
@@ -57,6 +58,12 @@ private:
   std::array<double, aidin_hand2::kActuatorCount> actuator_velocity_rpm_{};
   std::array<double, aidin_hand2::kActuatorCount> actuator_current_ma_{};
   std::array<double, aidin_hand2::kJointCount> joint_position_rad_{};
+
+  // The position change over the last write(), 0 while the pose holds
+  std::array<double, aidin_hand2::kJointCount> joint_velocity_rad_s_{};
+
+  // Always 0, the mock has no load, and exported for the active joints only
+  std::array<double, aidin_hand2::kJointCount> joint_effort_nm_{};
   double max_effort_pct_{1000.0};
 
   aidin_hand2::CommandMode command_mode_{aidin_hand2::CommandMode::Idle};

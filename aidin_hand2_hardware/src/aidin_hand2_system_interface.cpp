@@ -10,6 +10,7 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <utility>
 #include <variant>
 
 #include "rclcpp/rclcpp.hpp"
@@ -38,6 +39,8 @@ constexpr char kEnabledInterface[] = "enabled";
 constexpr char kFaultInterface[] = "fault";
 
 constexpr char kPositionInterface[] = "position";
+constexpr char kVelocityInterface[] = "velocity";
+constexpr char kEffortInterface[] = "effort";
 
 // Hand-wide components, grouped the way diagnostics is
 constexpr char kCommandedComponent[] = "commanded";
@@ -54,7 +57,9 @@ constexpr char kControllerInputActuatorEffortInterface[] =
   "controller_input_target_effort_pct";
 constexpr char kControllerOutputPositionInterface[] = "controller_output_target_position_cnt";
 constexpr char kControllerOutputEffortInterface[] = "controller_output_target_effort_pct";
-constexpr char kCommandedMaxEffortInterface[] = "max_effort_pct";
+
+// Upper bound of max_effort, 0.1% of rated current, which the SDK clamps to
+constexpr double kMaxEffortLimit = 2000.0;
 
 // Observation wall-clock for header.stamp, on the <prefix>timestamp component
 constexpr char kStampSecInterface[] = "sec";
@@ -62,8 +67,9 @@ constexpr char kStampNanosecInterface[] = "nanosec";
 
 // Interface order of the diagnostics gpio, matching the diagnostics_values_ array
 // lifecycle goes out as the HandLifecycle ordinal and the broadcaster names it
-constexpr std::array<const char *, 7> kDiagnosticsInterfaceNames = {
+constexpr std::array<const char *, 8> kDiagnosticsInterfaceNames = {
   "lifecycle",
+  "fault_code",
   "nan_command_count",
   "control_cycles",
   "deadline_misses",
@@ -250,6 +256,16 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
   hand_side_name_ = hand_side_text;
   prefix_ = hand_side_name_ + "_";
 
+  // Optional, gen2 when missing
+  const std::string hand_model_text = parameter("hand_model");
+  const std::optional<ah2::HandModel> hand_model = hand_model_text.empty() ?
+    std::optional<ah2::HandModel>{ah2::HandModel::Gen2} : ah2::parse_hand_model(hand_model_text);
+  if (!hand_model) {
+    RCLCPP_FATAL(logger(), "hand_model must be 'gen2' or 'gen2b', got '%s'", hand_model_text.c_str());
+    return CallbackReturn::ERROR;
+  }
+  hand_model_ = *hand_model;
+
   // xacro emits a bool as "True" or "False"
   const std::string auto_home_text = parameter("auto_home");
   if (auto_home_text != "True" && auto_home_text != "False") {
@@ -264,7 +280,11 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
 
   try {
     max_effort_ = as_double("max_effort", max_effort_);
-    control_rate_ = as_int("control_rate", control_rate_);
+    if (!(max_effort_ >= 0.0 && max_effort_ <= kMaxEffortLimit)) {
+      RCLCPP_FATAL(logger(), "max_effort must be in [0, 2000], got '%s'",
+                   parameter("max_effort").c_str());
+      return CallbackReturn::ERROR;
+    }
     rt_cpu_affinity_ = as_int("rt_cpu_affinity", rt_cpu_affinity_);
     auto_reconnect_timeout_ms_ = as_int("auto_reconnect_timeout_ms", auto_reconnect_timeout_ms_);
 
@@ -292,8 +312,7 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
 CallbackReturn AidinHand2SystemInterface::on_configure(const rclcpp_lifecycle::State &)
 {
   try {
-    ah2::HandConfig config{can_interface_, hand_side_};
-    config.control_rate = control_rate_;
+    ah2::HandConfig config{can_interface_, hand_side_, hand_model_};
     config.rt_cpu_affinity = rt_cpu_affinity_;
     config.disabled_actuators = disabled_actuators_;
     config.auto_reconnect = auto_reconnect_;
@@ -305,8 +324,8 @@ CallbackReturn AidinHand2SystemInterface::on_configure(const rclcpp_lifecycle::S
     hand_ = manager_.create(config);
     hand_->connect();
     state_ = hand_->get_state();
-  } catch (const ah2::Exception &) {
-    // The SDK already logged the failure
+  } catch (const ah2::Exception & exception) {
+    RCLCPP_ERROR(logger(), "%s", exception.what());
     if (hand_) {
       manager_.destroy(*hand_);
       hand_.reset();
@@ -321,6 +340,7 @@ CallbackReturn AidinHand2SystemInterface::on_activate(const rclcpp_lifecycle::St
 {
   std::string failure_message;
   if (!exec_run(failure_message)) {
+    RCLCPP_ERROR(logger(), "%s", failure_message.c_str());
     return CallbackReturn::ERROR;
   }
   return CallbackReturn::SUCCESS;
@@ -331,6 +351,7 @@ CallbackReturn AidinHand2SystemInterface::on_deactivate(const rclcpp_lifecycle::
   // stop() cancels a running homing with a quick stop and blocks until the drives confirm
   std::string failure_message;
   if (!exec_stop(failure_message)) {
+    RCLCPP_ERROR(logger(), "%s", failure_message.c_str());
     return CallbackReturn::ERROR;
   }
   return CallbackReturn::SUCCESS;
@@ -343,11 +364,13 @@ CallbackReturn AidinHand2SystemInterface::on_cleanup(const rclcpp_lifecycle::Sta
     // destroy() tears down a live connection on its own
     try {
       hand_->disconnect();
-    } catch (const ah2::Exception &) {
+    } catch (const ah2::Exception & exception) {
+      RCLCPP_WARN(logger(), "%s", exception.what());
     }
     try {
       manager_.destroy(*hand_);
-    } catch (const ah2::Exception &) {
+    } catch (const ah2::Exception & exception) {
+      RCLCPP_WARN(logger(), "%s", exception.what());
     }
     hand_.reset();
   }
@@ -375,7 +398,13 @@ AidinHand2SystemInterface::export_state_interfaces()
   }
 
   for (std::size_t i = 0; i < ah2::kJointCount; ++i) {
-    interfaces.emplace_back(prefix_ + kJointBaseNames[i], kPositionInterface, &joint_position_rad_[i]);
+    const std::string joint = prefix_ + kJointBaseNames[i];
+    interfaces.emplace_back(joint, kPositionInterface, &joint_position_rad_[i]);
+    interfaces.emplace_back(joint, kVelocityInterface, &joint_velocity_rad_s_[i]);
+  }
+  for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+    interfaces.emplace_back(prefix_ + kActiveJointBaseNames[i], kEffortInterface,
+                            &joint_effort_nm_[kActiveToJointIndex[i]]);
   }
 
   for (std::size_t finger = 0; finger < ah2::kFingerCount; ++finger) {
@@ -436,8 +465,6 @@ AidinHand2SystemInterface::export_state_interfaces()
                             &controller_output_target_position_cnt_[i]);
     interfaces.emplace_back(commanded, kControllerOutputEffortInterface + suffix,
                             &controller_output_target_effort_pct_[i]);
-    interfaces.emplace_back(commanded, kCommandedMaxEffortInterface + suffix,
-                            &commanded_max_effort_pct_[i]);
   }
 
   const std::string timestamp = prefix_ + kTimestampComponent;
@@ -549,9 +576,12 @@ hardware_interface::return_type AidinHand2SystemInterface::read(
   if (!hand_) {
     return hardware_interface::return_type::ERROR;
   }
+  const std::string previous_failure = std::exchange(read_failure_, {});
   try {
     state_ = hand_->get_state();
     joint_position_rad_ = state_.joints.position_rad;
+    joint_velocity_rad_s_ = state_.joints.velocity_rad_s;
+    joint_effort_nm_ = state_.joints.effort_Nm;
 
     for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
       actuator_position_cnt_[i] = state_.actuators.position_count[i];
@@ -609,7 +639,6 @@ hardware_interface::return_type AidinHand2SystemInterface::read(
     }
     selected_source_ =
       static_cast<double>(static_cast<int>(state_.commanded.selected_source));
-    commanded_max_effort_pct_ = state_.commanded.max_effort_pct;
 
     // Integer split, a double cannot hold the whole ns count
     observed_stamp_sec_ = static_cast<double>(state_.timestamp / 1000000000LL);
@@ -619,6 +648,7 @@ hardware_interface::return_type AidinHand2SystemInterface::read(
     const ah2::Diagnostics diagnostics = hand_->get_diagnostics();
     diagnostics_values_ = {
       static_cast<double>(static_cast<int>(diagnostics.lifecycle)),
+      static_cast<double>(diagnostics.fault_code),
       static_cast<double>(diagnostics.nan_command_count),
       static_cast<double>(diagnostics.control_cycles),
       static_cast<double>(diagnostics.deadline_misses),
@@ -631,8 +661,12 @@ hardware_interface::return_type AidinHand2SystemInterface::read(
       actuator_fault_[actuator] = static_cast<double>(
         static_cast<std::uint16_t>(diagnostics.actuator_health.fault[actuator]));
     }
-  } catch (const ah2::Exception &) {
+  } catch (const ah2::Exception & exception) {
     // get_state and get_diagnostics read a lock-free buffer and never throw on a lost link
+    read_failure_ = exception.what();
+    if (read_failure_ != previous_failure) {
+      RCLCPP_ERROR(logger(), "%s", read_failure_.c_str());
+    }
     return hardware_interface::return_type::ERROR;
   }
   return hardware_interface::return_type::OK;
@@ -645,6 +679,7 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
     return hardware_interface::return_type::ERROR;
   }
 
+  const std::string previous_failure = std::exchange(write_failure_, {});
   try {
     // Ahead of the gates below, tuning lands while the hand is stopped
     apply_tuning_parameters();
@@ -741,8 +776,12 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
         break;
       }
     }
-  } catch (const ah2::Exception &) {
-    // The link was lost between the gate above and here, ~/reconnect recovers it
+  } catch (const ah2::Exception & exception) {
+    // A fault between the gate above and here, which ~/reconnect recovers, or a refused tuning value
+    write_failure_ = exception.what();
+    if (write_failure_ != previous_failure) {
+      RCLCPP_ERROR(logger(), "%s", write_failure_.c_str());
+    }
     return hardware_interface::return_type::OK;
   }
   return hardware_interface::return_type::OK;
@@ -806,6 +845,28 @@ void AidinHand2SystemInterface::start_service_node()
       response->success = exec_reset_tactile_bias(failure_message);
       response->message = response->success ? "tactile bias reset — tactile values are raw again" : failure_message;
     });
+  get_tactile_bias_service_ = service_node_->create_service<aidin_hand2_msgs::srv::GetTactileBias>(
+    "~/get_tactile_bias",
+    [this](const std::shared_ptr<aidin_hand2_msgs::srv::GetTactileBias::Request> &,
+           const std::shared_ptr<aidin_hand2_msgs::srv::GetTactileBias::Response> & response) {
+      ah2::TactileState bias{};
+      std::string failure_message;
+      response->success = exec_get_tactile_bias(bias, failure_message);
+      response->message = response->success ? "tactile bias read" : failure_message;
+      response->tactile_thumb = bias.fingers[0];
+      response->tactile_index = bias.fingers[1];
+      response->tactile_middle = bias.fingers[2];
+      response->tactile_ring = bias.fingers[3];
+      response->tactile_baby = bias.fingers[4];
+
+      // The SDK palm is flat, in the order of the three regions
+      const auto palm = bias.palm.begin();
+      std::copy_n(palm, ah2::kPalm1UpperCount, response->tactile_palm1_upper.begin());
+      std::copy_n(palm + ah2::kPalm1UpperCount, ah2::kPalm1LowerCount,
+                  response->tactile_palm1_lower.begin());
+      std::copy_n(palm + ah2::kPalm1UpperCount + ah2::kPalm1LowerCount, ah2::kPalm2Count,
+                  response->tactile_palm2.begin());
+    });
   declare_tuning_parameters();
   service_executor_ = std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
   service_executor_->add_node(service_node_);
@@ -827,6 +888,7 @@ void AidinHand2SystemInterface::stop_service_node()
   reconnect_service_.reset();
   set_tactile_bias_service_.reset();
   reset_tactile_bias_service_.reset();
+  get_tactile_bias_service_.reset();
   tuning_callback_.reset();
   if (service_executor_ && service_node_) {
     service_executor_->remove_node(service_node_);
@@ -916,6 +978,18 @@ bool AidinHand2SystemInterface::exec_reset_tactile_bias(std::string & failure_me
   }
 }
 
+bool AidinHand2SystemInterface::exec_get_tactile_bias(
+  ah2::TactileState & bias, std::string & failure_message)
+{
+  try {
+    bias = hand_->get_tactile_bias();
+    return true;
+  } catch (const ah2::Exception & exception) {
+    failure_message = exception.what();
+    return false;
+  }
+}
+
 // ----------------------------- Tuning parameter -----------------------------
 
 void AidinHand2SystemInterface::declare_tuning_parameters()
@@ -941,9 +1015,9 @@ void AidinHand2SystemInterface::declare_tuning_parameters()
     std::vector<double>(defaults.joint_impedance_controller.stiffness.begin(),
                         defaults.joint_impedance_controller.stiffness.end()));
   service_node_->declare_parameter(
-    "joint_impedance_controller.damping",
-    std::vector<double>(defaults.joint_impedance_controller.damping.begin(),
-                        defaults.joint_impedance_controller.damping.end()));
+    "joint_impedance_controller.filter_enabled", defaults.joint_impedance_controller.filter_enabled);
+  service_node_->declare_parameter(
+    "joint_impedance_controller.cutoff_freq", defaults.joint_impedance_controller.cutoff_freq);
 
   // Stage what declare() picked up before attaching the callback, which sees only later changes
   const std::vector<std::string> tuning_names{
@@ -952,7 +1026,8 @@ void AidinHand2SystemInterface::declare_tuning_parameters()
     "joint_position_controller.cutoff_freq",
     "joint_position_controller.deadband",
     "joint_impedance_controller.stiffness",
-    "joint_impedance_controller.damping",
+    "joint_impedance_controller.filter_enabled",
+    "joint_impedance_controller.cutoff_freq",
   };
   (void)on_set_tuning_parameters(service_node_->get_parameters(tuning_names));
   tuning_callback_ = service_node_->add_on_set_parameters_callback(
@@ -964,8 +1039,9 @@ void AidinHand2SystemInterface::declare_tuning_parameters()
 rcl_interfaces::msg::SetParametersResult AidinHand2SystemInterface::on_set_tuning_parameters(
   const std::vector<rclcpp::Parameter> & parameters)
 {
-  // An array parameter takes 1 value shared by every actuator or 16 for one each
-  // A rejection stops ROS from applying the value, and the range clamp is the SDK's job
+  // An array parameter takes 1 value shared by all 16 entries or 16 for one each, per actuator
+  // for max_effort and per active joint for stiffness
+  // A rejection stops ROS from applying the value, so a parameter always holds the value in effect
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
 
@@ -973,22 +1049,24 @@ rcl_interfaces::msg::SetParametersResult AidinHand2SystemInterface::on_set_tunin
   std::array<double, ah2::kActuatorCount> max_effort = staged_max_effort_;
   ah2::ControllerConfig config = staged_controller_config_;
 
+  // upper bounds each value, and range names it in the rejection
   const auto expand = [&result](
-    const rclcpp::Parameter & parameter, std::array<double, ah2::kActuatorCount> & target) {
+    const rclcpp::Parameter & parameter, std::array<double, 16> & target, double upper,
+    const char * range) {
     const std::vector<double> values = parameter.as_double_array();
-    if (values.size() != 1 && values.size() != ah2::kActuatorCount) {
+    if (values.size() != 1 && values.size() != target.size()) {
       result.successful = false;
       result.reason = parameter.get_name() + " must have 1 or 16 values";
       return;
     }
     for (const double value : values) {
-      if (!std::isfinite(value) || value < 0.0) {
+      if (!std::isfinite(value) || value < 0.0 || value > upper) {
         result.successful = false;
-        result.reason = parameter.get_name() + " must be finite and >= 0";
+        result.reason = parameter.get_name() + " must be finite and " + range;
         return;
       }
     }
-    for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+    for (std::size_t i = 0; i < target.size(); ++i) {
       target[i] = values.size() == 1 ? values[0] : values[i];
     }
   };
@@ -1005,7 +1083,7 @@ rcl_interfaces::msg::SetParametersResult AidinHand2SystemInterface::on_set_tunin
   for (const rclcpp::Parameter & parameter : parameters) {
     const std::string & name = parameter.get_name();
     if (name == "max_effort") {
-      expand(parameter, max_effort);
+      expand(parameter, max_effort, kMaxEffortLimit, "in [0, 2000]");
     } else if (name == "joint_position_controller.filter_enabled") {
       config.joint_position_controller.filter_enabled = parameter.as_bool();
     } else if (name == "joint_position_controller.cutoff_freq") {
@@ -1013,9 +1091,11 @@ rcl_interfaces::msg::SetParametersResult AidinHand2SystemInterface::on_set_tunin
     } else if (name == "joint_position_controller.deadband") {
       scalar(parameter, config.joint_position_controller.deadband);
     } else if (name == "joint_impedance_controller.stiffness") {
-      expand(parameter, config.joint_impedance_controller.stiffness);
-    } else if (name == "joint_impedance_controller.damping") {
-      expand(parameter, config.joint_impedance_controller.damping);
+      expand(parameter, config.joint_impedance_controller.stiffness, 1.0, "in [0, 1]");
+    } else if (name == "joint_impedance_controller.filter_enabled") {
+      config.joint_impedance_controller.filter_enabled = parameter.as_bool();
+    } else if (name == "joint_impedance_controller.cutoff_freq") {
+      scalar(parameter, config.joint_impedance_controller.cutoff_freq);
     }
     if (!result.successful) return result;
   }
