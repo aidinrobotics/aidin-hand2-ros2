@@ -7,6 +7,120 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Notable changes
+
+- Build
+  - Requires SDK 0.9. Rebuild the SDK from the `v0.9.0` pin, then every package.
+- Hand model
+  - The `hand_model` hardware parameter and the `left_hand_model` and `right_hand_model` launch
+    arguments are added. They default to `gen2`, so a Gen2 setup runs unchanged.
+- Control
+  - The `control_rate` hardware parameter and xacro argument are removed.
+  - The per-actuator gain parameters `joint_impedance_controller.stiffness` and
+    `joint_impedance_controller.damping` are removed.
+  - The `joint_impedance_controller.stiffness` parameter holds a value from 0 to 1 per active
+    joint, and the `joint_impedance_controller.filter_enabled` and
+    `joint_impedance_controller.cutoff_freq` parameters are added.
+  - The `max_effort` parameter accepts values from 0 to 2000 only.
+- State
+  - The `velocity` and `effort` state interfaces are added to the joints and appear in
+    `/joint_states`.
+  - The `joint_velocity` and `joint_effort` fields are added to `HandState`.
+  - The command echo arrays of `CommandState` are merged into the `controller_input` and
+    `controller_output` fields, read by `controller_input_mode` and `controller_output_type`.
+  - The `max_effort_pct` field of `CommandState` is removed. Read the `max_effort` parameter
+    instead.
+  - `/dynamic_joint_states` is turned off in the bringup and mock configurations.
+  - The `fault_code` field is added to `HandDiagnostics`.
+- Services
+  - The `~/get_tactile_bias` service is added.
+- Errors and log
+  - Error messages take the SDK 0.9 form, such as `[left] [E301] cannot connect hand: ...`, and the
+    hardware logs them when configure, activate or deactivate fails.
+
+### Added
+
+- **The hardware takes a `hand_model` parameter, `gen2` or `gen2b`.** The `left_hand_model` and
+  `right_hand_model` launch arguments, the `hand_bringup.yaml` keys of the same names and the
+  `hand_model` argument of the ros2_control xacro macro pass it on, and the mock uses it for its
+  kinematics. A missing value means `gen2`. Set `gen2b` for a Gen2B hand; the model is given with
+  the hand.
+
+- **`/joint_states` carries the joint velocity and effort.** Every joint exports a `velocity` state
+  interface and the 16 active joints an `effort` interface. The effort is estimated from the motor
+  current without transmission losses or friction, so it can differ from the actual joint torque.
+  A coupled joint4 has no effort interface, and joint_state_broadcaster writes NaN for it.
+  `HandState` carries the same values in its new `joint_velocity` and `joint_effort` fields, with
+  NaN on each joint4 effort. Rebuild every `HandState` subscriber.
+
+- **`HandDiagnostics` has a `fault_code` field.** It holds the SDK error number that put the hand
+  in `Faulted`, 404, 405 or 702, and 0 otherwise. The diagnostics component exports it as
+  `fault_code`, 40 interfaces in all. Rebuild every `HandDiagnostics` subscriber.
+
+- **The hardware node offers `~/get_tactile_bias`.** It returns the values `~/set_tactile_bias`
+  took as zero, in the tactile layout of `HandState`, through the new
+  `aidin_hand2_msgs/srv/GetTactileBias`.
+
+### Changed
+
+- **Breaking: requires SDK 0.9.x.** `find_package(aidin_hand2 0.9 REQUIRED)` fails at configure time
+  against 0.8, and `aidin_hand2.repos` pins `v0.9.0`. Rebuild the SDK from the new pin, run
+  `sudo ldconfig`, and rebuild every package.
+
+- **Breaking: `joint_impedance_controller.stiffness` takes a value from 0 to 1 per active joint.**
+  It holds 1 or 16 values in the order thumb_joint0 to baby_joint3, where 1 is the joint's hard
+  stiffness and the SDK sets the damping to match. The default is 0.8, and a value above 1 is
+  rejected. The new `joint_impedance_controller.filter_enabled` and
+  `joint_impedance_controller.cutoff_freq` parameters filter the target, on at 10 Hz by default.
+  Replace stored stiffness values.
+
+- **Breaking: `CommandState` holds the command in one `controller_input` array and the setpoint in
+  one `controller_output` array.** `controller_input_mode` sets the unit of `controller_input`:
+  rad per active joint for joint position and joint impedance, encoder count or 0.1% of rated
+  current per actuator for actuator position and actuator effort. `controller_output_type` sets
+  that of `controller_output` the same way. They replace `joint_position_input_rad`,
+  `joint_impedance_input_rad`, `actuator_position_input_cnt`, `actuator_effort_input_pct`,
+  `target_position_cnt` and `target_effort_pct`, of which only one input and one output ever held
+  a value. `HandState` shrinks by 512 bytes. Read the array for the mode instead of the old field.
+
+- **Breaking: `max_effort` rejects a value outside 0 to 2000.** `ros2 param set` fails with
+  `max_effort must be finite and in [0, 2000]`, and a `max_effort` hardware parameter outside the
+  range fails `on_init`. A value above 2000 used to be accepted and clamped by the SDK, so the
+  parameter showed a value that was not in effect.
+
+- **Breaking: encoder count 0 is the hard stop.** `actuator_position_cnt` and the actuator position
+  command read 1000 higher than with SDK 0.8 at the same pose, so add 1000 to stored actuator
+  position targets.
+
+- **Error messages take the SDK 0.9 form, and the hardware logs them.** A failed configure, activate
+  or deactivate logs the SDK error on the hardware's logger, as in
+  `[left] [E301] cannot connect hand: CAN interface 'can9' not found`, since the SDK no longer logs
+  the exceptions it throws. A failed service returns the same text, and the number leads to its
+  entry in the SDK's error message table. A failure that repeats every control cycle is logged
+  once.
+
+- **joint_state_broadcaster no longer publishes `/dynamic_joint_states`.** It repeated every state
+  interface by name, about 9 KB per hand at 100 Hz, and `/joint_states`, `hand_state` and
+  `hand_diagnostics` carry all of its values. Set `publish_dynamic_joint_states: true` in the
+  `joint_state_broadcaster` block of `controllers.yaml` to bring it back. Newer ros2_control
+  releases turn it off by default as well.
+
+- **After a communication fault the hand receives nothing, not even a quick stop.** A control loop
+  failure still sends the quick stop.
+
+### Removed
+
+- **Breaking: the `control_rate` hardware parameter and xacro argument.** The SDK runs its loop at
+  a fixed 500 Hz. Remove `control_rate` from your ros2_control macro calls, which otherwise fail
+  with `Invalid parameter "control_rate"`.
+
+- **Breaking: `joint_impedance_controller.damping`.** The SDK sets the damping from the stiffness.
+  Remove it from your controller configuration.
+
+- **Breaking: `CommandState.max_effort_pct` and the `max_effort_pct` command echo interfaces.** The
+  effort cap is a setting like the other hardware node parameters, so read it with
+  `ros2 param get /<side>_hand_control max_effort`.
+
 ## [0.8.1] - 2026-11-12
 
 The wrong thumb joint1 `<origin>` pitch in the URDF is fixed. Only the description and the viewer
