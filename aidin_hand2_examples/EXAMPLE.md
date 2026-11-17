@@ -86,7 +86,6 @@ actuator names and array order are in [Joint and actuator order](../aidin_hand2_
 | ActuatorEffortController | `{target_controller}/{side}_{actuator}/effort_pct` ×16 |
 
 The right hand takes `hand_side: right` and the right hand command controller names.
-Joint impedance control is under development; do not use the impedance skeleton for robot hand control.
 
 ## Running a skeleton
 

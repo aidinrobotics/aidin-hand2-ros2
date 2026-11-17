@@ -1,0 +1,14 @@
+# The tactile values ~/set_tactile_bias took as zero, all 0 while no bias is set
+---
+bool success
+string message            # "tactile bias read", or the SDK error message
+
+# Same layout as the tactile fields of HandState
+int32[17] tactile_thumb
+int32[17] tactile_index
+int32[17] tactile_middle
+int32[17] tactile_ring
+int32[17] tactile_baby
+int32[20] tactile_palm1_upper
+int32[20] tactile_palm1_lower
+int32[18] tactile_palm2

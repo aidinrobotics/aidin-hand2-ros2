@@ -16,20 +16,19 @@ uint8 SOURCE_CONTROLLER=1
 uint8 SOURCE_QUICK_STOP=2
 uint8 SOURCE_HOMING=3
 
-# Only the input matching controller_input_mode is valid
+# The command the controller received, its unit set by controller_input_mode
+#   JOINT_POSITION, JOINT_IMPEDANCE   rad per active joint, thumb_joint0..3 then index_joint1..3 and on
+#   ACTUATOR_POSITION                 encoder count per actuator
+#   ACTUATOR_EFFORT                   0.1% of rated current per actuator, 1000 = 100%
+#   IDLE                              all NaN
 uint8 controller_input_mode
-float64[16] joint_position_input_rad
-float64[16] joint_impedance_input_rad
-float64[16] actuator_position_input_cnt
-# Unit is 0.1% of rated current, 1000 = 100%
-float64[16] actuator_effort_input_pct
+float64[16] controller_input
 
-# Only the array matching controller_output_type is valid
+# The setpoint sent to the drives, its unit set by controller_output_type
+#   ACTUATOR_POSITION   encoder count per actuator
+#   ACTUATOR_EFFORT     0.1% of rated current per actuator, 1000 = 100%
+#   NONE                all NaN
 uint8 controller_output_type
-float64[16] target_position_cnt
-float64[16] target_effort_pct
+float64[16] controller_output
 
 uint8 selected_source
-
-# Unit is 0.1% of rated current, 1000 = 100%
-float64[16] max_effort_pct

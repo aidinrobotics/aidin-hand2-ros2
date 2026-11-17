@@ -96,7 +96,7 @@ ls /usr/local/lib/cmake/aidin_hand2/aidin_hand2Config.cmake
 ldconfig -p | grep aidin_hand2
 ```
 
-첫 명령은 파일 경로를, 둘째 명령은 `libaidin_hand2.so`로 시작하는 줄을 출력해야 합니다.
+첫 명령은 파일 경로를, 둘째 명령은 `libaidin_hand2.so.0.9`로 시작하는 줄을 출력해야 합니다.
 파일이 없으면 SDK 설치 결과를 확인하고, 라이브러리 등록이 빠졌다면 `sudo ldconfig`를 실행합니다.
 `~/.local` 설치에서는 설정 파일을 확인하고 다음 절의 경로 설정을 적용합니다.
 

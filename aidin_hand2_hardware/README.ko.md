@@ -3,8 +3,9 @@
 [전체 문서](../README.ko.md#documentation) | [English overview](README.md)
 
 `aidin_hand2_hardware` package는 로봇 핸드·mock 연결을 제공합니다. 이 문서는 로봇 핸드의
-제어 시작·정지, homing, 통신 오류 복구, tactile bias와 effort·filter·gain 설정을 설명합니다.
-service는 `std_srvs/srv/Trigger` 타입이며 요청 인자는 없습니다. mock에는 제공하지 않습니다.
+제어 시작·정지, homing, 통신 오류 복구, tactile bias와 effort·filter·stiffness 설정을 설명합니다.
+service는 `~/get_tactile_bias`를 빼고 `std_srvs/srv/Trigger` 타입이며, 모두 요청 인자가 없습니다.
+mock에는 제공하지 않습니다.
 
 기본 launch의 service 경로는 `/{side}_hand_control/run`처럼 구성됩니다. `{side}`는 `left` 또는
 `right`이고, `~`는 service를 제공하는 node 이름입니다. 통합할 때 매크로의 `name`을 바꾸면
@@ -40,7 +41,8 @@ controller의 `active`·homing 상태의 차이는
 `~/run`·`~/stop`·`~/reconnect` service는 전이 결과를 확인한 뒤 응답합니다.
 `~/home` service는 시작만 확인하고 즉시 응답하므로 완료 상태를 별도로 읽어야 합니다.
 `~/set_tactile_bias`·`~/reset_tactile_bias` service는 lifecycle을 바꾸지 않습니다. 요청만 확인하고
-즉시 응답하며, SDK가 다음 cycle부터 적용합니다. 표의 호출 조건과 결과는 `lifecycle` 값입니다.
+즉시 응답하며, SDK가 다음 cycle부터 적용합니다. `~/get_tactile_bias` service는 적용 중인 bias 값을 읽어
+응답합니다. 표의 호출 조건과 결과는 `lifecycle` 값입니다.
 
 | Service | Precondition | Postcondition | Waits for | Timeout | Success message |
 |---|---|---|---|---|---|
@@ -50,12 +52,17 @@ controller의 `active`·homing 상태의 차이는
 | `~/reconnect` | `Faulted` | `Connected` | 첫 state 수신 | 300 ms | `reconnected — call ~/run to resume control` |
 | `~/set_tactile_bias` | `Connected` · `Running` · `Stopped` | 변화 없음 | 없음 | 없음 | `tactile bias set — current tactile values are now zero` |
 | `~/reset_tactile_bias` | `Connected` · `Running` · `Stopped` | 변화 없음 | 없음 | 없음 | `tactile bias reset — tactile values are raw again` |
+| `~/get_tactile_bias` | 모든 state | 변화 없음 | 없음 | 없음 | `tactile bias read` |
 
-tactile bias의 사용법은 [4.3 Tactile bias](../docs/ko/05_control_guide.md#43-tactile-bias)에 있습니다.
+`~/get_tactile_bias` service의 타입은 `aidin_hand2_msgs/srv/GetTactileBias`이고 응답 필드는
+[5. Service types](../aidin_hand2_msgs/README.ko.md#5-service-types)에 있습니다. tactile bias의 사용법은
+[4.3 Tactile bias](../docs/ko/05_control_guide.md#43-tactile-bias)에 있습니다.
 
 표에 없는 state에서 호출하거나 제한 시간 안에 확인되지 않으면 `success` 필드가 `false`이고 `message`
-필드에 SDK 예외 문구가 그대로 들어갑니다. 이미 postcondition을 만족하는 state에서 호출하면(`Running` 상태에서
-`~/run`, `Stopped` 상태에서 `~/stop`) 아무 동작 없이 성공을 반환합니다. 문구별 조치는 SDK 문서의
+필드에 SDK 예외 문구가 그대로 들어갑니다. 문구는 `Running` 상태에서 `~/reconnect`를 호출했을 때의
+`[left] [E206] cannot reconnect hand: not faulted`처럼 로봇 핸드 구분과 오류 번호로 시작합니다.
+이미 postcondition을 만족하는 state에서 호출하면(`Running` 상태에서 `~/run`, `Stopped` 상태에서
+`~/stop`) 아무 동작 없이 성공을 반환합니다. 번호별 원인과 조치는 SDK 문서의
 [Error messages](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_error_messages.md)에
 있습니다.
 
@@ -91,9 +98,9 @@ std_srvs.srv.Trigger_Response(success=True, message='running')
 
 ## 3. home
 
-homing은 각 finger를 hard stop까지 밀어 hard stop 지점을 원점으로 삼는 절차입니다. `homing_state` 값이
-`Succeeded`가 되기 전에는 wrapper가 command를 전송하지 않고, `~/home` service는 homing을 시작한 뒤 즉시
-반환합니다.
+homing은 각 finger를 hard stop까지 밀어 그 위치를 원점(encoder count `0`)으로 정하는 절차입니다.
+`homing_state` 값이 `Succeeded`가 되기 전에는 wrapper가 command를 전송하지 않고, `~/home` service는
+homing을 시작한 뒤 즉시 반환합니다.
 
 > [!WARNING]
 > finger가 완전히 펴지지 못하게 막혀 있으면 막힌 지점이 hard stop으로 인식되어 원점이 어긋난 채
@@ -111,10 +118,11 @@ ros2 service call /left_hand_control/home std_srvs/srv/Trigger
 ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field homing_state
 ```
 
-`Succeeded`가 출력되면 완료이고 500 Hz에서 최대 22 s 걸립니다.
-이 echo 명령을 실행한 터미널에서 `Ctrl-C`로 관측을 끝냅니다.
+`Succeeded`가 출력되면 완료입니다. 제한 시간은 homing 단계마다 있고, 한 단계라도 제한 시간 안에
+끝나지 않으면 `Failed`가 됩니다. 이 echo 명령을 실행한 터미널에서 `Ctrl-C`로 관측을 끝냅니다.
 
-- 성공하면 SDK가 원점 자세를 유지하는 command를 적용합니다. 이어서 필요한 command를 전송하십시오.
+- 성공하면 SDK가 hard stop에서 1000 count 떨어진 자세를 유지하는 command를 적용합니다. 이 자세의
+  active joint 각도는 `0`이 아니라 1° 미만의 값입니다. 이어서 필요한 command를 전송하십시오.
 - `Failed`이면 `actuator_fault_name` 필드에서 실패한 actuator를 확인하고 원인을 제거한 뒤 `~/home`
   service를 다시 호출합니다.
 - homing 중에는 `hand_state` topic의 `command_state.selected_source` 값이 `3`(homing)입니다.
@@ -130,12 +138,16 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field homing_st
 homing을 이어서 수행해야 합니다. 복구 중에도 controller와 broadcaster가 `active` 상태로 표시될 수 있으므로
 `hand_diagnostics`의 상태를 확인합니다.
 
-통신이 끊기면 SDK가 약 100 ms 뒤 `Faulted` 상태로 전이하며 quick stop을 전송합니다. CAN이 끊겨 quick stop
-frame이 닿지 않으면 drive가 마지막 토크를 유지할 수 있습니다.
+통신이 약 100 ms 끊기거나 CAN 송신이 실패하면 SDK가 `Faulted` 상태로 전이하고, 그 뒤로 로봇 핸드에
+quick stop을 포함한 어떤 frame도 전송하지 않습니다. drive가 마지막 command를 유지할 수 있습니다.
+제어·통신 루프가 예외로 끝나 `Faulted` 상태가 되면 SDK가 quick stop을 전송하지만 확인하지는 못합니다.
+어느 경우인지는 `hand_diagnostics`의 `fault_code` 필드로 구별하며, 값의 뜻은
+[4.4 Monitoring](../docs/ko/05_control_guide.md#44-monitoring)에 있습니다.
 
 ### 4.1 Manual recovery
 
-전원·배선·SocketCAN 오류와 drive fault의 원인을 제거하고 `lifecycle` 필드가 `Faulted`인지 확인합니다.
+`fault_code` 필드로 `Faulted`가 된 이유를 확인하고, 전원·배선·SocketCAN 오류와 drive fault의 원인을
+제거한 뒤 `lifecycle` 필드가 `Faulted`인지 확인합니다.
 먼저 통신을 복구합니다.
 
 ```bash
@@ -168,8 +180,8 @@ launch를 다시 실행합니다.
 `auto_reconnect=true`이면 SDK의 제어·통신 루프가 스스로 재연결을 반복하고, 연결이 복구되면 `~/run`
 service 없이 `Running` 상태로 복귀합니다. `auto_reconnect_home=true`이면 재개 전에 homing도 수행합니다.
 
-- 자동 복구는 통신 오류에만 동작합니다. 제어·통신 루프 예외로 `Faulted` 상태가 되면 `~/reconnect` service를
-  직접 호출해야 합니다.
+- 자동 복구는 통신 오류에만 동작합니다. 제어·통신 루프 예외로 `Faulted` 상태가 되면(`fault_code` 값 `702`)
+  `~/reconnect` service를 직접 호출해야 합니다.
 - `auto_reconnect_home=false`이면 복구 뒤 `homing_state` 값이 `NotRun`이므로 `~/home` service를 호출해야
   command가 전송됩니다.
 - `auto_reconnect_timeout_ms` 값이 `0`이면 제한 없이 재시도합니다. 오래 복구 중인 상태를 정상으로
@@ -198,12 +210,13 @@ CAN 연결을 닫습니다.
 
 ## 6. Runtime settings
 
-effort 상한과 filter·gain은 `/{side}_hand_control` node의 ROS parameter로 바꿉니다.
+effort 상한과 filter·stiffness는 `/{side}_hand_control` node의 ROS parameter로 바꿉니다.
 로봇 핸드 연결에서 제공하며 mock에는 없습니다. 변경한 값은 다음 제어 주기부터 적용됩니다.
 정지 중에도 바꿀 수 있고 `~/reconnect` 뒤에도 유지됩니다.
 
-배열 parameter는 길이 1이면 actuator 16개에 같은 값을, 길이 16이면 actuator마다 다른 값을 적용합니다. 다른
-길이거나 값이 유효하지 않으면 `ros2 param set`이 실패하고 어느 값도 바뀌지 않습니다.
+배열 parameter는 길이 1이면 16개 항목에 같은 값을, 길이 16이면 항목마다 다른 값을 적용합니다. 항목은
+`max_effort`에서 actuator, `joint_impedance_controller.stiffness`에서 active joint입니다. 다른 길이거나 값이
+유효하지 않으면 `ros2 param set`이 거부 이유와 함께 실패하고 어느 값도 바뀌지 않습니다.
 
 실행 중 변경한 값은 launch를 다시 실행하면 초기화됩니다. 시작할 때 적용할 값은
 [6.4 Initial runtime settings](#64-initial-runtime-settings)처럼 YAML에 저장합니다.
@@ -221,11 +234,11 @@ ros2 param get /left_hand_control max_effort
 
 | Parameter | Type | Default | Valid |
 |---|---|---|---|
-| `max_effort` | `double[]` | `[1000.0]` | 길이 1 또는 16. 유한하고 `0` 이상 |
+| `max_effort` | `double[]` | `1000.0` × 16 | 길이 1 또는 16. 유한하고 `[0, 2000]` 범위 |
 
 단위는 정격 전류의 0.1%이고 정격 전류는
-모든 모터가 400 mA이므로 `1000`(100%)이 400 mA입니다. SDK가 `[0, 2000]` 밖의 값을 `[0, 2000]`으로
-제한합니다.
+모든 모터가 400 mA이므로 `1000`(100%)이 400 mA입니다. 범위를 벗어난 값을 주면 `ros2 param set`이
+`max_effort must be finite and in [0, 2000]` 이유와 함께 실패합니다.
 
 `ros2 param set`으로 쓸 때는 값에 소수점을 붙여야 `double` 배열로 해석됩니다. `[1000]`은 integer 배열이라
 거부됩니다. 다음은 actuator 전체에 같은 값을 주는 예입니다.
@@ -245,7 +258,7 @@ ros2 param set /left_hand_control max_effort \
      800.0,  800.0,  800.0]"
 ```
 
-적용 중인 값은 `hand_state` topic의 `command_state.max_effort_pct` 필드로 확인합니다.
+적용 중인 값은 `ros2 param get /left_hand_control max_effort`로 확인합니다.
 
 ### 6.2 Joint position controller
 
@@ -277,30 +290,43 @@ ros2 param set /left_hand_control joint_position_controller.cutoff_freq 20.0
 
 ### 6.3 Joint impedance controller
 
-> [!NOTE]
-> joint impedance controller는 SDK에서 개발 중이므로 사용하지 마십시오. 아래는 설정값의 의미입니다.
-
-`joint_impedance_controller` parameter 둘은 SDK의 joint impedance controller gain입니다.
-joint impedance 목표를 inverse kinematics로 actuator position으로 바꾼 뒤, encoder 공간에서
-다음 식으로 effort를 산출합니다.
-
-```text
-effort = stiffness × position_error − damping × velocity
-```
-
-두 gain은 joint가 아니라 actuator 공간의 값이고 actuator 16개에 대응합니다.
+`joint_impedance_controller` parameter 셋은 SDK의 joint impedance controller 설정입니다. joint impedance
+controller는 joint 목표 각도와 현재 각도의 차이에 비례하는 actuator effort를 산출합니다. finger가 외력에
+밀리게 두거나 파지력을 조절할 때 사용합니다.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `stiffness` | `double[]` | thumb `0.02` × 4, 나머지 finger마다 `0.01`·`0.01`·`0.02` | 위치 오차에 곱하는 gain. 길이 1 또는 16. 유한하고 `0` 이상 |
-| `damping` | `double[]` | `1e-5` × 16 | 속도에 곱하는 gain. 길이 1 또는 16. 유한하고 `0` 이상 |
+| `stiffness` | `double[]` | `0.8` × 16 | active joint별 stiffness. 길이 1 또는 16. 유한하고 `[0, 1]` 범위 |
+| `filter_enabled` | `bool` | `true` | 목표에 low-pass filter를 적용합니다. `false`이면 목표를 그대로 사용합니다 |
+| `cutoff_freq` | `double` | `10.0` | filter의 차단 주파수 [Hz]. 유한하고 `0` 이상. `0`이면 filter를 생략합니다 |
+
+`stiffness` 값 `1`은 그 joint의 hard stiffness이고, damping은 SDK가 stiffness에 맞춰 정합니다. 길이 16인
+배열은 `thumb_joint0`~`thumb_joint3`, `index_joint1`~`index_joint3`, `middle_joint1`~`middle_joint3`,
+`ring_joint1`~`ring_joint3`, `baby_joint1`~`baby_joint3` 순서입니다.
+
+다음은 index finger의 joint2만 `0.5`로 낮추는 예이고 값은 예시입니다.
+
+```bash
+ros2 param set /left_hand_control joint_impedance_controller.stiffness \
+  "[0.8, 0.8, 0.8, 0.8,
+    0.8, 0.5, 0.8,
+    0.8, 0.8, 0.8,
+    0.8, 0.8, 0.8,
+    0.8, 0.8, 0.8]"
+```
+
+범위를 벗어난 값을 주면 `ros2 param set`이 다음 이유와 함께 실패합니다.
+
+```text
+joint_impedance_controller.stiffness must be finite and in [0, 1]
+```
 
 ### 6.4 Initial runtime settings
 
 [6. Runtime settings](#6-runtime-settings)의 값을 실행 때마다 적용하려면 `ros2_control_node`에 전달하는
 controller 설정 YAML에 node 이름의 블록을 추가합니다. 이름은 매크로의 `name` 값과 같아야 합니다.
-다음은 `left_hand_control`의 effort 상한과 joint position 설정을 기본값으로 지정하는 예입니다.
-`max_effort`를 YAML에서 생략하면 매크로에서 지정한 초깃값을 사용합니다.
+다음은 `left_hand_control`의 effort 상한과 두 controller 설정을 기본값으로 지정하는 예입니다.
+YAML에서 생략한 parameter는 [6. Runtime settings](#6-runtime-settings) 표의 기본값을 사용합니다.
 
 ```yaml
 left_hand_control:
@@ -310,6 +336,10 @@ left_hand_control:
       filter_enabled: true
       cutoff_freq: 10.0                 # Hz
       deadband: 0.000873                # rad
+    joint_impedance_controller:
+      stiffness: [0.8]                  # 1개면 active joint 16개에 공통
+      filter_enabled: true
+      cutoff_freq: 10.0                 # Hz
 ```
 
 기본 launch는 [aidin_hand2_bringup/config/controllers.yaml](../aidin_hand2_bringup/config/controllers.yaml)을

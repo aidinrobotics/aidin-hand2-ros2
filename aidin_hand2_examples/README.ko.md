@@ -27,9 +27,6 @@ skeleton은 자기 `~/cmd` topic에 `sensor_msgs/JointState` message를 받아 0
 | Actuator position | [actuator_position_upper_controller.cpp](src/upper_controllers/actuator_position_upper_controller.cpp) | [actuator_position_upper.yaml](config/upper_controllers/actuator_position_upper.yaml) |
 | Actuator effort | [actuator_effort_upper_controller.cpp](src/upper_controllers/actuator_effort_upper_controller.cpp) | [actuator_effort_upper.yaml](config/upper_controllers/actuator_effort_upper.yaml) |
 
-> [!NOTE]
-> joint impedance 제어는 SDK에서 개발 중이므로 로봇 핸드에서 사용하지 마십시오.
-
 ## 2. Configuration
 
 선택한 YAML에서 상위 controller가 연결할 하위 controller와 tactile을 읽을지를 지정합니다.

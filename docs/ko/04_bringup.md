@@ -104,7 +104,7 @@ ros2 topic echo /joint_states --once
 ```
 
 `name` 배열에서 `left_index_joint1`과 `left_index_joint2`를 찾습니다. 같은 위치의 `position` 값이
-각각 0.10과 0.20 근처인지 확인합니다. 도달 범위 보정과 kinematics 계산을 거치므로
+각각 0.08과 0.45 근처인지 확인합니다. 도달 범위 보정과 kinematics 계산을 거치므로
 입력과 소수점 아래에서 다를 수 있습니다.
 
 ### 1.4 Stop the mock
@@ -141,6 +141,9 @@ candump -n 5 can0                                     # 0x2xx → 왼손, 0x1xx 
 
 기본 config `hand_bringup.yaml`은 양손을 `can0`·`can1`에 `auto_home=true`로 실행하므로, 첫 실행에서는
 왼손만 homing 없이 실행하도록 인자로 덮습니다.
+
+로봇 핸드의 model은 로봇 핸드를 전달할 때 함께 알려 줍니다. 기본값은 `gen2`이므로 Gen2는 그대로
+실행합니다. Gen2B이면 아래 명령에 `left_hand_model:=gen2b` 인자를 추가하십시오.
 
 > [!WARNING]
 > launch를 실행하면 actuator가 enable되어 토크가 걸립니다.
@@ -180,8 +183,8 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once
 
 ### 2.4 Home
 
-homing은 각 finger를 hard stop까지 밀어 hard stop 지점을 원점으로 삼는 절차입니다. `homing_state`
-값이 `Succeeded`가 되기 전에는 wrapper가 command를 전송하지 않습니다.
+homing은 각 finger를 hard stop까지 밀어 그 위치를 원점(encoder count `0`)으로 정하는 절차입니다.
+`homing_state` 값이 `Succeeded`가 되기 전에는 wrapper가 command를 전송하지 않습니다.
 
 > [!WARNING]
 > finger가 완전히 펴지지 못하게 막혀 있으면 막힌 지점이 hard stop으로 인식되어 원점이 어긋난 채
@@ -206,8 +209,8 @@ std_srvs.srv.Trigger_Response(success=True, message="homing started — poll dia
 ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field homing_state
 ```
 
-`Succeeded`가 출력되면 완료입니다. 관측 중에는 `InProgress`를 볼 수 있습니다.
-이 echo 명령을 실행한 터미널에서 `Ctrl-C`로 관측을 끝냅니다.
+`Succeeded`가 출력되면 완료이고, 로봇 핸드는 hard stop에서 1000 count 떨어진 자세를 유지합니다.
+관측 중에는 `InProgress`를 볼 수 있습니다. 이 echo 명령을 실행한 터미널에서 `Ctrl-C`로 관측을 끝냅니다.
 제한 시간과 실패 처리는 [3. home](../../aidin_hand2_hardware/README.ko.md#3-home)에 있습니다.
 
 ### 2.5 Send a command
@@ -243,7 +246,7 @@ ros2 topic echo /left_hand_state_broadcaster/hand_state --once --field command_s
 ```
 
 `controller_input_mode` 필드가 `1`(joint position), `selected_source` 필드가 `1`(controller)이고
-`joint_position_input_rad` 필드에 도달 범위 보정 후의 목표값이 있습니다.
+`controller_input` 필드에 도달 범위 보정 후의 목표값이 있습니다.
 실제 joint 각도는 `joint_position` 필드에서 확인합니다. 값의 뜻은
 [3.2 CommandState](../../aidin_hand2_msgs/README.ko.md#32-commandstate)에, 전송값에 적용되는 effort 상한은
 [6.1 Max effort](../../aidin_hand2_hardware/README.ko.md#61-max-effort)에 있습니다.
@@ -270,6 +273,7 @@ launch 터미널에서 `Ctrl-C`로 종료합니다. 종료 조건과 하지 말�
 
 기존 단독 launch를 종료한 뒤 양손을 실행합니다. interface 둘을 지정합니다. 어느 interface에 왼손과 오른손 중 어느 쪽이 연결되어
 있는지는 [2.1 Check the host](#21-check-the-host)의 `candump`로 interface마다 확인합니다.
+Gen2B인 손이 있으면 `left_hand_model:=gen2b`·`right_hand_model:=gen2b` 중 그 손의 인자를 추가하십시오.
 
 ```bash
 ros2 launch aidin_hand2_bringup aidin_hand2.launch.py \
@@ -279,14 +283,8 @@ ros2 launch aidin_hand2_bringup aidin_hand2.launch.py \
 `left_hand_control`과 `right_hand_control` 두 hardware component가 생기고 service도 각각의
 namespace에 있습니다. 2장의 확인·homing·command·정지는 오른손에 대해 `right_`로 반복합니다.
 
-adapter를 다시 꽂거나 재부팅하면 `can0`·`can1`과 왼손·오른손의 대응이 바뀔 수 있습니다. interface
-이름을 `auto`로 지정하면 SDK가 side의 CAN ID로 채널을 탐색합니다.
-다음은 위 명령 대신 사용할 수 있는 실행 방법입니다.
-
-```bash
-ros2 launch aidin_hand2_bringup aidin_hand2.launch.py \
-  left_hand_interface:=auto right_hand_interface:=auto auto_home:=false
-```
+adapter를 다시 꽂거나 재부팅하면 `can0`·`can1`과 왼손·오른손의 대응이 바뀔 수 있습니다. 그때는
+[2.1 Check the host](#21-check-the-host)의 `candump`로 대응을 다시 확인하고 interface 인자를 바꾸십시오.
 
 단독 실행은 여기까지입니다. 기존 로봇에 로봇 핸드를 추가할 때는
 [7. Add to your robot](../../aidin_hand2_bringup/README.ko.md#7-add-to-your-robot)으로 진행하십시오.

@@ -41,7 +41,7 @@ launch와 종료가 실행합니다. 두 경로가 같은 전이를 일으키므
 | `Connected` | 상태를 수신하지만 제어는 시작하지 않은 상태 | `~/run`을 호출합니다 |
 | `Running` | actuator가 enable되어 제어 중인 상태 | homing 완료 후 command를 보냅니다 |
 | `Stopped` | quick stop이 확인된 무토크 상태 | 제어를 재개하려면 `~/run`을 호출합니다 |
-| `Faulted` | 통신 오류나 제어·통신 루프 예외로 제어가 종료된 상태 | 원인을 확인하고 [4. reconnect](../../aidin_hand2_hardware/README.ko.md#4-reconnect)로 복구합니다 |
+| `Faulted` | 통신 오류나 제어·통신 루프 예외로 제어가 종료된 상태 | `fault_code` 필드로 원인을 확인하고 [4. reconnect](../../aidin_hand2_hardware/README.ko.md#4-reconnect)로 복구합니다 |
 
 기본 launch는 `configure`와 `activate`를 함께 수행하므로 정상 실행 후에는 `Running` 상태입니다.
 
@@ -76,8 +76,8 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once
 
 > [!WARNING]
 > homing은 finger를 hard stop까지 움직입니다. 주변을 비우고 완료까지 접촉하지 마십시오.
-> 움직임이 막히면 잘못된 위치가 원점으로 설정될 수 있습니다. `auto_home=true`이면 `run` 뒤에도
-> homing이 시작될 수 있으므로 제어를 재개하기 전에 주변을 확인하십시오.
+> 움직임이 막히면 막힌 위치가 hard stop으로 인식되어 원점이 어긋날 수 있습니다. `auto_home=true`이면
+> `run` 뒤에도 homing이 시작될 수 있으므로 제어를 재개하기 전에 주변을 확인하십시오.
 
 `Connected` 또는 `Stopped` 상태이면 아래 service로 제어를 시작합니다.
 `auto_home=true`이고 homing이 완료되지 않았다면 이 호출 뒤 자동으로 homing이 시작됩니다.
@@ -193,6 +193,7 @@ RViz에서 확인할 수 있습니다.
 
 ### 3.3 Actuator position
 
+목표의 단위는 encoder count이고 `0`이 hard stop 위치입니다. homing을 마친 직후 값은 `1000` 근처입니다.
 목표는 `hand_state` topic의 `actuator_position` 필드에서 읽은 현재 값에 작은 차이를 더해 만듭니다. 다음
 예의 `<cnt_0>`부터 `<cnt_15>`는 읽어 온 현재 값입니다.
 
@@ -235,8 +236,6 @@ ros2 topic pub --once \
              300.0, 300.0, 300.0]}"
 ```
 
-joint impedance 제어는 SDK에서 개발 중이므로 사용하지 마십시오.
-
 ### 3.5 Upper controller input
 
 사용자 node는 상위 controller가 제공하는 topic에 목표값을 보낼 수도 있습니다.
@@ -276,9 +275,13 @@ mock에서는 `/joint_states`, 로봇 핸드에서는 다음 세 topic으로 관
 
 
 `/joint_states` topic은 표준 `joint_state_broadcaster`가 발행하는 `sensor_msgs/JointState` message입니다. `name`
-필드에 로봇의 모든 joint, `position` 필드에 각도[rad]가 있고, 로봇 핸드의 joint는 손마다 21개입니다.
-로봇 핸드의 joint velocity·effort 측정값은 제공하지 않습니다.
+필드에 로봇의 모든 joint가 있고, 로봇 핸드의 joint는 손마다 21개입니다. `position` 필드는 각도[rad],
+`velocity` 필드는 각속도[rad/s], `effort` 필드는 joint 토크[N·m]입니다.
 배열 위치는 `name`으로 확인하십시오. 다른 로봇의 joint가 함께 포함될 수 있습니다.
+
+effort는 모터 전류로 추정한 값입니다. 전달 손실과 마찰을 반영하지 않으므로 실제 joint 토크와 다를 수
+있습니다. 각 finger의 `joint4`는 effort가 없어 `effort` 필드의 해당 위치가 NaN입니다. mock은 velocity를
+각도 변화로 계산하고 effort를 `0`으로 발행합니다.
 
 발행되는 message를 한 번 읽습니다.
 
@@ -336,8 +339,15 @@ ros2 service call /left_hand_control/reset_tactile_bias std_srvs/srv/Trigger
 않습니다. bias는 `~/reset_tactile_bias`를 호출할 때까지 유지되며 `~/stop`과 `~/reconnect` 뒤에도
 남습니다. launch를 다시 시작하면 bias가 없는 상태로 시작합니다.
 
-지금 적용된 bias 값을 읽는 topic이나 service는 없습니다. 기록한 bag을 나중에 해석해야 하면 bias를 설정한
-시각을 application에서 함께 남기십시오.
+지금 적용된 bias 값은 `~/get_tactile_bias` service로 읽습니다. `lifecycle` 값과 관계없이 호출할 수 있습니다.
+
+```bash
+ros2 service call /left_hand_control/get_tactile_bias aidin_hand2_msgs/srv/GetTactileBias
+```
+
+응답의 tactile 배열은 `~/set_tactile_bias`가 `0`으로 잡은 값이고, bias가 설정되지 않았으면 모두 `0`입니다.
+필드는 [5. Service types](../../aidin_hand2_msgs/README.ko.md#5-service-types)에 있습니다. 기록한 bag을
+나중에 해석해야 하면 bias를 설정한 시각과 이 응답을 application에서 함께 남기십시오.
 
 ### 4.4 Monitoring
 
@@ -350,11 +360,18 @@ SDK가 `Faulted` 상태로 정지하면 broadcaster가 마지막 관측값을 �
 | `hand_diagnostics.control_cycles` 증가 | 제어·통신 루프가 진행 중입니다 |
 | `hand_state.header.stamp` 증가 | SDK가 관측 시각을 갱신하고 있습니다 |
 | `hand_diagnostics.lifecycle` | 통신·제어 상태입니다. command를 적용할 때는 `Running`이어야 합니다 |
+| `hand_diagnostics.fault_code` | `Faulted`로 만든 SDK 오류 번호입니다. `Faulted`가 아니면 `0`입니다 |
 | `hand_diagnostics.homing_state` | homing 상태입니다. command를 적용할 때는 `Succeeded`여야 합니다 |
 
 `control_cycles`와 `header.stamp` 필드는 `Faulted` 상태가 아닌 동안 frame 수신 여부와 무관하게 매 cycle
-갱신되므로 통신 생존의 근거는 아닙니다. 통신이 끊기면 약 100 ms 뒤 `lifecycle` 값이 `Faulted`로 바뀌고
-전이 시점부터 둘이 함께 멈춥니다.
+갱신되므로 통신이 정상이라는 근거는 아닙니다. 통신이 끊기면 약 100 ms 뒤 `lifecycle` 값이 `Faulted`로
+바뀌고 전이 시점부터 둘이 함께 멈춥니다.
+
+`fault_code` 값은 `404`(통신 끊김), `405`(CAN 송신 실패), `702`(제어·통신 루프 종료) 중 하나입니다.
+`404`·`405`이면 SDK가 그 뒤로 로봇 핸드에 아무것도 전송하지 않고, `702`이면 quick stop을 전송하지만
+확인하지는 못합니다. `~/reconnect` service나 자동 재연결이 성공하면 `0`으로 돌아갑니다. 번호별 원인과
+조치는 SDK 문서의
+[Error messages](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_error_messages.md)에 있습니다.
 
 > [!IMPORTANT]
 > `HandDiagnostics`에는 종합 판정 필드가 없습니다. 준비 여부는 구독자가 `lifecycle`·`homing_state`·

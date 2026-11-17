@@ -2,8 +2,9 @@
 
 [전체 문서](../README.ko.md#documentation) | [English overview](README.md)
 
-`aidin_hand2_msgs` package는 상태 message 타입을 정의합니다. command는 표준 `sensor_msgs/JointState` message를 씁니다.
-이 문서에서 필드·타입·단위와 배열 순서를 확인할 수 있습니다. message 정의 파일은 [msg/](msg)에 있습니다.
+`aidin_hand2_msgs` package는 상태 message 타입과 service 타입을 정의합니다.
+command는 표준 `sensor_msgs/JointState` message를 씁니다. 이 문서에서 필드·타입·단위와 배열 순서를
+확인할 수 있습니다. 정의 파일은 [msg/](msg)와 [srv/](srv)에 있습니다.
 목표 전송과 상태 관측 명령은 [Control guide](../docs/ko/05_control_guide.md)에 있습니다.
 
 ## Contents
@@ -14,7 +15,8 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.1 HandState](#31-handstate)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.2 CommandState](#32-commandstate)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.3 HandDiagnostics](#33-handdiagnostics)<br>
-&nbsp;&nbsp;[**4. Joint and actuator order**](#4-joint-and-actuator-order)
+&nbsp;&nbsp;[**4. Joint and actuator order**](#4-joint-and-actuator-order)<br>
+&nbsp;&nbsp;[**5. Service types**](#5-service-types)
 
 ## 1. Message types
 
@@ -22,7 +24,7 @@
 |---|---|
 | [HandState](msg/HandState.msg) | joint·actuator·tactile 관측과 적용된 command |
 | [CommandState](msg/CommandState.msg) | `HandState.command_state`에 포함된 command 정보 |
-| [HandDiagnostics](msg/HandDiagnostics.msg) | lifecycle·homing 상태, 주기 통계와 actuator fault |
+| [HandDiagnostics](msg/HandDiagnostics.msg) | lifecycle·homing 상태, `Faulted` 원인, 주기 통계와 actuator fault |
 
 ## 2. Command message
 
@@ -47,11 +49,8 @@ controller는 `active` 상태로 남습니다. 값 처리 규칙은
 joint 목표는 SDK가 finger별 도달 범위로 투영한 뒤 변환합니다. joint position은 joint position controller를
 거쳐 actuator position이 되고, joint impedance는 actuator effort가 됩니다. actuator 목표는 kinematics를
 거치지 않아 도달 범위 투영이 없고, effort는 SDK가 절댓값을 actuator별 `max_effort` 값으로 제한한 뒤
-전송합니다. filter와 `stiffness`·`damping` 값은 hardware node parameter이고
-[6.2 Joint position controller](../aidin_hand2_hardware/README.ko.md#62-joint-position-controller)에 있습니다.
-
-> [!NOTE]
-> joint impedance controller는 SDK에서 개발 중이므로 사용하지 마십시오.
+전송합니다. filter와 `stiffness` 값은 hardware node parameter이고
+[6. Runtime settings](../aidin_hand2_hardware/README.ko.md#6-runtime-settings)에 있습니다.
 
 ## 3. State messages
 
@@ -64,6 +63,8 @@ joint 목표는 SDK가 finger별 도달 범위로 투영한 뒤 변환합니다.
 | `header.stamp` | `builtin_interfaces/Time` | — | SDK가 state를 관측한 시각(`CLOCK_REALTIME`). 발행 시각이 아닙니다 |
 | `hand_side` | `string` | — | `left` 또는 `right` |
 | `joint_position` | `float64[21]` | rad | forward kinematics 결과. passive `joint4` 포함 |
+| `joint_velocity` | `float64[21]` | rad/s | joint 각속도. passive `joint4` 포함 |
+| `joint_effort` | `float64[21]` | N·m | 모터 전류로 추정한 joint 토크. 전달 손실과 마찰을 반영하지 않습니다. passive `joint4`는 NaN |
 | `actuator_position` | `int32[16]` | encoder count | drive가 보고한 위치 |
 | `actuator_velocity` | `int32[16]` | rpm | drive가 보고한 속도 |
 | `actuator_current` | `int16[16]` | mA | drive가 보고한 전류 |
@@ -82,19 +83,17 @@ tactile 값은 센서가 전송한 raw value라 단위도 정규화도 없습니
 
 ### 3.2 CommandState
 
-`CommandState` message는 한 cycle의 command 처리 과정을 담은 `HandState` message의 `command_state` 필드입니다. 세 enum
-필드가 어느 필드가 유효한지 결정하고, 유효하지 않은 필드는 NaN일 수 있습니다.
+`CommandState` message는 한 cycle의 command 처리 과정을 담은 `HandState` message의 `command_state` 필드입니다.
+`controller_input` 필드의 뜻은 `controller_input_mode` 필드가, `controller_output` 필드의 뜻은
+`controller_output_type` 필드가 정합니다.
 
 | Field | Type | Description |
 |---|---|---|
 | `controller_input_mode` | `uint8` | 적용 중인 command의 종류. `0` idle, `1` joint position, `2` joint impedance, `3` actuator position, `4` actuator effort |
-| `joint_position_input_rad` · `joint_impedance_input_rad` | `float64[16]` | 도달 범위 투영 후의 joint 목표[rad]. `controller_input_mode`가 `1`·`2`일 때 유효하고 둘은 같은 값 |
-| `actuator_position_input_cnt` | `float64[16]` | actuator 목표 위치[encoder count]. `controller_input_mode`가 `3`일 때 유효 |
-| `actuator_effort_input_pct` | `float64[16]` | actuator 목표 effort[정격 전류의 0.1%]. `controller_input_mode`가 `4`일 때 유효 |
+| `controller_input` | `float64[16]` | controller가 받은 목표. `1`·`2`이면 도달 범위 투영 후의 active joint 목표[rad], `3`이면 actuator 목표 위치[encoder count], `4`이면 actuator 목표 effort[정격 전류의 0.1%]. `0`이면 모두 NaN |
 | `controller_output_type` | `uint8` | SDK 변환 결과의 종류. `0` none, `1` actuator position, `2` actuator effort |
-| `target_position_cnt` · `target_effort_pct` | `float64[16]` | `controller_output_type`이 나타내는 하나만 유효 |
+| `controller_output` | `float64[16]` | drive로 보낸 actuator별 setpoint. `1`이면 위치[encoder count], `2`이면 effort[정격 전류의 0.1%]. `0`이면 모두 NaN |
 | `selected_source` | `uint8` | 이번 cycle에 전송 대상으로 선택된 출처. `0` none, `1` controller, `2` quick stop, `3` homing |
-| `max_effort_pct` | `float64[16]` | 변환에 적용된 actuator별 effort 상한 |
 
 `selected_source` 필드가 `1`이면 SDK가 controller 출력을 선택한 상태입니다. 마지막 command를 유지하는
 동안에도 같은 값이므로 새 message의 수신 확인으로 사용하지 않습니다. 목표 도달 여부는
@@ -115,6 +114,7 @@ joint 목표의 echo는 SDK가 도달 범위로 보정한 뒤의 값입니다.
 |---|---|---|---|
 | `hand_side` | `string` | — | `left` 또는 `right` |
 | `lifecycle` | `string` | `Running` | `Disconnected` `Connected` `Running` `Stopped` `Faulted` 중 하나. 뜻은 [1.1 Lifecycle](../aidin_hand2_hardware/README.ko.md#11-lifecycle) |
+| `fault_code` | `uint16` | `0` | `Faulted`로 만든 SDK 오류 번호. `404` 통신 끊김, `405` CAN 송신 실패, `702` 제어·통신 루프 종료. `Faulted`가 아니면 `0` |
 | `homing_state` | `string` | `Succeeded` | `NotRun` `InProgress` `Succeeded` `Failed` 중 하나 |
 | `nan_command_count` | `uint64` | 늘지 않음 | 값이 유효하지 않아 SDK가 거부한 command의 누적 개수 |
 | `control_cycles` | `uint64` | 계속 증가 | 제어·통신 루프의 누적 cycle |
@@ -124,8 +124,12 @@ joint 목표의 echo는 SDK가 도달 범위로 보정한 뒤의 값입니다.
 | `actuator_enabled` | `bool[16]` | 모두 `true` | actuator enable 여부. `disabled_actuators`에 지정한 것은 `false` |
 | `actuator_fault_name` | `string[16]` | 모두 빈 문자열 | SDK `ActuatorFault` 이름. 비어 있으면 정상 |
 
+`fault_code` 값은 `~/reconnect` service나 자동 재연결이 성공하면 `0`으로 돌아갑니다. 번호별 원인과 조치는
+SDK 문서의 [Error messages](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_error_messages.md)에
+있습니다.
+
 `actuator_fault_name` 값별 점검 항목은 SDK 문서의
-[Error messages](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_error_messages.md#11-actuator-fault)에
+[Error messages](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_error_messages.md#10-actuator-fault-values)에
 있습니다. fault가 있는 actuator는 SDK가 command에서 mask하고 fault reset을 반복 시도하며, wrapper는 스스로
 정지하지 않습니다.
 
@@ -146,7 +150,7 @@ command와 actuator 관측 배열의 길이는 16입니다. thumb 4개 뒤에 in
 같은 index의 joint와 actuator가 물리적으로 일대일 대응하는 것은 아닙니다.
 SDK가 kinematics로 두 공간 사이의 값을 변환합니다.
 
-`HandState.joint_position` 필드는 passive `joint4`를 포함하므로 길이가 21입니다.
+`HandState`의 `joint_position`·`joint_velocity`·`joint_effort` 필드는 passive `joint4`를 포함하므로 길이가 21입니다.
 순서는 다음과 같습니다. passive joint는 command 배열에 넣지 않습니다.
 
 ```text
@@ -158,4 +162,22 @@ baby_joint1, baby_joint2, baby_joint3, baby_joint4
 ```
 
 `/joint_states` topic은 전체 로봇의 joint를 담을 수 있으므로 위 고정 순서를 적용하지 않고 `name`과
-`position`의 같은 index를 대응시켜 읽습니다.
+`position`·`velocity`·`effort`의 같은 index를 대응시켜 읽습니다.
+
+## 5. Service types
+
+[GetTactileBias](srv/GetTactileBias.srv)는 hardware node의 `~/get_tactile_bias` service 타입입니다. 요청
+필드는 없고, 응답은 `~/set_tactile_bias` service가 `0`으로 잡은 tactile 값을 담습니다. bias가 설정되지 않았으면
+tactile 배열은 모두 `0`입니다.
+
+| Field | Type | Description |
+|---|---|---|
+| `success` | `bool` | 읽기 성공 여부 |
+| `message` | `string` | 성공하면 `tactile bias read`, 실패하면 SDK 예외 문구 |
+| `tactile_thumb` · `tactile_index` · `tactile_middle` · `tactile_ring` · `tactile_baby` | `int32[17]` | finger별 taxel의 bias |
+| `tactile_palm1_upper` · `tactile_palm1_lower` | `int32[20]` | palm1 taxel의 bias |
+| `tactile_palm2` | `int32[18]` | palm2 taxel의 bias |
+
+tactile 배열의 길이와 순서는 [3.1 HandState](#31-handstate)의 tactile 필드와 같습니다. 호출 조건은
+[1.2 Service calls](../aidin_hand2_hardware/README.ko.md#12-service-calls), 사용법은
+[Control guide의 4.3 Tactile bias](../docs/ko/05_control_guide.md#43-tactile-bias)에 있습니다.

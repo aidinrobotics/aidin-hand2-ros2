@@ -183,7 +183,7 @@ cat /sys/kernel/realtime   # RT kernel이면 1 (없으면 RT 아님)
 
 ## 2. Real-time settings
 
-root가 아닌 user가 `SCHED_FIFO` priority와 `mlockall`을 쓰려면 permission이 필요합니다. `realtime`
+root가 아닌 user가 `SCHED_FIFO` priority를 쓰고 메모리를 잠그려면(`mlock`) permission이 필요합니다. `realtime`
 group을 만들어 user를 넣고 limit을 부여합니다.
 
 ```bash
@@ -195,9 +195,9 @@ sudo tee /etc/security/limits.d/99-realtime.conf >/dev/null <<'EOF'
 EOF
 ```
 
-SDK는 제어·통신 루프를 priority 90으로 올리고 `controller_manager` node는 기본값 50으로 update 루프를
-돌리므로 `rtprio`는 90 이상이어야 합니다. `mlockall`은 이후 할당분까지 잠그므로 `memlock`은
-`unlimited`여야 합니다.
+SDK는 제어·통신 루프를 priority 90으로 올리고 `controller_manager` node는 update 루프를 기본값 50으로
+실행하므로 `rtprio`는 90 이상이어야 합니다. 또 SDK가 제어·통신 루프의 stack과 상태, SDK 코드를 메모리에
+잠그고, 같은 프로세스가 따로 잠그는 메모리도 같은 한도에 포함되므로 `memlock`은 `unlimited`로 둡니다.
 
 로그아웃 후 다시 로그인해 새 세션에서 확인합니다.
 

@@ -58,13 +58,26 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once
 ip -details -statistics link show can0
 ```
 
-SDK의 log는 hardware component가 ROS logger `aidin_hand2`로 중계하므로 `/rosout` topic에서 봅니다. SDK는
-예외를 던지기 전에 `[left][exception] <ErrorCode>: <message>` 형태로 남깁니다. 앞의 `[left]`·`[right]`는
-어느 로봇 핸드인지를 나타내며, 로봇 핸드에 매이지 않은 예외에는 붙지 않습니다.
+SDK의 log는 hardware component가 ROS logger `aidin_hand2`로 중계하므로 `/rosout` topic에서 봅니다.
 
 ```bash
 ros2 topic echo /rosout
 ```
+
+SDK의 오류 줄과 예외 문구는 다음 형태입니다. 앞의 `[left]`·`[right]`는 어느 로봇 핸드인지를 나타내고,
+`E` 뒤의 번호가 오류 번호입니다.
+
+```text
+[<side>] [E<code>] cannot <action>: <reason> (<detail>)
+[<side>] [E<code>] <event> (<detail>)
+```
+
+첫 줄은 SDK 함수가 던진 예외 문구입니다. configure·activate·deactivate가 실패하면 hardware component가 이
+문구를 자기 이름의 logger(`left_hand_control` 등)에 ERROR로 남기고, service가 실패하면 응답의 `message`
+필드에 같은 문구를 담습니다. 둘째 줄은 통신 끊김처럼 호출과 상관없이 생긴 사건을 SDK가 `aidin_hand2`
+logger에 남긴 것입니다. 번호별 원인과 조치는 SDK 문서의
+[Error messages](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_error_messages.md)에
+있습니다.
 
 ## 2. Build
 
@@ -130,7 +143,7 @@ launch 층의 증상은 overlay, plugin load, hardware component configure에서
 ### 3.1 libaidin_hand2.so not found
 
 ```text
-libaidin_hand2.so.0.5: cannot open shared object file: No such file or directory
+libaidin_hand2.so.0.9: cannot open shared object file: No such file or directory
 ```
 
 빌드는 통과했는데 실행할 때 SDK 라이브러리를 찾지 못하는 경우입니다.
@@ -138,7 +151,7 @@ libaidin_hand2.so.0.5: cannot open shared object file: No such file or directory
 
 ```bash
 sudo ldconfig
-ldconfig -p | grep aidin_hand2          # libaidin_hand2.so로 시작하는 줄이 나와야 합니다
+ldconfig -p | grep aidin_hand2          # libaidin_hand2.so.0.9로 시작하는 줄이 나와야 합니다
 ```
 
 SDK를 `~/.local`에 설치했다면 실행 터미널에서 경로를 설정합니다. 다른 사용자 경로라면 바꾸십시오.
@@ -186,21 +199,30 @@ warning입니다. hardware component와 controller가 이어서 configure·activ
 
 ### 3.4 Hardware component fails to configure
 
-hardware component가 `unconfigured` 상태에 머물고 `/rosout` topic에 SDK 예외가 남는 경우입니다. `ErrorCode`로
-점검 대상을 나눕니다.
+hardware component가 `unconfigured` 상태에 머물고 hardware component의 logger에 SDK 예외 문구가 ERROR로
+남는 경우입니다. activate가 실패할 때도 같은 형태로 남습니다.
 
-| ErrorCode | Check |
-|---|---|
-| `InvalidArgument` | 매크로 parameter. `hand_side`, `disabled_actuators`의 index 범위, `control_rate` |
-| `InterfaceUnavailable` | CAN interface 이름, `ip link`의 `UP` 여부, 권한, 다른 프로세스의 점유 |
-| `CommunicationLost` | 300 ms 안에 첫 state frame이 오지 않음. 전원, 배선, `candump` |
-| `HardwareFault` | drive fault. `actuator_fault_name` 필드 |
+```text
+[left_hand_control]: [left] [E301] cannot connect hand: CAN interface 'aidin_no_if' not found
+```
+
+오류 번호의 백의 자리가 SDK의 오류 종류(`ErrorKind`)입니다. 종류로 점검 대상을 나눕니다.
+
+| Code | ErrorKind | Check |
+|---|---|---|
+| E3xx | `InterfaceUnavailable` | CAN interface 이름, `ip link`의 `UP` 여부(`DOWN`이면 E305 `CAN interface '<name>' is down`), 권한, 다른 프로그램의 점유 |
+| E4xx | `CommunicationLost` | 300 ms 안에 첫 state frame이 오지 않음. 전원, 배선, `candump` |
+| E5xx | `HardwareFault` | drive fault. `actuator_fault_name` 필드 |
+
+E305가 나오면 [1.3 Bring up that interface](02_can_fd_setup.md#13-bring-up-that-interface)대로
+interface를 올린 뒤 다시 launch하십시오.
 
 parameter 자체가 잘못되면 SDK보다 먼저 `on_init`이 실패하고 다음 중 하나가 FATAL로 남습니다.
 
 ```text
 missing hardware parameter: can_interface
 hand_side must be 'left' or 'right', got '<value>'
+hand_model must be 'gen2' or 'gen2b', got '<value>'
 auto_home must be True/False, got '<value>'
 invalid numeric hardware parameter: <text>
 ```
@@ -222,11 +244,11 @@ candump -n 5 can0
 candump -n 5 can1
 ```
 
-확인한 대응을 인자로 주거나, `auto`로 SDK가 side의 CAN ID로 채널을 찾게 합니다.
+확인한 대응을 인자로 줍니다. 다음은 왼손이 `can1`, 오른손이 `can0`에 연결된 경우입니다.
 
 ```bash
 ros2 launch aidin_hand2_bringup aidin_hand2.launch.py \
-  left_hand_interface:=auto right_hand_interface:=auto auto_home:=false
+  left_hand_interface:=can1 right_hand_interface:=can0 auto_home:=false
 ```
 
 ### 3.6 The robot hand moves right after launch
@@ -346,7 +368,7 @@ actuator position 목표가 `int32` 범위를 벗어난 경우가 해당합니�
 `/rosout` topic에 다음 warning을 한 번 남깁니다.
 
 ```text
-set_command: command contains an invalid value — holding previous command; watch nan_command_count
+[left] set_command: command with an invalid value dropped, previous command kept
 ```
 
 ### 4.4 A controller fails to configure
@@ -411,7 +433,8 @@ printenv ROS_DOMAIN_ID
 ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --field homing_state
 ```
 
-- `InProgress`이면 진행 중입니다. 제한 시간을 넘기면 `control_cycles` 필드의 증가 여부와 오류 log를 확인합니다.
+- `InProgress`이면 진행 중입니다. 단계마다 제한 시간이 있어 끝나지 않는 단계는 `Failed`로 끝납니다.
+  `InProgress`가 계속되면 `control_cycles` 필드의 증가 여부와 오류 log를 확인합니다.
 - `Failed`면 `actuator_fault_name` 필드에서 fault가 있는 actuator를 확인하고 원인을 제거한 뒤 `~/home`
   service를 다시 호출합니다.
 - `NotRun`으로 돌아갔다면 직전에 `~/reconnect` service를 호출한 경우입니다. `~/run` service 뒤 `~/home`
@@ -427,7 +450,9 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics
 ```
 
 `Ctrl-C`로 관측을 끝냅니다. `lifecycle` 값이 `Faulted`이면 통신 오류나 제어·통신 루프 예외로 정지한 것이고, `control_cycles` 값이
-`Faulted` 상태로 전이한 시점부터 멈춥니다. 복구 절차는 [Services](../../aidin_hand2_hardware/README.ko.md) 4장에 있습니다. `auto_reconnect=true`이면 복구
+`Faulted` 상태로 전이한 시점부터 멈춥니다. 원인은 `fault_code` 값으로 구별합니다. `404`·`405`는 통신 오류,
+`702`는 제어·통신 루프 종료입니다.
+복구 절차는 [Services](../../aidin_hand2_hardware/README.ko.md) 4장에 있습니다. `auto_reconnect=true`이면 복구
 중에도 마지막 state가 반복 발행됩니다.
 
 ### 5.4 reconnect fails
@@ -458,13 +483,18 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once --field li
 
 ### 5.6 Real-time warning
 
+SDK는 연결에 성공하면 `Connection Info` 블록을 log에 남깁니다. 실시간 설정이 적용되지 않으면 그 안의
+두 줄이 다음과 같습니다.
+
 ```text
-SCHED_FIFO not applied (need privileges) — continuing without realtime scheduling
+scheduler   SCHED_OTHER
+memory      not locked
 ```
 
-SDK가 제어·통신 루프를 `SCHED_FIFO` priority 90으로 올리지 못한 경우입니다. 동작은 계속되지만
-`deadline_misses` 값이 늘어날 수 있습니다. [Real-time kernel setup](01_real_time_kernel_setup.md) 2장의 `realtime`
-group과 limit을 확인합니다.
+`scheduler` 줄이 `SCHED_FIFO 90`이 아니라 `SCHED_OTHER`이면 SDK가 제어·통신 루프를 `SCHED_FIFO` priority로
+올리지 못한 것이고, `memory` 줄이 `locked`가 아니라 `not locked`이면 메모리를 잠그지 못한 것입니다. 동작은
+계속되지만 `deadline_misses` 값이 늘어날 수 있습니다. [Real-time kernel setup](01_real_time_kernel_setup.md)
+2장의 `realtime` group과 limit을 확인합니다.
 
 ```bash
 id -nG          # realtime 포함
@@ -472,9 +502,9 @@ ulimit -r       # 99
 ulimit -l       # unlimited
 ```
 
-`rt_cpu_affinity` parameter에 없는 CPU 번호를 주면 SDK가 경고 없이 요청을 버립니다. `realtime scheduling
-applied` log의 `CPU affinity` 값과 `running on CPU` 값이 다르면 적용되지 않은 것입니다. `nproc`과
-`lscpu --extended`로 번호를 확인하고, 확실하지 않으면 `-1`로 둡니다.
+`rt_cpu_affinity` parameter에 없는 CPU 번호를 주면 SDK가 경고 없이 요청을 버립니다. `Connection Info`
+블록의 `affinity` 줄과 `cpu` 줄의 값이 다르면 적용되지 않은 것입니다. `nproc`과 `lscpu --extended`로
+번호를 확인하고, 확실하지 않으면 `-1`로 둡니다.
 
 ## 6. Communication
 

@@ -22,7 +22,7 @@
 //   published topic : ~/hand_diagnostics
 //                     (aidin_hand2_msgs/HandDiagnostics)
 //
-//   The claim is 7 hand-wide fields, then enabled x16, then fault x16, 39 resources
+//   The claim is 8 hand-wide fields, then enabled x16, then fault x16, 40 resources
 //   The claim order is the interface order the hardware exports, and the offsets below
 //   index the claim
 //   lifecycle and homing_state arrive as an ordinal and go out as a name
@@ -55,8 +55,9 @@ constexpr std::array<const char *, ah2::kActuatorCount> kActuatorBaseNames = {
 };
 
 // Hand-wide fields, in the interface order the hardware exports
-constexpr std::array<const char *, 7> kDiagnosticsFields = {
+constexpr std::array<const char *, 8> kDiagnosticsFields = {
   "lifecycle",
+  "fault_code",
   "nan_command_count",
   "control_cycles",
   "deadline_misses",
@@ -73,12 +74,13 @@ namespace
 {
 // Index into kDiagnosticsFields, and into the claimed state interfaces
 constexpr std::size_t kLifecycleIndex = 0;
-constexpr std::size_t kNanCommandCountIndex = 1;
-constexpr std::size_t kControlCyclesIndex = 2;
-constexpr std::size_t kDeadlineMissesIndex = 3;
-constexpr std::size_t kLastPeriodMsIndex = 4;
-constexpr std::size_t kLastComputeMsIndex = 5;
-constexpr std::size_t kHomingStateIndex = 6;
+constexpr std::size_t kFaultCodeIndex = 1;
+constexpr std::size_t kNanCommandCountIndex = 2;
+constexpr std::size_t kControlCyclesIndex = 3;
+constexpr std::size_t kDeadlineMissesIndex = 4;
+constexpr std::size_t kLastPeriodMsIndex = 5;
+constexpr std::size_t kLastComputeMsIndex = 6;
+constexpr std::size_t kHomingStateIndex = 7;
 
 // The per-actuator blocks follow the hand-wide fields
 constexpr std::size_t kEnabledOffset = kDiagnosticsFields.size();
@@ -180,6 +182,7 @@ controller_interface::return_type DiagnosticsBroadcaster::update(
   message.header.stamp = time;
   message.hand_side = hand_side_;
   message.lifecycle = lifecycle_name(state_interfaces_[kLifecycleIndex].get_value());
+  message.fault_code = static_cast<std::uint16_t>(state_interfaces_[kFaultCodeIndex].get_value());
   message.nan_command_count =
     static_cast<std::uint64_t>(state_interfaces_[kNanCommandCountIndex].get_value());
   message.control_cycles =

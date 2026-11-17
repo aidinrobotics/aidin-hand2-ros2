@@ -48,16 +48,18 @@ ros2 launch aidin_hand2_bringup aidin_hand2.launch.py auto_home:=false
 
 ### 2.1 Arguments
 
-`config`를 뺀 인자 12개의 기본값은 `hand_bringup.yaml`에서 전달됩니다. `auto_home` parameter와
+`config`를 뺀 인자 14개의 기본값은 `hand_bringup.yaml`에서 전달됩니다. `auto_home` parameter와
 이름이 `auto_reconnect`로 시작하는 인자 셋은 양손 공통이고,
-`*_hand_interface`·`*_hand_cpu_affinity`·`*_hand_disabled_actuators` parameter는 손별입니다.
+`*_hand_interface`·`*_hand_model`·`*_hand_cpu_affinity`·`*_hand_disabled_actuators` parameter는 손별입니다.
 
 | Argument | Default | Description |
 |---|---|---|
 | `use_left_hand` | `true` | 왼손 hardware component를 만듭니다 |
 | `use_right_hand` | `true` | 오른손 hardware component를 만듭니다 |
-| `left_hand_interface` | `can0` | 왼손 CAN interface. `auto`는 side의 CAN ID로 채널을 탐색합니다 |
-| `right_hand_interface` | `can1` | 오른손 CAN interface. `auto`는 side의 CAN ID로 채널을 탐색합니다 |
+| `left_hand_interface` | `can0` | 왼손 CAN interface |
+| `right_hand_interface` | `can1` | 오른손 CAN interface |
+| `left_hand_model` | `gen2` | 왼손의 model. `gen2` 또는 `gen2b` |
+| `right_hand_model` | `gen2` | 오른손의 model. `gen2` 또는 `gen2b` |
 | `left_hand_cpu_affinity` | `-1` | 왼손 제어·통신 루프를 고정할 CPU 번호. `-1`은 고정 안 함 |
 | `right_hand_cpu_affinity` | `-1` | 오른손 제어·통신 루프를 고정할 CPU 번호. `-1`은 고정 안 함 |
 | `left_hand_disabled_actuators` | `""` | 왼손에서 사용하지 않을 actuator index. `"0,1,2,3"`처럼 쉼표로 구분 |
@@ -68,9 +70,12 @@ ros2 launch aidin_hand2_bringup aidin_hand2.launch.py auto_home:=false
 | `auto_reconnect_home` | `false` | 자동 재연결 뒤 homing을 수행합니다 |
 | `config` | `<share>/config/hand_bringup.yaml` | 위 인자의 기본값을 담은 YAML 경로 |
 
-`control_rate`와 `max_effort`는 xacro 매크로 인자이지만 이 launch가 선언하지 않으므로 `key:=value`로 바꿀 수
-없습니다. 바꾸려면 [2. Add the robot hand to the URDF](../aidin_hand2_description/README.ko.md#2-add-the-robot-hand-to-the-urdf)의 매크로를 자기 URDF에서 호출하고, runtime의 effort
-상한은 [6. Runtime settings](../aidin_hand2_hardware/README.ko.md#6-runtime-settings)의 hardware node parameter로 조정합니다.
+model은 로봇 핸드를 전달할 때 함께 알려 줍니다. kinematics를 정하므로 실제 로봇 핸드와 맞게 지정하십시오.
+
+effort 상한 `max_effort` parameter와 controller 설정은 launch 인자로 받지 않습니다. 초깃값은
+[config/controllers.yaml](config/controllers.yaml)의 `left_hand_control`·`right_hand_control` 블록에 있고,
+실행 중에는 [6. Runtime settings](../aidin_hand2_hardware/README.ko.md#6-runtime-settings)에 따라
+`ros2 param set`으로 바꿉니다.
 
 이 launch는 인자를 `OpaqueFunction` 안에서 선언하므로 `ros2 launch --show-args`가 `config` 인자만 표시합니다.
 전체 인자는 위 표와 `hand_bringup.yaml`을 보십시오.
@@ -194,15 +199,15 @@ ros2 launch aidin_hand2_bringup gui_bridge.launch.py
 ## 6. Controller config
 
 설정 파일은 [aidin_hand2_bringup/config/](config)에 있습니다.
-controller_manager parameter 파일은 backend마다 하나입니다. 둘 모두 `update_rate: 500`이고 매크로의
-`control_rate` 기본값과 같습니다.
+controller_manager parameter 파일은 backend마다 하나입니다. 둘 모두 `update_rate: 500`이고 로봇 핸드의
+고정 제어 주기 500 Hz와 같습니다.
 
 | File | Backend | Controllers | Broadcaster rate | Hardware node block |
 |---|---|---|---|---|
 | `controllers.yaml` | 로봇 핸드 | 양손 각 command 4 + broadcaster 2, `joint_state_broadcaster` | `joint_states` 100 Hz, `hand_state` 100 Hz, `hand_diagnostics` 20 Hz | `left_hand_control` · `right_hand_control` |
 | `controllers_mock.yaml` | mock | 양손 각 command 4, `joint_state_broadcaster` | `joint_states` 100 Hz | 없음 |
 
-`controllers.yaml`의 hardware node block은 [6. Runtime settings](../aidin_hand2_hardware/README.ko.md#6-runtime-settings)의 6개 parameter를 기본값으로
+`controllers.yaml`의 hardware node block은 [6. Runtime settings](../aidin_hand2_hardware/README.ko.md#6-runtime-settings)의 7개 parameter를 기본값으로
 채워 둔 것입니다. 자기 로봇에 통합할 때는 `controllers.yaml`을 복사하지 말고 [7. Configuration](../aidin_hand2_controllers/README.ko.md#7-configuration)의
 최소 구성에서 시작하십시오.
 

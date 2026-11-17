@@ -45,9 +45,9 @@
   <!-- Common -->
   <xacro:arg name="left_hand_interface"   default="can0"/>
   <xacro:arg name="right_hand_interface"  default="can1"/>
+  <xacro:arg name="left_hand_model"       default="gen2"/>
+  <xacro:arg name="right_hand_model"      default="gen2"/>
   <xacro:arg name="auto_home"            default="true"/>
-  <xacro:arg name="max_effort"           default="1000"/>
-  <xacro:arg name="control_rate"             default="500"/>
   <xacro:arg name="left_hand_cpu_affinity"   default="-1"/>
   <xacro:arg name="right_hand_cpu_affinity"  default="-1"/>
   <xacro:arg name="left_hand_disabled_actuators"  default=""/>
@@ -69,10 +69,9 @@
       name="left_hand_control"
       prefix="$(arg left_hand_prefix)"
       hand_side="left"
+      hand_model="$(arg left_hand_model)"
       can_interface="$(arg left_hand_interface)"
       auto_home="$(arg auto_home)"
-      max_effort="$(arg max_effort)"
-      control_rate="$(arg control_rate)"
       rt_cpu_affinity="$(arg left_hand_cpu_affinity)"
       disabled_actuators="$(arg left_hand_disabled_actuators)"
       auto_reconnect="$(arg auto_reconnect)"
@@ -85,10 +84,9 @@
       name="right_hand_control"
       prefix="$(arg right_hand_prefix)"
       hand_side="right"
+      hand_model="$(arg right_hand_model)"
       can_interface="$(arg right_hand_interface)"
       auto_home="$(arg auto_home)"
-      max_effort="$(arg max_effort)"
-      control_rate="$(arg control_rate)"
       rt_cpu_affinity="$(arg right_hand_cpu_affinity)"
       disabled_actuators="$(arg right_hand_disabled_actuators)"
       auto_reconnect="$(arg auto_reconnect)"

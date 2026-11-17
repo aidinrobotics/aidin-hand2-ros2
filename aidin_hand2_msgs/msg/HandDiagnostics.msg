@@ -1,8 +1,9 @@
-# HandState
+# HandDiagnostics
 std_msgs/Header header
 string hand_side          # "right" / "left"
 
 string lifecycle          # Disconnected/Connected/Running/Stopped/Faulted
+uint16 fault_code         # SDK error number that put the hand in Faulted (404, 405, 702), 0 otherwise
 uint64 nan_command_count  # commands rejected for a NaN or Inf target
 uint64 control_cycles
 uint64 deadline_misses    # cycles that overran the target period

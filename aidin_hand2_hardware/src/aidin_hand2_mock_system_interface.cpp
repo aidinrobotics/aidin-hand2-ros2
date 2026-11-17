@@ -23,6 +23,8 @@ namespace
 namespace ah2 = aidin_hand2;
 
 constexpr char kPositionInterface[] = "position";
+constexpr char kVelocityInterface[] = "velocity";
+constexpr char kEffortInterface[] = "effort";
 constexpr char kPositionCntInterface[] = "position_cnt";
 constexpr char kVelocityRpmInterface[] = "velocity_rpm";
 constexpr char kCurrentMaInterface[] = "current_ma";
@@ -199,17 +201,19 @@ hardware_interface::CallbackReturn AidinHand2MockSystemInterface::on_init(
     return hardware_interface::CallbackReturn::ERROR;
   }
   prefix_ = hand_side_ + "_";
-  const auto effort = info_.hardware_parameters.find("max_effort");
-  if (effort != info_.hardware_parameters.end()) {
-    try {
-      max_effort_pct_ = std::clamp(std::stod(effort->second), 0.0, 2000.0);
-    } catch (const std::exception &) {
+
+  // Optional, gen2 when missing
+  const auto model = info_.hardware_parameters.find("hand_model");
+  if (model != info_.hardware_parameters.end() && !model->second.empty()) {
+    const std::optional<ah2::HandModel> parsed = ah2::parse_hand_model(model->second);
+    if (!parsed) {
       return hardware_interface::CallbackReturn::ERROR;
     }
+    hand_model_ = *parsed;
   }
 
   const std::array<int, ah2::kActuatorCount> zero_encoder{};
-  joint_position_rad_ = ah2::fk_actuator_to_joint(zero_encoder);
+  joint_position_rad_ = ah2::fk_actuator_to_joint(hand_model_, zero_encoder);
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
@@ -224,8 +228,13 @@ AidinHand2MockSystemInterface::export_state_interfaces()
     interfaces.emplace_back(actuator, kCurrentMaInterface, &actuator_current_ma_[i]);
   }
   for (std::size_t i = 0; i < ah2::kJointCount; ++i) {
-    interfaces.emplace_back(
-      prefix_ + kJointBaseNames[i], kPositionInterface, &joint_position_rad_[i]);
+    const std::string joint = prefix_ + kJointBaseNames[i];
+    interfaces.emplace_back(joint, kPositionInterface, &joint_position_rad_[i]);
+    interfaces.emplace_back(joint, kVelocityInterface, &joint_velocity_rad_s_[i]);
+  }
+  for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+    interfaces.emplace_back(prefix_ + kActiveJointBaseNames[i], kEffortInterface,
+                            &joint_effort_nm_[kActiveToJointIndex[i]]);
   }
   return interfaces;
 }
@@ -338,8 +347,11 @@ hardware_interface::return_type AidinHand2MockSystemInterface::read(
 }
 
 hardware_interface::return_type AidinHand2MockSystemInterface::write(
-  const rclcpp::Time &, const rclcpp::Duration &)
+  const rclcpp::Time &, const rclcpp::Duration & period)
 {
+  // Every early return below holds the pose
+  joint_velocity_rad_s_.fill(0.0);
+
   std::array<int, ah2::kActuatorCount> encoder{};
   if (command_mode_ == ah2::CommandMode::JointPosition) {
     if (!all_nan(joint_position_target_rad_)) {
@@ -354,7 +366,7 @@ hardware_interface::return_type AidinHand2MockSystemInterface::write(
     ah2::JointPositionCommand command;
     command.target = held_joint_target_rad_;
     command.clamp();
-    encoder = ah2::ik_joint_to_actuator(command.target);
+    encoder = ah2::ik_joint_to_actuator(hand_model_, command.target);
   } else if (command_mode_ == ah2::CommandMode::JointImpedance) {
     if (!all_nan(joint_impedance_target_rad_)) {
       for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
@@ -368,7 +380,7 @@ hardware_interface::return_type AidinHand2MockSystemInterface::write(
     ah2::JointImpedanceCommand command;
     command.target = held_joint_target_rad_;
     command.clamp();
-    encoder = ah2::ik_joint_to_actuator(command.target);
+    encoder = ah2::ik_joint_to_actuator(hand_model_, command.target);
   } else if (command_mode_ == ah2::CommandMode::ActuatorPosition) {
     if (!all_nan(actuator_position_target_cnt_)) {
       for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
@@ -396,7 +408,14 @@ hardware_interface::return_type AidinHand2MockSystemInterface::write(
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
     actuator_position_cnt_[i] = static_cast<double>(encoder[i]);
   }
-  joint_position_rad_ = ah2::fk_actuator_to_joint(encoder);
+  const std::array<double, ah2::kJointCount> previous = joint_position_rad_;
+  joint_position_rad_ = ah2::fk_actuator_to_joint(hand_model_, encoder);
+  const double seconds = period.seconds();
+  if (seconds > 0.0) {
+    for (std::size_t i = 0; i < ah2::kJointCount; ++i) {
+      joint_velocity_rad_s_[i] = (joint_position_rad_[i] - previous[i]) / seconds;
+    }
+  }
   return hardware_interface::return_type::OK;
 }
 

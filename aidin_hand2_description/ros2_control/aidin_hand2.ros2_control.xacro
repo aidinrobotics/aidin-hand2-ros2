@@ -19,10 +19,14 @@
     <state_interface name="fault_${actuator_base}"/>
   </xacro:macro>
 
-  <!-- Joint position for joint_state_broadcaster -->
-  <xacro:macro name="hand_joint" params="joint_name">
+  <!-- Joint state for joint_state_broadcaster, effort only on an active joint -->
+  <xacro:macro name="hand_joint" params="joint_name active:=true">
     <joint name="${joint_name}">
       <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <xacro:if value="${active}">
+        <state_interface name="effort"/>
+      </xacro:if>
     </joint>
   </xacro:macro>
 
@@ -57,10 +61,9 @@
     name                       ros2_control system name, and the hardware node name
     prefix                     prepended to every joint, actuator and gpio name
     hand_side                  "left" or "right"
+    hand_model                 "gen2" or "gen2b"
     can_interface              one CAN bus per hand, tactile included
     auto_home                  homing on activate, otherwise the ~/home service
-    max_effort                 rated current %, 0~2000
-    control_rate               RT loop Hz
     rt_cpu_affinity            core the RT loop is pinned to, -1 = unset
     disabled_actuators         comma separated index list such as "0,1,2,3", empty = all on
     auto_reconnect             reconnect after a lost link
@@ -71,9 +74,8 @@
   <xacro:macro name="aidin_hand2_ros2_control"
                params="name prefix hand_side
                        can_interface
+                       hand_model:=^|gen2
                        auto_home:=^|true
-                       max_effort:=^|1000
-                       control_rate:=^|500
                        rt_cpu_affinity:=^|-1
                        disabled_actuators:=^|''
                        auto_reconnect:=^|false
@@ -92,10 +94,9 @@
         <xacro:unless value="${hand2_mock}">
           <plugin>aidin_hand2_hardware/AidinHand2SystemInterface</plugin>
           <param name="hand_side">${hand_side}</param>
+          <param name="hand_model">${hand_model}</param>
           <param name="can_interface">${can_interface}</param>
           <param name="auto_home">${auto_home}</param>
-          <param name="max_effort">${max_effort}</param>
-          <param name="control_rate">${control_rate}</param>
           <param name="rt_cpu_affinity">${rt_cpu_affinity}</param>
           <param name="disabled_actuators">${disabled_actuators}</param>
           <param name="auto_reconnect">${auto_reconnect}</param>
@@ -105,7 +106,7 @@
         <xacro:if value="${hand2_mock}">
           <plugin>aidin_hand2_hardware/AidinHand2MockSystemInterface</plugin>
           <param name="hand_side">${hand_side}</param>
-          <param name="max_effort">${max_effort}</param>
+          <param name="hand_model">${hand_model}</param>
         </xacro:if>
       </hardware>
 
@@ -135,32 +136,32 @@
 
       <!-- ============================= Joint ============================ -->
 
-      <!-- Joint 21 = thumb 5 + long finger 4x4 -->
+      <!-- Joint 21 = thumb 5 + long finger 4x4, joint4 being the coupled joint -->
       <xacro:hand_joint joint_name="${prefix}thumb_joint0"/>
       <xacro:hand_joint joint_name="${prefix}thumb_joint1"/>
       <xacro:hand_joint joint_name="${prefix}thumb_joint2"/>
       <xacro:hand_joint joint_name="${prefix}thumb_joint3"/>
-      <xacro:hand_joint joint_name="${prefix}thumb_joint4"/>
+      <xacro:hand_joint joint_name="${prefix}thumb_joint4" active="false"/>
 
       <xacro:hand_joint joint_name="${prefix}index_joint1"/>
       <xacro:hand_joint joint_name="${prefix}index_joint2"/>
       <xacro:hand_joint joint_name="${prefix}index_joint3"/>
-      <xacro:hand_joint joint_name="${prefix}index_joint4"/>
+      <xacro:hand_joint joint_name="${prefix}index_joint4" active="false"/>
 
       <xacro:hand_joint joint_name="${prefix}middle_joint1"/>
       <xacro:hand_joint joint_name="${prefix}middle_joint2"/>
       <xacro:hand_joint joint_name="${prefix}middle_joint3"/>
-      <xacro:hand_joint joint_name="${prefix}middle_joint4"/>
+      <xacro:hand_joint joint_name="${prefix}middle_joint4" active="false"/>
 
       <xacro:hand_joint joint_name="${prefix}ring_joint1"/>
       <xacro:hand_joint joint_name="${prefix}ring_joint2"/>
       <xacro:hand_joint joint_name="${prefix}ring_joint3"/>
-      <xacro:hand_joint joint_name="${prefix}ring_joint4"/>
+      <xacro:hand_joint joint_name="${prefix}ring_joint4" active="false"/>
 
       <xacro:hand_joint joint_name="${prefix}baby_joint1"/>
       <xacro:hand_joint joint_name="${prefix}baby_joint2"/>
       <xacro:hand_joint joint_name="${prefix}baby_joint3"/>
-      <xacro:hand_joint joint_name="${prefix}baby_joint4"/>
+      <xacro:hand_joint joint_name="${prefix}baby_joint4" active="false"/>
 
       <!-- ============================ Tactile =========================== -->
 
@@ -265,12 +266,13 @@
 
       <!-- ========================== Diagnostics ========================= -->
 
-      <!-- Diagnostics, 7 hand-wide fields plus enabled and fault per actuator, 39 interfaces
+      <!-- Diagnostics, 8 hand-wide fields plus enabled and fault per actuator, 40 interfaces
            Not exported by the mock
            lifecycle and homing_state go out as ordinals, the broadcaster names them -->
       <xacro:unless value="${hand2_mock}">
       <gpio name="${prefix}diagnostics">
         <state_interface name="lifecycle"/>
+        <state_interface name="fault_code"/>
         <state_interface name="nan_command_count"/>
         <state_interface name="control_cycles"/>
         <state_interface name="deadline_misses"/>
