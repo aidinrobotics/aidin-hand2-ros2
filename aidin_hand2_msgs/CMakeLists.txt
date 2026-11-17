@@ -9,6 +9,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/HandState.msg"
   "msg/HandDiagnostics.msg"
   "msg/CommandState.msg"
+  "msg/ControllerConfig.msg"
+  "msg/JointPositionControllerConfig.msg"
+  "msg/JointImpedanceControllerConfig.msg"
   "srv/GetTactileBias.srv"
   DEPENDENCIES std_msgs
 )

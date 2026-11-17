@@ -258,7 +258,9 @@ ros2 param set /left_hand_control max_effort \
      800.0,  800.0,  800.0]"
 ```
 
-적용 중인 값은 `ros2 param get /left_hand_control max_effort`로 확인합니다.
+적용 중인 값은 `ros2 param get /left_hand_control max_effort`로 확인합니다. SDK에 적용된 값과 바뀐 시각은
+`ControllerConfigBroadcaster`가 발행하는 `controller_config` topic에 있습니다
+([3.4 ControllerConfig](../aidin_hand2_msgs/README.ko.md#34-controllerconfig)).
 
 ### 6.2 Joint position controller
 

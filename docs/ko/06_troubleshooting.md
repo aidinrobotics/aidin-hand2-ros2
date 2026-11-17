@@ -395,8 +395,8 @@ ros2 param get /left_hand_control joint_position_controller.cutoff_freq
 
 ### 4.6 Broadcasters missing on mock
 
-mock은 `/joint_states` topic만 발행합니다. `HandStateBroadcaster`와 `DiagnosticsBroadcaster`는
-제공하지 않으므로 두 broadcaster를 추가로 실행하지 않습니다. mock의 지원 범위는
+mock은 `/joint_states` topic만 발행합니다. `HandStateBroadcaster`, `DiagnosticsBroadcaster`,
+`ControllerConfigBroadcaster`는 제공하지 않으므로 세 broadcaster를 추가로 실행하지 않습니다. mock의 지원 범위는
 [5. Mock behavior](../../aidin_hand2_controllers/README.ko.md#5-mock-behavior)에 있습니다.
 
 ## 5. Hardware component

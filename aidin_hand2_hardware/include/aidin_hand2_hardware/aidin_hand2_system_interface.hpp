@@ -118,6 +118,9 @@ private:
   // Push a dirty staging to the SDK [CM thread]
   void apply_tuning_parameters();
 
+  // Copy the settings the SDK holds into the controller_config state interfaces [CM thread]
+  void read_controller_config();
+
   // ----------------------- Command write [CM thread] ------------------------
 
   // Blank the command storage of the current mode, NaN meaning no command
@@ -201,6 +204,12 @@ private:
   // HandState.timestamp split in two, a double cannot hold the whole ns count
   double observed_stamp_sec_{};
   double observed_stamp_nanosec_{};
+
+  // ControllerConfig and max effort the SDK holds, filter_enabled as 0 or 1
+  std::array<double, ah2::kActuatorCount> config_max_effort_{};
+  std::array<double, 3> config_joint_position_{};   // filter_enabled, cutoff_freq, deadband
+  std::array<double, ah2::kActiveJointCount> config_stiffness_{};
+  std::array<double, 2> config_joint_impedance_{};  // filter_enabled, cutoff_freq
 
   // Backing memory of the exported command interfaces, written by the controllers
 

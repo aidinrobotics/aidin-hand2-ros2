@@ -29,4 +29,9 @@
          base_class_type="controller_interface::ControllerInterface">
     <description>Broadcasts lifecycle, homing, timing counters and per-actuator health on ~/hand_diagnostics.</description>
   </class>
+  <class name="aidin_hand2_controllers/ControllerConfigBroadcaster"
+         type="aidin_hand2_controllers::ControllerConfigBroadcaster"
+         base_class_type="controller_interface::ControllerInterface">
+    <description>Broadcasts the max effort and controller settings the SDK holds on ~/controller_config, when they change.</description>
+  </class>
 </library>

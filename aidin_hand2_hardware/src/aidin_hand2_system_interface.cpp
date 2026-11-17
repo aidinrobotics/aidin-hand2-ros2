@@ -65,6 +65,19 @@ constexpr double kMaxEffortLimit = 2000.0;
 constexpr char kStampSecInterface[] = "sec";
 constexpr char kStampNanosecInterface[] = "nanosec";
 
+// Settings the SDK holds, on the <prefix>controller_config component, named after the parameters
+// max_effort.<actuator> and joint_impedance_controller.stiffness.<joint> are built per index
+constexpr char kControllerConfigComponent[] = "controller_config";
+constexpr std::array<const char *, 3> kJointPositionConfigInterfaceNames = {
+  "joint_position_controller.filter_enabled",
+  "joint_position_controller.cutoff_freq",
+  "joint_position_controller.deadband",
+};
+constexpr std::array<const char *, 2> kJointImpedanceConfigInterfaceNames = {
+  "joint_impedance_controller.filter_enabled",
+  "joint_impedance_controller.cutoff_freq",
+};
+
 // Interface order of the diagnostics gpio, matching the diagnostics_values_ array
 // lifecycle goes out as the HandLifecycle ordinal and the broadcaster names it
 constexpr std::array<const char *, 8> kDiagnosticsInterfaceNames = {
@@ -314,6 +327,7 @@ CallbackReturn AidinHand2SystemInterface::on_configure(const rclcpp_lifecycle::S
     hand_ = manager_.create(config);
     hand_->connect();
     state_ = hand_->get_state();
+    read_controller_config();
   } catch (const ah2::Exception & exception) {
     RCLCPP_ERROR(logger(), "%s", exception.what());
     if (hand_) {
@@ -455,6 +469,27 @@ AidinHand2SystemInterface::export_state_interfaces()
                             &controller_output_target_position_cnt_[i]);
     interfaces.emplace_back(commanded, kControllerOutputEffortInterface + suffix,
                             &controller_output_target_effort_pct_[i]);
+  }
+
+  // Settings the SDK holds, in the field order of aidin_hand2_msgs/ControllerConfig
+  const std::string controller_config = prefix_ + kControllerConfigComponent;
+  for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
+    interfaces.emplace_back(controller_config, std::string("max_effort.") + kActuatorBaseNames[i],
+                            &config_max_effort_[i]);
+  }
+  for (std::size_t i = 0; i < kJointPositionConfigInterfaceNames.size(); ++i) {
+    interfaces.emplace_back(controller_config, kJointPositionConfigInterfaceNames[i],
+                            &config_joint_position_[i]);
+  }
+  for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+    interfaces.emplace_back(
+      controller_config,
+      std::string("joint_impedance_controller.stiffness.") + kActiveJointBaseNames[i],
+      &config_stiffness_[i]);
+  }
+  for (std::size_t i = 0; i < kJointImpedanceConfigInterfaceNames.size(); ++i) {
+    interfaces.emplace_back(controller_config, kJointImpedanceConfigInterfaceNames[i],
+                            &config_joint_impedance_[i]);
   }
 
   const std::string timestamp = prefix_ + kTimestampComponent;
@@ -1111,6 +1146,20 @@ void AidinHand2SystemInterface::apply_tuning_parameters()
   }
   hand_->set_max_effort(max_effort);
   hand_->set_controller_config(config);
+  read_controller_config();
+}
+
+void AidinHand2SystemInterface::read_controller_config()
+{
+  const ah2::ControllerConfig config = hand_->get_controller_config();
+  const ah2::ControllerConfig::JointPositionController & position = config.joint_position_controller;
+  const ah2::ControllerConfig::JointImpedanceController & impedance =
+    config.joint_impedance_controller;
+  config_max_effort_ = hand_->get_max_effort();
+  config_joint_position_ = {position.filter_enabled ? 1.0 : 0.0, position.cutoff_freq,
+                            position.deadband};
+  config_stiffness_ = impedance.stiffness;
+  config_joint_impedance_ = {impedance.filter_enabled ? 1.0 : 0.0, impedance.cutoff_freq};
 }
 
 // ------------------------- Command write [CM thread] ------------------------

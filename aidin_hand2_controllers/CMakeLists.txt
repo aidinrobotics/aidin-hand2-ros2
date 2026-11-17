@@ -23,6 +23,7 @@ add_library(${PROJECT_NAME} SHARED
   src/joint_impedance_controller.cpp
   src/hand_state_broadcaster.cpp
   src/diagnostics_broadcaster.cpp
+  src/controller_config_broadcaster.cpp
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 target_include_directories(${PROJECT_NAME} PUBLIC

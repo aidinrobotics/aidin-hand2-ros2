@@ -15,6 +15,7 @@ command는 표준 `sensor_msgs/JointState` message를 씁니다. 이 문서에�
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.1 HandState](#31-handstate)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.2 CommandState](#32-commandstate)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.3 HandDiagnostics](#33-handdiagnostics)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[3.4 ControllerConfig](#34-controllerconfig)<br>
 &nbsp;&nbsp;[**4. Joint and actuator order**](#4-joint-and-actuator-order)<br>
 &nbsp;&nbsp;[**5. Service types**](#5-service-types)
 
@@ -25,6 +26,7 @@ command는 표준 `sensor_msgs/JointState` message를 씁니다. 이 문서에�
 | [HandState](msg/HandState.msg) | joint·actuator·tactile 관측과 적용된 command |
 | [CommandState](msg/CommandState.msg) | `HandState.command_state`에 포함된 command 정보 |
 | [HandDiagnostics](msg/HandDiagnostics.msg) | lifecycle·homing 상태, `Faulted` 원인, 주기 통계와 actuator fault |
+| [ControllerConfig](msg/ControllerConfig.msg) | SDK에 적용된 max effort와 controller 설정 |
 
 ## 2. Command message
 
@@ -132,6 +134,20 @@ SDK 문서의 [Error messages](https://github.com/aidinrobotics/aidin-hand2-sdk/
 [Error messages](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_error_messages.md#10-actuator-fault-values)에
 있습니다. fault가 있는 actuator는 SDK가 command에서 mask하고 fault reset을 반복 시도하며, wrapper는 스스로
 정지하지 않습니다.
+
+### 3.4 ControllerConfig
+
+`ControllerConfig` message는 SDK에 적용된 max effort와 controller 설정을 담으며, `ControllerConfigBroadcaster`가
+값이 바뀔 때만 발행합니다. QoS가 transient_local이므로 나중에 구독을 시작해도 마지막 값을 받습니다.
+`header.stamp` 필드는 변경을 발견한 cycle의 시각입니다. 필드 이름은 hardware node의 parameter 이름과 같고, 뜻과
+범위는 [6. Runtime settings](../aidin_hand2_hardware/README.ko.md#6-runtime-settings)에 있습니다.
+
+| Field | Type | Description |
+|---|---|---|
+| `hand_side` | `string` | `left` 또는 `right` |
+| `max_effort` | `float64[16]` | actuator별 effort 상한. 정격 전류의 0.1% 단위이고 actuator 순서 |
+| `joint_position_controller` | [JointPositionControllerConfig](msg/JointPositionControllerConfig.msg) | `filter_enabled`·`cutoff_freq`[Hz]·`deadband`[rad] 필드 |
+| `joint_impedance_controller` | [JointImpedanceControllerConfig](msg/JointImpedanceControllerConfig.msg) | active joint 순서의 `stiffness`(0~1)와 `filter_enabled`·`cutoff_freq`[Hz] 필드 |
 
 
 ## 4. Joint and actuator order

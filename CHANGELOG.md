@@ -34,6 +34,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
     instead.
   - `/dynamic_joint_states` is turned off in the bringup and mock configurations.
   - The `fault_code` field is added to `HandDiagnostics`.
+  - The `ControllerConfigBroadcaster` broadcaster is added. It publishes the max effort and the
+    controller settings the SDK holds on the `controller_config` topic.
 - Services
   - The `~/get_tactile_bias` service is added.
 - Errors and log
@@ -58,6 +60,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - **`HandDiagnostics` has a `fault_code` field.** It holds the SDK error number that put the hand
   in `Faulted`, 404, 405 or 702, and 0 otherwise. The diagnostics component exports it as
   `fault_code`, 40 interfaces in all. Rebuild every `HandDiagnostics` subscriber.
+
+- **`ControllerConfigBroadcaster` publishes the settings in effect on `~/controller_config`.** The
+  `aidin_hand2_msgs/ControllerConfig` message carries the max effort and the joint position and
+  joint impedance controller settings that the SDK holds, and goes out when a value changes. The
+  topic is transient_local, so a subscriber or a rosbag that starts later still receives the
+  current settings. The bringup launch spawns `<side>_controller_config_broadcaster` for each hand;
+  a launch of your own declares it in its controller configuration and spawns it.
 
 - **The hardware node offers `~/get_tactile_bias`.** It returns the values `~/set_tactile_bias`
   took as zero, in the tactile layout of `HandState`, through the new
