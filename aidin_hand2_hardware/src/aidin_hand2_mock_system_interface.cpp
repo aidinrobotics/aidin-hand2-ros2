@@ -211,14 +211,6 @@ hardware_interface::CallbackReturn AidinHand2MockSystemInterface::on_init(
     }
     hand_model_ = *parsed;
   }
-  const auto effort = info_.hardware_parameters.find("max_effort");
-  if (effort != info_.hardware_parameters.end()) {
-    try {
-      max_effort_pct_ = std::clamp(std::stod(effort->second), 0.0, 2000.0);
-    } catch (const std::exception &) {
-      return hardware_interface::CallbackReturn::ERROR;
-    }
-  }
 
   const std::array<int, ah2::kActuatorCount> zero_encoder{};
   joint_position_rad_ = ah2::fk_actuator_to_joint(hand_model_, zero_encoder);

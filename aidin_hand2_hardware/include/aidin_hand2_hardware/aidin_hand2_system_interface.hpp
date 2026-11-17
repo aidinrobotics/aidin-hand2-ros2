@@ -146,10 +146,7 @@ private:
   ah2::HandModel hand_model_{ah2::HandModel::Gen2};
   bool auto_home_{true};
 
-  // Defaults below match HandConfig and kDefaultMaxEffort
-
-  // Rated current %, 1000 being 100%, and the node parameter default
-  double max_effort_{1000.0};
+  // Defaults below match HandConfig
 
   // CPU to pin the RT loop to, -1 for none
   int rt_cpu_affinity_{-1};

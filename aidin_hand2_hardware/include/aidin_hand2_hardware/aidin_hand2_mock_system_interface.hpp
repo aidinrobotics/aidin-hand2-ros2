@@ -64,6 +64,8 @@ private:
 
   // Always 0, the mock has no load, and exported for the active joints only
   std::array<double, aidin_hand2::kJointCount> joint_effort_nm_{};
+
+  // Rated current %, the SDK default
   double max_effort_pct_{1000.0};
 
   aidin_hand2::CommandMode command_mode_{aidin_hand2::CommandMode::Idle};

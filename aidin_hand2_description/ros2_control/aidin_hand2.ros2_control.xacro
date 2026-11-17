@@ -64,7 +64,6 @@
     hand_model                 "gen2" or "gen2b"
     can_interface              one CAN bus per hand, tactile included
     auto_home                  homing on activate, otherwise the ~/home service
-    max_effort                 rated current %, 0~2000
     rt_cpu_affinity            core the RT loop is pinned to, -1 = unset
     disabled_actuators         comma separated index list such as "0,1,2,3", empty = all on
     auto_reconnect             reconnect after a lost link
@@ -77,7 +76,6 @@
                        can_interface
                        hand_model:=^|gen2
                        auto_home:=^|true
-                       max_effort:=^|1000
                        rt_cpu_affinity:=^|-1
                        disabled_actuators:=^|''
                        auto_reconnect:=^|false
@@ -99,7 +97,6 @@
           <param name="hand_model">${hand_model}</param>
           <param name="can_interface">${can_interface}</param>
           <param name="auto_home">${auto_home}</param>
-          <param name="max_effort">${max_effort}</param>
           <param name="rt_cpu_affinity">${rt_cpu_affinity}</param>
           <param name="disabled_actuators">${disabled_actuators}</param>
           <param name="auto_reconnect">${auto_reconnect}</param>
@@ -110,7 +107,6 @@
           <plugin>aidin_hand2_hardware/AidinHand2MockSystemInterface</plugin>
           <param name="hand_side">${hand_side}</param>
           <param name="hand_model">${hand_model}</param>
-          <param name="max_effort">${max_effort}</param>
         </xacro:if>
       </hardware>
 

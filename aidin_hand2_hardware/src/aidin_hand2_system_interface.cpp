@@ -233,10 +233,6 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
     const std::string value = parameter(key);
     return value.empty() ? fallback : std::stoi(value);
   };
-  const auto as_double = [&](const std::string & key, double fallback) {
-    const std::string value = parameter(key);
-    return value.empty() ? fallback : std::stod(value);
-  };
 
   can_interface_ = parameter("can_interface");
   if (can_interface_.empty()) {
@@ -279,12 +275,6 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
   auto_reconnect_home_ = parameter("auto_reconnect_home") == "True";
 
   try {
-    max_effort_ = as_double("max_effort", max_effort_);
-    if (!(max_effort_ >= 0.0 && max_effort_ <= kMaxEffortLimit)) {
-      RCLCPP_FATAL(logger(), "max_effort must be in [0, 2000], got '%s'",
-                   parameter("max_effort").c_str());
-      return CallbackReturn::ERROR;
-    }
     rt_cpu_affinity_ = as_int("rt_cpu_affinity", rt_cpu_affinity_);
     auto_reconnect_timeout_ms_ = as_int("auto_reconnect_timeout_ms", auto_reconnect_timeout_ms_);
 
@@ -994,16 +984,17 @@ bool AidinHand2SystemInterface::exec_get_tactile_bias(
 
 void AidinHand2SystemInterface::declare_tuning_parameters()
 {
-  // Defaults come from the max_effort hardware parameter and the SDK, and launch overrides
-  // them through a block named after this node in controllers.yaml
-  const ah2::ControllerConfig defaults{};
-  staged_max_effort_.fill(max_effort_);
+  // Defaults are read from the SDK, and launch overrides them through a block named after this
+  // node in controllers.yaml
+  const ah2::ControllerConfig defaults = hand_->get_controller_config();
+  staged_max_effort_ = hand_->get_max_effort();
   staged_controller_config_ = defaults;
 
   // The first write() pushes the declared values
   tuning_dirty_ = true;
 
-  service_node_->declare_parameter("max_effort", std::vector<double>{max_effort_});
+  service_node_->declare_parameter(
+    "max_effort", std::vector<double>(staged_max_effort_.begin(), staged_max_effort_.end()));
   service_node_->declare_parameter(
     "joint_position_controller.filter_enabled", defaults.joint_position_controller.filter_enabled);
   service_node_->declare_parameter(

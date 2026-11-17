@@ -72,9 +72,10 @@ ros2 launch aidin_hand2_bringup aidin_hand2.launch.py auto_home:=false
 
 model은 로봇 핸드를 전달할 때 함께 알려 줍니다. kinematics를 정하므로 실제 로봇 핸드와 맞게 지정하십시오.
 
-`max_effort`는 xacro 매크로 인자이지만 이 launch가 선언하지 않으므로 `key:=value`로 바꿀 수
-없습니다. 바꾸려면 [2. Add the robot hand to the URDF](../aidin_hand2_description/README.ko.md#2-add-the-robot-hand-to-the-urdf)의 매크로를 자기 URDF에서 호출하고, runtime의 effort
-상한은 [6. Runtime settings](../aidin_hand2_hardware/README.ko.md#6-runtime-settings)의 hardware node parameter로 조정합니다.
+effort 상한 `max_effort` parameter와 controller 설정은 launch 인자로 받지 않습니다. 초깃값은
+[config/controllers.yaml](config/controllers.yaml)의 `left_hand_control`·`right_hand_control` 블록에 있고,
+실행 중에는 [6. Runtime settings](../aidin_hand2_hardware/README.ko.md#6-runtime-settings)에 따라
+`ros2 param set`으로 바꿉니다.
 
 이 launch는 인자를 `OpaqueFunction` 안에서 선언하므로 `ros2 launch --show-args`가 `config` 인자만 표시합니다.
 전체 인자는 위 표와 `hand_bringup.yaml`을 보십시오.

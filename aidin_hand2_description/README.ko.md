@@ -83,7 +83,6 @@ xacro 매크로는 이름을 붙여 재사용할 수 있게 만든 XML 묶음입
     name="left_hand_control" prefix="left_" hand_side="left" can_interface="can0"
     hand_model="gen2"
     auto_home="false"
-    max_effort="1000"
     rt_cpu_affinity="-1"
     disabled_actuators=""
     auto_reconnect="false"
@@ -101,7 +100,6 @@ xacro 매크로는 이름을 붙여 재사용할 수 있게 만든 XML 묶음입
     name="right_hand_control" prefix="right_" hand_side="right" can_interface="can1"
     hand_model="gen2"
     auto_home="false"
-    max_effort="1000"
     rt_cpu_affinity="-1"
     disabled_actuators=""
     auto_reconnect="false"
@@ -116,9 +114,9 @@ xacro 매크로는 이름을 붙여 재사용할 수 있게 만든 XML 묶음입
 맞게 바꾸십시오. 같은 손의 모델 매크로와 제어 설정 매크로는 `prefix`를 일치시킵니다.
 제어 설정 매크로의 `name`은 hardware component마다 달라야 하므로 좌우를 구별해 지정합니다.
 
-제어 설정 매크로에는 인자 13개를 모두 적었습니다. `name`·`prefix`·`hand_side`·`can_interface` 넷은
-필수이고 나머지 아홉은 기본값이 있으므로, 기본값을 그대로 쓸 인자는 생략해도 됩니다. 예제에서
-기본값과 다르게 지정한 인자는 `auto_home` 하나이며, 나머지 여덟은 기본값을 그대로 적은 것입니다.
+제어 설정 매크로에는 인자 12개를 모두 적었습니다. `name`·`prefix`·`hand_side`·`can_interface` 넷은
+필수이고 나머지 여덟은 기본값이 있으므로, 기본값을 그대로 쓸 인자는 생략해도 됩니다. 예제에서
+기본값과 다르게 지정한 인자는 `auto_home` 하나이며, 나머지 일곱은 기본값을 그대로 적은 것입니다.
 각 인자의 뜻과 기본값은 [2.2 Macro settings](#22-macro-settings)에 있습니다.
 
 예제의 `can0`·`can1`은 예시값입니다. 로봇 핸드가 연결된 CAN interface 이름은 컴퓨터마다 다르므로
@@ -142,7 +140,6 @@ xacro 매크로는 이름을 붙여 재사용할 수 있게 만든 XML 묶음입
 | `can_interface` | string | 필수 | CAN interface 이름 |
 | `hand_model` | string | `gen2` | `gen2` 또는 `gen2b`. kinematics를 결정하며 mock에도 적용됩니다 |
 | `auto_home` | bool | `true` | `~/run` service 성공 뒤 `homing_state` 값이 `Succeeded`가 아니면 homing을 한 번 시작합니다 |
-| `max_effort` | double | `1000` | effort 상한의 초깃값. 단위는 정격 전류의 0.1%이고 `1000`이 100%. `[0, 2000]` 범위. runtime 값은 [6.1 Max effort](../aidin_hand2_hardware/README.ko.md#61-max-effort) |
 | `rt_cpu_affinity` | int | `-1` | 제어·통신 루프 thread를 고정할 CPU 번호. `-1`은 고정 안 함 |
 | `disabled_actuators` | string | `''` | 사용하지 않을 actuator index. `"0,1,2,3"`처럼 쉼표로 구분하고 공백은 무시합니다 |
 | `auto_reconnect` | bool | `false` | 통신 오류가 발생하면 SDK가 재연결을 반복 시도합니다 |

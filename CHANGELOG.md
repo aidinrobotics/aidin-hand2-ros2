@@ -16,6 +16,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
     arguments are added. They default to `gen2`, so a Gen2 setup runs unchanged.
 - Control
   - The `control_rate` hardware parameter and xacro argument are removed.
+  - The `max_effort` hardware parameter and xacro argument are removed. Set the `max_effort`
+    parameter in `controllers.yaml` instead.
   - The per-actuator gain parameters `joint_impedance_controller.stiffness` and
     `joint_impedance_controller.damping` are removed.
   - The `joint_impedance_controller.stiffness` parameter holds a value from 0 to 1 per active
@@ -84,9 +86,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   a value. `HandState` shrinks by 512 bytes. Read the array for the mode instead of the old field.
 
 - **Breaking: `max_effort` rejects a value outside 0 to 2000.** `ros2 param set` fails with
-  `max_effort must be finite and in [0, 2000]`, and a `max_effort` hardware parameter outside the
-  range fails `on_init`. A value above 2000 used to be accepted and clamped by the SDK, so the
-  parameter showed a value that was not in effect.
+  `max_effort must be finite and in [0, 2000]`. A value above 2000 used to be accepted and clamped
+  by the SDK, so the parameter showed a value that was not in effect.
 
 - **Breaking: encoder count 0 is the hard stop.** `actuator_position_cnt` and the actuator position
   command read 1000 higher than with SDK 0.8 at the same pose, so add 1000 to stored actuator
@@ -113,6 +114,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - **Breaking: the `control_rate` hardware parameter and xacro argument.** The SDK runs its loop at
   a fixed 500 Hz. Remove `control_rate` from your ros2_control macro calls, which otherwise fail
   with `Invalid parameter "control_rate"`.
+
+- **Breaking: the `max_effort` hardware parameter and xacro argument.** The `max_effort` node
+  parameter is the one place for the effort cap, and the bringup launch already overrode the
+  xacro value from `controllers.yaml`. Set the initial value in the `left_hand_control` or
+  `right_hand_control` block of your controller configuration, and remove `max_effort` from your
+  ros2_control macro calls, which otherwise fail with `Invalid parameter "max_effort"`. The mock
+  holds the effort cap at 1000.
 
 - **Breaking: `joint_impedance_controller.damping`.** The SDK sets the damping from the stiffness.
   Remove it from your controller configuration.

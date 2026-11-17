@@ -234,7 +234,7 @@ ros2 param get /left_hand_control max_effort
 
 | Parameter | Type | Default | Valid |
 |---|---|---|---|
-| `max_effort` | `double[]` | `[1000.0]` | 길이 1 또는 16. 유한하고 `[0, 2000]` 범위 |
+| `max_effort` | `double[]` | `1000.0` × 16 | 길이 1 또는 16. 유한하고 `[0, 2000]` 범위 |
 
 단위는 정격 전류의 0.1%이고 정격 전류는
 모든 모터가 400 mA이므로 `1000`(100%)이 400 mA입니다. 범위를 벗어난 값을 주면 `ros2 param set`이
@@ -326,7 +326,7 @@ joint_impedance_controller.stiffness must be finite and in [0, 1]
 [6. Runtime settings](#6-runtime-settings)의 값을 실행 때마다 적용하려면 `ros2_control_node`에 전달하는
 controller 설정 YAML에 node 이름의 블록을 추가합니다. 이름은 매크로의 `name` 값과 같아야 합니다.
 다음은 `left_hand_control`의 effort 상한과 두 controller 설정을 기본값으로 지정하는 예입니다.
-`max_effort`를 YAML에서 생략하면 매크로에서 지정한 초깃값을 사용합니다.
+YAML에서 생략한 parameter는 [6. Runtime settings](#6-runtime-settings) 표의 기본값을 사용합니다.
 
 ```yaml
 left_hand_control:
