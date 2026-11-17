@@ -20,6 +20,8 @@ controller_manager:
       type: aidin_hand2_controllers/HandStateBroadcaster
     left_diagnostics_broadcaster:
       type: aidin_hand2_controllers/DiagnosticsBroadcaster
+    left_controller_config_broadcaster:
+      type: aidin_hand2_controllers/ControllerConfigBroadcaster
     left_joint_position_controller:
       type: aidin_hand2_controllers/JointPositionController
     left_actuator_position_controller:
@@ -33,6 +35,8 @@ controller_manager:
       type: aidin_hand2_controllers/HandStateBroadcaster
     right_diagnostics_broadcaster:
       type: aidin_hand2_controllers/DiagnosticsBroadcaster
+    right_controller_config_broadcaster:
+      type: aidin_hand2_controllers/ControllerConfigBroadcaster
     right_joint_position_controller:
       type: aidin_hand2_controllers/JointPositionController
     right_actuator_position_controller:
@@ -88,6 +92,9 @@ left_diagnostics_broadcaster:
   ros__parameters:
     hand_side: "left"
     update_rate: 20
+left_controller_config_broadcaster:
+  ros__parameters:
+    hand_side: "left"
 left_joint_position_controller:
   ros__parameters:
     hand_side: "left"
@@ -131,6 +138,9 @@ right_diagnostics_broadcaster:
   ros__parameters:
     hand_side: "right"
     update_rate: 20
+right_controller_config_broadcaster:
+  ros__parameters:
+    hand_side: "right"
 right_joint_position_controller:
   ros__parameters:
     hand_side: "right"

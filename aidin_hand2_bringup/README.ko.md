@@ -112,6 +112,7 @@ xacro robot_description (aidin_hand2.urdf.xacro)
     ├── joint_state_broadcaster                  active
     ├── <side>_hand_state_broadcaster            active
     ├── <side>_diagnostics_broadcaster           active
+    ├── <side>_controller_config_broadcaster     active
     ├── <side>_joint_position_controller         active
     ├── <side>_actuator_position_controller      inactive
     ├── <side>_actuator_effort_controller        inactive
@@ -136,8 +137,8 @@ ros2 launch aidin_hand2_bringup aidin_hand2_mock.launch.py use_rviz:=false
 ```
 
 active로 올라오는 controller는 `joint_state_broadcaster`와 손별 `{side}_joint_position_controller`뿐입니다.
-mock은 `/joint_states` topic만 발행하므로 `HandStateBroadcaster`와
-`DiagnosticsBroadcaster`를 실행하지 않습니다. 나머지 command controller 셋은 `controllers_mock.yaml`에
+mock은 `/joint_states` topic만 발행하므로 `HandStateBroadcaster`, `DiagnosticsBroadcaster`,
+`ControllerConfigBroadcaster`를 실행하지 않습니다. 나머지 command controller 셋은 `controllers_mock.yaml`에
 등록되어 있어 필요할 때 load합니다.
 
 ## 4. aidin_hand2_controllers.launch.py
@@ -262,7 +263,7 @@ ros2 control list_hardware_components
 
 ```bash
 ros2 run controller_manager spawner left_joint_position_controller \
-  left_hand_state_broadcaster left_diagnostics_broadcaster \
+  left_hand_state_broadcaster left_diagnostics_broadcaster left_controller_config_broadcaster \
   --controller-manager /controller_manager
 ```
 

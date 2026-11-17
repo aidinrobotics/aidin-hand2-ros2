@@ -173,7 +173,7 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once
 
 - hardware component `left_hand_control`이 `active` 상태입니다.
 - `joint_state_broadcaster`, `left_hand_state_broadcaster`, `left_diagnostics_broadcaster`,
-  `left_joint_position_controller`가 `active` 상태이고, `left_actuator_position_controller`,
+  `left_controller_config_broadcaster`, `left_joint_position_controller`가 `active` 상태이고, `left_actuator_position_controller`,
   `left_actuator_effort_controller`, `left_joint_impedance_controller`가 `inactive` 상태입니다.
 - `hand_diagnostics` topic의 `lifecycle` 값이 `Running`, `homing_state` 값이 `NotRun`,
   `actuator_fault_name` 필드 16개가 모두 빈 문자열입니다. `lifecycle` 값의 뜻은

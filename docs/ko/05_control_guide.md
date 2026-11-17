@@ -264,9 +264,11 @@ topic 이름은 controller 이름 아래에 있습니다. 발행 주기는 `aidi
 | `/joint_states` | `sensor_msgs/JointState` | 발행 | 100 Hz | real · mock |
 | `/{side}_hand_state_broadcaster/hand_state` | `aidin_hand2_msgs/HandState` | 발행 | 100 Hz | real |
 | `/{side}_diagnostics_broadcaster/hand_diagnostics` | `aidin_hand2_msgs/HandDiagnostics` | 발행 | 20 Hz | real |
+| `/{side}_controller_config_broadcaster/controller_config` | `aidin_hand2_msgs/ControllerConfig` | 발행 | 값이 바뀔 때 | real |
 
 command를 적용하려면 대상 controller가 `active` 상태이고 chained mode가 아니어야 합니다.
-mock에서는 `/joint_states` topic으로 결과를 확인합니다. `hand_state`와 `hand_diagnostics`는 제공하지 않습니다.
+mock에서는 `/joint_states` topic으로 결과를 확인합니다. `hand_state`, `hand_diagnostics`, `controller_config`는
+제공하지 않습니다.
 
 ### 4.2 Observe the result
 

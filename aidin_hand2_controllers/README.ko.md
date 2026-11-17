@@ -60,9 +60,11 @@ joint impedance의 stiffness·filter는 [6. Runtime settings](../aidin_hand2_har
 | `joint_state_broadcaster/JointStateBroadcaster` | `/joint_states` | passive joint를 포함한 joint 각도·속도와 active joint의 effort |
 | `aidin_hand2_controllers/HandStateBroadcaster` | `~/hand_state` | joint·actuator·촉각 관측값과 적용된 command |
 | `aidin_hand2_controllers/DiagnosticsBroadcaster` | `~/hand_diagnostics` | lifecycle과 `Faulted` 원인, homing, actuator fault, 제어·통신 루프 통계 |
+| `aidin_hand2_controllers/ControllerConfigBroadcaster` | `~/controller_config` | SDK에 적용된 max effort와 controller 설정 |
 
 wrapper의 broadcaster에는 `hand_side` parameter를 지정합니다. 발행 주기는 `update_rate` 값으로 조정하며 기본 launch는
-`hand_state`를 100 Hz, `hand_diagnostics`를 20 Hz로 발행합니다. message 필드와 읽는 방법은
+`hand_state`를 100 Hz, `hand_diagnostics`를 20 Hz로 발행합니다. `controller_config`는 값이 바뀔 때만 발행하고,
+나중에 구독을 시작해도 마지막 값을 받습니다. message 필드와 읽는 방법은
 [4. Read state](../docs/ko/05_control_guide.md#4-read-state)에 있습니다.
 
 ## 2. Send a command
@@ -178,7 +180,7 @@ CAN 연결과 homing은 필요하지 않습니다.
 | joint position·joint impedance | 도달 범위 보정과 kinematics 계산 결과를 즉시 반영합니다 |
 | actuator position | kinematics로 계산한 joint 각도를 반영합니다 |
 | actuator effort | 자세를 바꾸지 않습니다 |
-| 관측 topic | `/joint_states`를 제공합니다. velocity는 각도 변화로 계산하고 effort는 `0`입니다. `hand_state`·`hand_diagnostics`는 없습니다 |
+| 관측 topic | `/joint_states`를 제공합니다. velocity는 각도 변화로 계산하고 effort는 `0`입니다. `hand_state`·`hand_diagnostics`·`controller_config`는 없습니다 |
 | service | run·stop·home·reconnect를 제공하지 않습니다 |
 
 mock은 controller 연결과 목표값 전달을 확인하는 용도입니다. 로봇 핸드의 운동·힘 응답을 재현하지 않습니다.
@@ -209,6 +211,7 @@ mode를 바꿀 때는 상위 controller를 먼저 비활성화하고 하위 comm
 | `left_joint_position_controller` | `aidin_hand2_controllers/JointPositionController` | active joint 16개의 목표 각도[rad]를 받습니다 |
 | `left_hand_state_broadcaster` | `aidin_hand2_controllers/HandStateBroadcaster` | joint·actuator·tactile 관측과 적용된 command를 `~/hand_state` topic으로 발행합니다 |
 | `left_diagnostics_broadcaster` | `aidin_hand2_controllers/DiagnosticsBroadcaster` | lifecycle과 `Faulted` 원인, homing, 제어·통신 루프 통계, actuator fault를 `~/hand_diagnostics` topic으로 발행합니다 |
+| `left_controller_config_broadcaster` | `aidin_hand2_controllers/ControllerConfigBroadcaster` | SDK에 적용된 max effort와 controller 설정을 `~/controller_config` topic으로 발행합니다 |
 
 다른 command controller는 필요할 때 추가합니다. 로봇 핸드마다 command controller 하나만
 활성화할 수 있습니다. 종류와 입력은 [1. Choose a controller](#1-choose-a-controller),
@@ -229,6 +232,8 @@ controller_manager:
       type: aidin_hand2_controllers/HandStateBroadcaster
     left_diagnostics_broadcaster:
       type: aidin_hand2_controllers/DiagnosticsBroadcaster
+    left_controller_config_broadcaster:
+      type: aidin_hand2_controllers/ControllerConfigBroadcaster
 
 joint_state_broadcaster:
   ros__parameters:
@@ -247,6 +252,10 @@ left_diagnostics_broadcaster:
   ros__parameters:
     hand_side: left
     update_rate: 20
+
+left_controller_config_broadcaster:
+  ros__parameters:
+    hand_side: left                     # 값이 바뀔 때만 발행하므로 update_rate는 두지 않습니다
 ```
 
 controller parameter는 `controllers.yaml`의 controller 이름 블록에 둡니다.
@@ -258,6 +267,7 @@ controller parameter는 `controllers.yaml`의 controller 이름 블록에 둡니
 | `HandStateBroadcaster` | `update_rate` | `int` | controller_manager 주기 | 발행 주기 [Hz]. `controllers.yaml`은 `100` |
 | `DiagnosticsBroadcaster` | `hand_side` | `string` | 필수 | `left` 또는 `right`. 제어하거나 관측할 로봇 핸드를 선택합니다 |
 | `DiagnosticsBroadcaster` | `update_rate` | `int` | controller_manager 주기 | 발행 주기 [Hz]. `controllers.yaml`은 `20` |
+| `ControllerConfigBroadcaster` | `hand_side` | `string` | 필수 | `left` 또는 `right`. 제어하거나 관측할 로봇 핸드를 선택합니다 |
 | `joint_state_broadcaster` | `update_rate` | `int` | controller_manager 주기 | 발행 주기 [Hz]. `controllers.yaml`은 `100` |
 
 `hand_side` parameter는 `prefix`가 아니라 side 값입니다. `left_`를 주면 controller가 configure에서

@@ -49,6 +49,7 @@ def _hand_actions(prefix, condition):
     return [
         _spawn(f"{prefix}_hand_state_broadcaster", condition=condition),
         _spawn(f"{prefix}_diagnostics_broadcaster", condition=condition),
+        _spawn(f"{prefix}_controller_config_broadcaster", condition=condition),
         joint_position, inactive_chain,
     ]
 
