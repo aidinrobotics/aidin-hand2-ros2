@@ -36,8 +36,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
     instead.
   - `/dynamic_joint_states` is turned off in the bringup and mock configurations.
   - The `fault_code` field is added to `HandDiagnostics`.
-  - The `ControllerConfigBroadcaster` broadcaster is added. It publishes the max effort and the
-    controller settings the SDK holds on the `controller_config` topic.
+  - The `ControllerConfigBroadcaster` broadcaster is added. It publishes the settings in effect on
+    the `controller_config` topic.
 - Services
   - The `~/get_tactile_bias` service is added.
 - Errors and log
@@ -46,8 +46,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   - The SDK lines of each hand go to that hand's logger, such as `left_hand_control`, and reach
     `/rosout`.
   - The `log_level` launch argument is added.
-  - A value in `controllers.yaml` that `ros2 param set` would refuse fails the configure of the
-    hardware.
+  - A tuning value in `controllers.yaml` that `ros2 param set` would refuse fails the configure of
+    the hardware.
 
 ### Added
 
@@ -68,12 +68,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
   in `Faulted`, 404, 405 or 702, and 0 otherwise. The diagnostics component exports it as
   `fault_code`, 40 interfaces in all. Rebuild every `HandDiagnostics` subscriber.
 
-- **`ControllerConfigBroadcaster` publishes the settings in effect on `~/controller_config`.** The
-  `aidin_hand2_msgs/ControllerConfig` message carries the max effort and the joint position and
-  joint impedance controller settings that the SDK holds, and goes out when a value changes. The
-  topic is transient_local, so a subscriber or a rosbag that starts later still receives the
-  current settings. The bringup launch spawns `<side>_controller_config_broadcaster` for each hand;
-  a launch of your own declares it in its controller configuration and spawns it.
+- **`ControllerConfigBroadcaster` publishes the settings in effect on `~/controller_config`.** It
+  sends the max effort and the controller settings the SDK holds when they change, transient_local
+  so a rosbag that starts later still records them. The bringup launch spawns one per hand.
 
 - **The hardware node offers `~/get_tactile_bias`.** It returns the values `~/set_tactile_bias`
   took as zero, in the tactile layout of `HandState`, through the new
@@ -120,11 +117,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   entry in the SDK's error message table. A failure that repeats every control cycle is logged
   once.
 
-- **The SDK lines of each hand reach `/rosout`.** They went to the `aidin_hand2` logger, which
-  Humble does not publish on `/rosout`. A line tagged `[left]` or `[right]` now goes to that hand's
-  logger, the name of its hardware component, which exists from the hardware's start, so the
-  Connection Info block and a communication fault show on `/rosout` next to the hardware's own
-  lines.
+- **The SDK lines of each hand reach `/rosout`.** They go to that hand's logger, such as
+  `left_hand_control`, instead of `aidin_hand2`, which Humble does not publish on `/rosout`.
 
 - **Breaking: a tuning value in `controllers.yaml` that `ros2 param set` would refuse fails the
   configure.** It used to be dropped without a word, leaving the SDK defaults in effect while the
