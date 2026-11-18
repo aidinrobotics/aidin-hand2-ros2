@@ -129,6 +129,9 @@ private:
   // Blank the command storage of the current mode, NaN meaning no command
   void clear_mode_command();
 
+  // The 16 active joints of the pose read last, the target that holds the hand where it is
+  std::array<double, ah2::kActiveJointCount> current_active_joint_position() const;
+
   void warn_incomplete_command();
 
   // -------------------------------- Helpers ---------------------------------
@@ -230,6 +233,9 @@ private:
   std::set<std::string> active_command_interfaces_;
   std::set<std::string> pending_command_interfaces_;
   bool pending_mode_switch_valid_{false};
+
+  // Raised when a switch enters a position mode, write() then holds the pose until a target comes
+  bool hold_on_entry_{false};
 
   // Last incomplete command warning, kept per hand where RCLCPP_WARN_THROTTLE shares one time
   std::optional<std::chrono::steady_clock::time_point> incomplete_command_warned_;

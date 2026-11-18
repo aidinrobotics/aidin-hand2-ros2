@@ -116,8 +116,9 @@ ros2 control switch_controllers --strict \
 ```
 
 다시 `ros2 control list_controllers`를 실행해 joint position이 `inactive`, actuator position이
-`active`인지 확인합니다. 전환만으로 새 목표가 생기지는 않습니다. 새 controller에 목표를 보내기
-전까지 SDK는 마지막 command를 유지합니다. 이전 mode가 effort였다면 effort도 계속 유지될 수 있습니다.
+`active`인지 확인합니다. 새 controller가 joint position·joint impedance·actuator position controller이면
+첫 목표를 받기 전까지 전환한 순간의 자세를 유지합니다. actuator effort controller로 전환하면 목표를 보내기
+전까지 SDK가 마지막 command를 유지하므로, 이전 mode가 effort였다면 그 effort가 계속 유지될 수 있습니다.
 
 모든 command controller를 비활성화하면, 제어가 실행 중이고 homing을 마친 로봇 핸드는 `Idle`로 전환합니다.
 `Idle`은 drive를 활성화한 채 effort `0`을 전송하므로 정지 service를 대신하지 않습니다.

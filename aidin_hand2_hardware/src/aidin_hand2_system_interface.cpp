@@ -613,6 +613,12 @@ hardware_interface::return_type AidinHand2SystemInterface::perform_command_mode_
 
   // No command until a controller writes
   clear_mode_command();
+
+  // Until then a position mode holds the pose, where the SDK would keep the previous mode's
+  // command, Idle or an effort
+  hold_on_entry_ = command_mode_ == ah2::CommandMode::JointPosition ||
+                   command_mode_ == ah2::CommandMode::JointImpedance ||
+                   command_mode_ == ah2::CommandMode::ActuatorPosition;
   return hardware_interface::return_type::OK;
 }
 
@@ -754,13 +760,23 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
       return hardware_interface::return_type::OK;
     }
 
+    // Taken past the gates, so a switch made while homing holds once homing ends
+    const bool hold = std::exchange(hold_on_entry_, false);
+
     switch (command_mode_) {
       case ah2::CommandMode::Idle:
         hand_->set_command(ah2::Idle{});
         break;
 
       case ah2::CommandMode::ActuatorPosition: {
-        if (all_nan(actuator_position_target_cnt_)) break;
+        if (all_nan(actuator_position_target_cnt_)) {
+          if (hold) {
+            ah2::ActuatorPositionCommand command;
+            command.target = actuator_position_cnt_;
+            hand_->set_command(command);
+          }
+          break;
+        }
         ah2::ActuatorPositionCommand command;
         bool complete = true;
         for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
@@ -792,7 +808,14 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
         break;
       }
       case ah2::CommandMode::JointPosition: {
-        if (all_nan(joint_position_target_rad_)) break;
+        if (all_nan(joint_position_target_rad_)) {
+          if (hold) {
+            ah2::JointPositionCommand command;
+            command.target = current_active_joint_position();
+            hand_->set_command(command);
+          }
+          break;
+        }
         ah2::JointPositionCommand command;
         bool complete = true;
         for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
@@ -808,7 +831,14 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
         break;
       }
       case ah2::CommandMode::JointImpedance: {
-        if (all_nan(joint_impedance_target_rad_)) break;
+        if (all_nan(joint_impedance_target_rad_)) {
+          if (hold) {
+            ah2::JointImpedanceCommand command;
+            command.target = current_active_joint_position();
+            hand_->set_command(command);
+          }
+          break;
+        }
         ah2::JointImpedanceCommand command;
         bool complete = true;
         for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
@@ -1216,6 +1246,16 @@ void AidinHand2SystemInterface::clear_mode_command()
     case ah2::CommandMode::Idle:
       break;
   }
+}
+
+std::array<double, ah2::kActiveJointCount>
+AidinHand2SystemInterface::current_active_joint_position() const
+{
+  std::array<double, ah2::kActiveJointCount> position{};
+  for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {
+    position[i] = joint_position_rad_[kActiveToJointIndex[i]];
+  }
+  return position;
 }
 
 void AidinHand2SystemInterface::warn_incomplete_command()

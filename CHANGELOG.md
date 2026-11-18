@@ -24,6 +24,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
     joint, and the `joint_impedance_controller.filter_enabled` and
     `joint_impedance_controller.cutoff_freq` parameters are added.
   - The `max_effort` parameter accepts values from 0 to 2000 only.
+  - The `JointPositionController`, `JointImpedanceController` and `ActuatorPositionController`
+    controllers hold the current pose from activation until their first target.
 - State
   - The `velocity` and `effort` state interfaces are added to the joints and appear in
     `/joint_states`.
@@ -129,6 +131,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
   parameter showed the refused value. The hardware now logs `cannot configure hand:` with the
   reason, such as `max_effort must be finite and in [0, 2000]` or a value of another type, and
   does not connect. Correct the value in your controller configuration.
+
+- **`JointPositionController`, `JointImpedanceController` and `ActuatorPositionController` hold the
+  current pose until their first target.** They used to keep the previous command, so one activated
+  after `Idle` left the hand torque free.
 
 - **A repeated command warning shows once a second for each hand.** It showed once every 5 s for
   both hands together, so a warning on one hand could hide the same warning on the other. The
