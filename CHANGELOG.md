@@ -41,6 +41,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - Errors and log
   - Error messages take the SDK 0.9 form, such as `[left] [E301] cannot connect hand: ...`, and the
     hardware logs them when configure, activate or deactivate fails.
+  - The SDK lines of each hand go to that hand's logger, such as `left_hand_control`, and reach
+    `/rosout`.
+  - The `log_level` launch argument is added.
+  - A value in `controllers.yaml` that `ros2 param set` would refuse fails the configure of the
+    hardware.
 
 ### Added
 
@@ -71,6 +76,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - **The hardware node offers `~/get_tactile_bias`.** It returns the values `~/set_tactile_bias`
   took as zero, in the tactile layout of `HandState`, through the new
   `aidin_hand2_msgs/srv/GetTactileBias`.
+
+- **`aidin_hand2.launch.py` takes `log_level`.** It sets the log level of `ros2_control_node`, `info`
+  by default, and `left_hand_control:=debug` raises one hand alone. `hand_bringup.yaml` has the
+  same key.
 
 ### Changed
 
@@ -108,6 +117,26 @@ project adheres to [Semantic Versioning](https://semver.org/).
   the exceptions it throws. A failed service returns the same text, and the number leads to its
   entry in the SDK's error message table. A failure that repeats every control cycle is logged
   once.
+
+- **The SDK lines of each hand reach `/rosout`.** They went to the `aidin_hand2` logger, which
+  Humble does not publish on `/rosout`. A line tagged `[left]` or `[right]` now goes to that hand's
+  logger, the name of its hardware component, which exists from the hardware's start, so the
+  Connection Info block and a communication fault show on `/rosout` next to the hardware's own
+  lines.
+
+- **Breaking: a tuning value in `controllers.yaml` that `ros2 param set` would refuse fails the
+  configure.** It used to be dropped without a word, leaving the SDK defaults in effect while the
+  parameter showed the refused value. The hardware now logs `cannot configure hand:` with the
+  reason, such as `max_effort must be finite and in [0, 2000]` or a value of another type, and
+  does not connect. Correct the value in your controller configuration.
+
+- **A repeated command warning shows once a second for each hand.** It showed once every 5 s for
+  both hands together, so a warning on one hand could hide the same warning on the other. The
+  example upper controllers do the same.
+
+- **Service responses and warnings of the wrapper follow the SDK wording.** They start in lower
+  case and drop the dash, as in `homing started, watch homing_state in diagnostics` and
+  `cannot switch mode: ...`. Compare `success`, not the text.
 
 - **joint_state_broadcaster no longer publishes `/dynamic_joint_states`.** It repeated every state
   interface by name, about 9 KB per hand at 100 Hz, and `/joint_states`, `hand_state` and

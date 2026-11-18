@@ -40,6 +40,8 @@ _ARG_DEFAULTS = {
     "auto_reconnect": ("false", "Reconnect after a lost link, both hands."),
     "auto_reconnect_timeout_ms": ("0", "Timeout before giving up on auto reconnect [ms], 0 = no limit."),
     "auto_reconnect_home": ("false", "Home before run when auto reconnect recovers."),
+    "log_level": ("info", "Log level of ros2_control_node: debug, info, warn, error or fatal. "
+                          "<logger>:=<level> sets one logger, such as left_hand_control:=debug."),
 }
 
 
@@ -102,6 +104,7 @@ def _setup(context, *_):
         package="controller_manager",
         executable="ros2_control_node",
         parameters=[{"robot_description": robot_description}, controllers_yaml],
+        arguments=["--ros-args", "--log-level", LaunchConfiguration("log_level")],
         output="screen",
     )
 

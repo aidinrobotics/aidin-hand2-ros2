@@ -195,9 +195,11 @@ hardware_interface::CallbackReturn AidinHand2MockSystemInterface::on_init(
     return hardware_interface::CallbackReturn::ERROR;
   }
 
+  const rclcpp::Logger logger = rclcpp::get_logger(info_.name);
   const auto side = info_.hardware_parameters.find("hand_side");
   hand_side_ = side == info_.hardware_parameters.end() ? "left" : side->second;
   if (hand_side_ != "left" && hand_side_ != "right") {
+    RCLCPP_FATAL(logger, "hand_side must be 'left' or 'right', got '%s'", hand_side_.c_str());
     return hardware_interface::CallbackReturn::ERROR;
   }
   prefix_ = hand_side_ + "_";
@@ -207,6 +209,8 @@ hardware_interface::CallbackReturn AidinHand2MockSystemInterface::on_init(
   if (model != info_.hardware_parameters.end() && !model->second.empty()) {
     const std::optional<ah2::HandModel> parsed = ah2::parse_hand_model(model->second);
     if (!parsed) {
+      RCLCPP_FATAL(
+        logger, "hand_model must be 'gen2' or 'gen2b', got '%s'", model->second.c_str());
       return hardware_interface::CallbackReturn::ERROR;
     }
     hand_model_ = *parsed;
@@ -301,6 +305,9 @@ hardware_interface::return_type AidinHand2MockSystemInterface::prepare_command_m
     exact_mode_for_interfaces(hand_side_, pending_command_interfaces_);
   if (!decoded) {
     pending_mode_switch_valid_ = false;
+    RCLCPP_ERROR(
+      rclcpp::get_logger(info_.name),
+      "cannot switch mode: command interfaces must be one complete mode port plus command_lock");
     return hardware_interface::return_type::ERROR;
   }
   pending_mode_ = *decoded;

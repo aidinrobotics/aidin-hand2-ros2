@@ -11,6 +11,7 @@
 #include <aidin_hand2/types/description.hpp>
 
 #include "aidin_hand2_controllers/joint_state_command.hpp"
+#include "aidin_hand2_controllers/warn_throttle.hpp"
 #include "controller_interface/chainable_controller_interface.hpp"
 #include "realtime_tools/realtime_buffer.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
@@ -59,6 +60,10 @@ private:
   realtime_tools::RealtimeBuffer<
     JointStateCommand<aidin_hand2::kActiveJointCount>> command_buffer_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr command_subscriber_;
+
+  // A malformed command and an Inf reference, each warned at most once a second
+  WarnThrottle command_warning_{std::chrono::seconds(1)};
+  WarnThrottle reference_warning_{std::chrono::seconds(1)};
 };
 
 }  // namespace aidin_hand2_controllers

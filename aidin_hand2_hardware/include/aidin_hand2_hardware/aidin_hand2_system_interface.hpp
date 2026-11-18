@@ -5,6 +5,7 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <mutex>
 #include <optional>
 #include <set>
@@ -91,6 +92,7 @@ private:
 
   // ------------------------------ Service node ------------------------------
 
+  // Services and the executor between configure and cleanup, the node itself stays
   void start_service_node();
   void stop_service_node();
 
@@ -108,8 +110,9 @@ private:
 
   // ---------------------------- Tuning parameter ----------------------------
 
-  // Declare max_effort and the SDK ControllerConfig on the service node
-  void declare_tuning_parameters();
+  // Declare max_effort and the SDK ControllerConfig on the service node and stage them
+  // False, with the reason logged, when a value from controllers.yaml is refused
+  bool declare_tuning_parameters();
 
   // Validate and stage [service thread]
   rcl_interfaces::msg::SetParametersResult on_set_tuning_parameters(
@@ -228,8 +231,8 @@ private:
   std::set<std::string> pending_command_interfaces_;
   bool pending_mode_switch_valid_{false};
 
-  // Throttles the write path warning
-  rclcpp::Clock throttle_clock_{RCL_STEADY_TIME};
+  // Last incomplete command warning, kept per hand where RCLCPP_WARN_THROTTLE shares one time
+  std::optional<std::chrono::steady_clock::time_point> incomplete_command_warned_;
 
   // The previous cycle's read() and write() failures, so a failure repeated every cycle logs once
   std::string read_failure_;
@@ -258,6 +261,7 @@ private:
 
   // This component's own node, exposing ~/run, ~/stop, ~/home, ~/reconnect,
   // ~/set_tactile_bias, ~/reset_tactile_bias and ~/get_tactile_bias
+  // Made in on_init and kept, so its logger, which also carries this hand's SDK lines, reaches /rosout
 
   rclcpp::Node::SharedPtr service_node_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr run_service_;

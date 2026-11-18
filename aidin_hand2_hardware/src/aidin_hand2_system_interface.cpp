@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <map>
 #include <mutex>
 #include <set>
 #include <string>
@@ -189,6 +190,12 @@ bool all_nan(const std::array<double, N> & values);
 // Fills a NaN axis from the previous command, leaving it NaN when there is no previous one
 double fill_gap(double value, double previous);
 
+// Sends SDK lines tagged [<side>] to the logger of the hand on that side
+void register_sdk_logger(const std::string & side, const std::string & logger_name);
+
+// The registered hand logger for a tagged SDK line, aidin_hand2 for any other
+rclcpp::Logger sdk_logger_for(const std::string & message);
+
 }  // namespace
 
 // ------------------------------- Construction -------------------------------
@@ -206,12 +213,16 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
     return CallbackReturn::ERROR;
   }
 
+  // A hardware component has no node of its own, and Humble puts a logger on /rosout only
+  // while a node of the same name exists, so this one lives as long as the component
+  service_node_ = std::make_shared<rclcpp::Node>(info_.name);
+
   // Relay SDK logs to ROS logging, once per process
-  // The SDK logger is global and tags each line [left] or [right]
+  // The SDK logger is global and tags each line [left] or [right], which picks the hand's logger
   static std::once_flag sdk_log_callback_registered;
   std::call_once(sdk_log_callback_registered, [] {
     ah2::set_log_callback([](ah2::LogLevel level, const std::string & message) {
-      const auto sdk_logger = rclcpp::get_logger("aidin_hand2");
+      const rclcpp::Logger sdk_logger = sdk_logger_for(message);
       switch (level) {
         case ah2::LogLevel::Trace:
         case ah2::LogLevel::Debug:
@@ -264,6 +275,7 @@ CallbackReturn AidinHand2SystemInterface::on_init(const hardware_interface::Hard
   }
   hand_side_name_ = hand_side_text;
   prefix_ = hand_side_name_ + "_";
+  register_sdk_logger(hand_side_name_, info_.name);
 
   // Optional, gen2 when missing
   const std::string hand_model_text = parameter("hand_model");
@@ -325,19 +337,30 @@ CallbackReturn AidinHand2SystemInterface::on_configure(const rclcpp_lifecycle::S
     config.auto_home = false;
 
     hand_ = manager_.create(config);
-    hand_->connect();
-    state_ = hand_->get_state();
-    read_controller_config();
+
+    // Ahead of connect(), so a wrong value in controllers.yaml stops the hand before it connects
+    if (declare_tuning_parameters()) {
+      hand_->connect();
+      state_ = hand_->get_state();
+      read_controller_config();
+      start_service_node();
+      return CallbackReturn::SUCCESS;
+    }
   } catch (const ah2::Exception & exception) {
     RCLCPP_ERROR(logger(), "%s", exception.what());
-    if (hand_) {
-      manager_.destroy(*hand_);
-      hand_.reset();
-    }
-    return CallbackReturn::ERROR;
   }
-  start_service_node();
-  return CallbackReturn::SUCCESS;
+
+  // A later configure attaches the callback again
+  tuning_callback_.reset();
+  if (hand_) {
+    try {
+      manager_.destroy(*hand_);
+    } catch (const ah2::Exception & exception) {
+      RCLCPP_WARN(logger(), "%s", exception.what());
+    }
+    hand_.reset();
+  }
+  return CallbackReturn::ERROR;
 }
 
 CallbackReturn AidinHand2SystemInterface::on_activate(const rclcpp_lifecycle::State &)
@@ -570,7 +593,7 @@ hardware_interface::return_type AidinHand2SystemInterface::prepare_command_mode_
     pending_mode_switch_valid_ = false;
     RCLCPP_ERROR(
       logger(),
-      "rejected mode switch: command interfaces must be one complete mode port plus command_lock");
+      "cannot switch mode: command interfaces must be one complete mode port plus command_lock");
     return hardware_interface::return_type::ERROR;
   }
 
@@ -816,12 +839,10 @@ hardware_interface::return_type AidinHand2SystemInterface::write(
 
 void AidinHand2SystemInterface::start_service_node()
 {
-  if (service_node_) {
+  if (service_executor_) {
     return;
   }
 
-  // A hardware component has no node of its own
-  service_node_ = std::make_shared<rclcpp::Node>(info_.name);
   run_service_ = service_node_->create_service<std_srvs::srv::Trigger>(
     "~/run",
     [this](const std::shared_ptr<std_srvs::srv::Trigger::Request> &,
@@ -844,7 +865,7 @@ void AidinHand2SystemInterface::start_service_node()
            const std::shared_ptr<std_srvs::srv::Trigger::Response> & response) {
       std::string failure_message;
       response->success = exec_home(failure_message);
-      response->message = response->success ? "homing started — poll diagnostics 'homing_state'" : failure_message;
+      response->message = response->success ? "homing started, watch homing_state in diagnostics" : failure_message;
     });
   reconnect_service_ = service_node_->create_service<std_srvs::srv::Trigger>(
     "~/reconnect",
@@ -852,7 +873,7 @@ void AidinHand2SystemInterface::start_service_node()
            const std::shared_ptr<std_srvs::srv::Trigger::Response> & response) {
       std::string failure_message;
       response->success = exec_reconnect(failure_message);
-      response->message = response->success ? "reconnected — call ~/run to resume control" : failure_message;
+      response->message = response->success ? "reconnected, call ~/run to resume control" : failure_message;
     });
   set_tactile_bias_service_ = service_node_->create_service<std_srvs::srv::Trigger>(
     "~/set_tactile_bias",
@@ -860,7 +881,7 @@ void AidinHand2SystemInterface::start_service_node()
            const std::shared_ptr<std_srvs::srv::Trigger::Response> & response) {
       std::string failure_message;
       response->success = exec_set_tactile_bias(failure_message);
-      response->message = response->success ? "tactile bias set — current tactile values are now zero" : failure_message;
+      response->message = response->success ? "tactile bias set, current tactile values read as zero" : failure_message;
     });
   reset_tactile_bias_service_ = service_node_->create_service<std_srvs::srv::Trigger>(
     "~/reset_tactile_bias",
@@ -868,7 +889,7 @@ void AidinHand2SystemInterface::start_service_node()
            const std::shared_ptr<std_srvs::srv::Trigger::Response> & response) {
       std::string failure_message;
       response->success = exec_reset_tactile_bias(failure_message);
-      response->message = response->success ? "tactile bias reset — tactile values are raw again" : failure_message;
+      response->message = response->success ? "tactile bias reset, tactile values are raw again" : failure_message;
     });
   get_tactile_bias_service_ = service_node_->create_service<aidin_hand2_msgs::srv::GetTactileBias>(
     "~/get_tactile_bias",
@@ -892,7 +913,6 @@ void AidinHand2SystemInterface::start_service_node()
       std::copy_n(palm + ah2::kPalm1UpperCount + ah2::kPalm1LowerCount, ah2::kPalm2Count,
                   response->tactile_palm2.begin());
     });
-  declare_tuning_parameters();
   service_executor_ = std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
   service_executor_->add_node(service_node_);
   service_spin_thread_ = std::thread([this] { service_executor_->spin(); });
@@ -915,11 +935,10 @@ void AidinHand2SystemInterface::stop_service_node()
   reset_tactile_bias_service_.reset();
   get_tactile_bias_service_.reset();
   tuning_callback_.reset();
-  if (service_executor_ && service_node_) {
+  if (service_executor_) {
     service_executor_->remove_node(service_node_);
   }
   service_executor_.reset();
-  service_node_.reset();
 }
 
 // ----------------------- Hand action [service thread] -----------------------
@@ -1017,35 +1036,25 @@ bool AidinHand2SystemInterface::exec_get_tactile_bias(
 
 // ----------------------------- Tuning parameter -----------------------------
 
-void AidinHand2SystemInterface::declare_tuning_parameters()
+bool AidinHand2SystemInterface::declare_tuning_parameters()
 {
   // Defaults are read from the SDK, and launch overrides them through a block named after this
   // node in controllers.yaml
   const ah2::ControllerConfig defaults = hand_->get_controller_config();
+  const ah2::ControllerConfig::JointPositionController & position =
+    defaults.joint_position_controller;
+  const ah2::ControllerConfig::JointImpedanceController & impedance =
+    defaults.joint_impedance_controller;
   staged_max_effort_ = hand_->get_max_effort();
   staged_controller_config_ = defaults;
 
   // The first write() pushes the declared values
   tuning_dirty_ = true;
 
-  service_node_->declare_parameter(
-    "max_effort", std::vector<double>(staged_max_effort_.begin(), staged_max_effort_.end()));
-  service_node_->declare_parameter(
-    "joint_position_controller.filter_enabled", defaults.joint_position_controller.filter_enabled);
-  service_node_->declare_parameter(
-    "joint_position_controller.cutoff_freq", defaults.joint_position_controller.cutoff_freq);
-  service_node_->declare_parameter(
-    "joint_position_controller.deadband", defaults.joint_position_controller.deadband);
-  service_node_->declare_parameter(
-    "joint_impedance_controller.stiffness",
-    std::vector<double>(defaults.joint_impedance_controller.stiffness.begin(),
-                        defaults.joint_impedance_controller.stiffness.end()));
-  service_node_->declare_parameter(
-    "joint_impedance_controller.filter_enabled", defaults.joint_impedance_controller.filter_enabled);
-  service_node_->declare_parameter(
-    "joint_impedance_controller.cutoff_freq", defaults.joint_impedance_controller.cutoff_freq);
-
-  // Stage what declare() picked up before attaching the callback, which sees only later changes
+  // A configure after cleanup finds them on this node already and keeps their values
+  const auto declare = [this](const std::string & name, const rclcpp::ParameterValue & value) {
+    if (!service_node_->has_parameter(name)) service_node_->declare_parameter(name, value);
+  };
   const std::vector<std::string> tuning_names{
     "max_effort",
     "joint_position_controller.filter_enabled",
@@ -1055,11 +1064,35 @@ void AidinHand2SystemInterface::declare_tuning_parameters()
     "joint_impedance_controller.filter_enabled",
     "joint_impedance_controller.cutoff_freq",
   };
-  (void)on_set_tuning_parameters(service_node_->get_parameters(tuning_names));
+  rcl_interfaces::msg::SetParametersResult result;
+  try {
+    declare(tuning_names[0], rclcpp::ParameterValue(
+      std::vector<double>(staged_max_effort_.begin(), staged_max_effort_.end())));
+    declare(tuning_names[1], rclcpp::ParameterValue(position.filter_enabled));
+    declare(tuning_names[2], rclcpp::ParameterValue(position.cutoff_freq));
+    declare(tuning_names[3], rclcpp::ParameterValue(position.deadband));
+    declare(tuning_names[4], rclcpp::ParameterValue(
+      std::vector<double>(impedance.stiffness.begin(), impedance.stiffness.end())));
+    declare(tuning_names[5], rclcpp::ParameterValue(impedance.filter_enabled));
+    declare(tuning_names[6], rclcpp::ParameterValue(impedance.cutoff_freq));
+
+    // Stage what declare() picked up before attaching the callback, which sees only later changes
+    result = on_set_tuning_parameters(service_node_->get_parameters(tuning_names));
+  } catch (const rclcpp::exceptions::InvalidParameterTypeException & exception) {
+    // A value of another type in controllers.yaml, such as 1000 for [1000.0]
+    RCLCPP_ERROR(logger(), "cannot configure hand: %s", exception.what());
+    return false;
+  }
+  if (!result.successful) {
+    RCLCPP_ERROR(logger(), "cannot configure hand: %s", result.reason.c_str());
+    return false;
+  }
+
   tuning_callback_ = service_node_->add_on_set_parameters_callback(
     [this](const std::vector<rclcpp::Parameter> & parameters) {
       return on_set_tuning_parameters(parameters);
     });
+  return true;
 }
 
 rcl_interfaces::msg::SetParametersResult AidinHand2SystemInterface::on_set_tuning_parameters(
@@ -1188,9 +1221,13 @@ void AidinHand2SystemInterface::clear_mode_command()
 void AidinHand2SystemInterface::warn_incomplete_command()
 {
   // An axis is NaN with no previous command to fill it, never once claimed
-  RCLCPP_WARN_THROTTLE(
-    logger(), throttle_clock_, 5000,
-    "command has axes that were never commanded — skipped. Send a complete command once.");
+  // At most once a second
+  const auto now = std::chrono::steady_clock::now();
+  if (incomplete_command_warned_ && now - *incomplete_command_warned_ < std::chrono::seconds(1)) {
+    return;
+  }
+  incomplete_command_warned_ = now;
+  RCLCPP_WARN(logger(), "command skipped: some axes have never been commanded");
 }
 
 // --------------------------------- Helpers ----------------------------------
@@ -1280,6 +1317,25 @@ bool all_nan(const std::array<double, N> & values)
 double fill_gap(double value, double previous)
 {
   return std::isnan(value) ? previous : value;
+}
+
+// "[left]" -> left_hand_control, shared by every hand in the process like the SDK logger
+std::mutex g_sdk_logger_mutex;
+std::map<std::string, std::string> g_sdk_logger_names;
+
+void register_sdk_logger(const std::string & side, const std::string & logger_name)
+{
+  std::lock_guard<std::mutex> lock(g_sdk_logger_mutex);
+  g_sdk_logger_names["[" + side + "]"] = logger_name;
+}
+
+rclcpp::Logger sdk_logger_for(const std::string & message)
+{
+  std::lock_guard<std::mutex> lock(g_sdk_logger_mutex);
+  for (const auto & [tag, logger_name] : g_sdk_logger_names) {
+    if (message.compare(0, tag.size(), tag) == 0) return rclcpp::get_logger(logger_name);
+  }
+  return rclcpp::get_logger("aidin_hand2");
 }
 
 }  // namespace

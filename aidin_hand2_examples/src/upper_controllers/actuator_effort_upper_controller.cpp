@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -137,6 +138,32 @@ bool resolve_joint_state_command(
   return true;
 }
 
+// Lets one warning through at most once per period, per object
+// RCLCPP_*_THROTTLE keeps its time per call site, which both hands in one process would share
+// Not thread safe, each one belongs to the subscriber callback or to update
+class WarnThrottle
+{
+public:
+  explicit WarnThrottle(std::chrono::milliseconds period) : period_(period) {}
+
+  // True when the period has passed since the last true, and on the first call
+  bool allow()
+  {
+    const auto now = std::chrono::steady_clock::now();
+    if (armed_ && now - last_ < period_) {
+      return false;
+    }
+    armed_ = true;
+    last_ = now;
+    return true;
+  }
+
+private:
+  std::chrono::steady_clock::duration period_;
+  std::chrono::steady_clock::time_point last_{};
+  bool armed_{false};
+};
+
 // Claim order of the state interfaces, read_state() indexes it
 constexpr std::size_t kJointOffset = 0;
 constexpr std::size_t kActuatorPositionOffset = kJointOffset + ah2::kJointCount;
@@ -215,9 +242,11 @@ public:
         JointStateCommand<ah2::kActuatorCount> command;
         if (!resolve_joint_state_command(
               *message, command_names_, JointStateField::kEffort, command.values)) {
-          RCLCPP_WARN_THROTTLE(
-            get_node()->get_logger(), *get_node()->get_clock(), 5000,
-            "ActuatorEffort upper command dropped — name and effort differ in length, or a name repeats");
+          if (command_warning_.allow()) {
+            RCLCPP_WARN(
+              get_node()->get_logger(),
+              "ActuatorEffort upper command dropped: name and effort differ in length, or a name repeats");
+          }
           return;
         }
         command.sequence = ++command_sequence_;
@@ -325,9 +354,10 @@ protected:
     const bool has_complete_target = std::all_of(
       target.begin(), target.end(), [](double value) {return std::isfinite(value);});
     if (!has_complete_target) {
-      RCLCPP_WARN_THROTTLE(
-        get_node()->get_logger(), *get_node()->get_clock(), 5000,
-        "ActuatorEffort upper target dropped — not all 16 values are finite");
+      if (target_warning_.allow()) {
+        RCLCPP_WARN(
+          get_node()->get_logger(), "ActuatorEffort upper target dropped: not all 16 values are finite");
+      }
       std::fill(
         reference_interfaces_.begin(), reference_interfaces_.end(),
         std::numeric_limits<double>::quiet_NaN());
@@ -385,6 +415,10 @@ private:
   std::uint64_t consumed_sequence_{0};
   realtime_tools::RealtimeBuffer<JointStateCommand<ah2::kActuatorCount>> command_buffer_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr command_subscriber_;
+
+  // A malformed command and an incomplete target, each warned at most once a second
+  WarnThrottle command_warning_{std::chrono::seconds(1)};
+  WarnThrottle target_warning_{std::chrono::seconds(1)};
 
   // ======================= Hand state, refreshed by read_state() every update =======================
   // Index order is the SDK order, see kJointBaseNames and kActuatorBaseNames above

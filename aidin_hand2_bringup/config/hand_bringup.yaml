@@ -48,3 +48,9 @@ auto_home: true
 auto_reconnect: false
 auto_reconnect_timeout_ms: 0   # ms before giving up, 0 = no limit
 auto_reconnect_home: false     # Homing before run on recovery
+
+# ------------------------------------ Log ------------------------------------
+
+# debug, info, warn, error or fatal for ros2_control_node, the SDK lines of each hand included
+# <logger>:=<level> sets one logger, such as left_hand_control:=debug for the left hand
+log_level: info

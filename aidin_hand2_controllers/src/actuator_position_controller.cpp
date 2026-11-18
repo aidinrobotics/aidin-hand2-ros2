@@ -141,9 +141,11 @@ void ActuatorPositionController::subscribe()
       JointStateCommand<ah2::kActuatorCount> command;
       if (!resolve_joint_state_command(
             *message, actuator_names_, JointStateField::kPosition, command.values)) {
-        RCLCPP_WARN_THROTTLE(
-          get_node()->get_logger(), *get_node()->get_clock(), 5000,
-          "ActuatorPosition command dropped — name and position differ in length, or a name repeats");
+        if (command_warning_.allow()) {
+          RCLCPP_WARN(
+            get_node()->get_logger(),
+            "ActuatorPosition command dropped: name and position differ in length, or a name repeats");
+        }
         return;
       }
       command.sequence = ++command_sequence_;
@@ -243,10 +245,8 @@ controller_interface::return_type ActuatorPositionController::update_and_write_c
     }
   }
 
-  if (invalid) {
-    RCLCPP_WARN_THROTTLE(
-      get_node()->get_logger(), *get_node()->get_clock(), 5000,
-      "ActuatorPosition reference has an Inf value — ignored");
+  if (invalid && reference_warning_.allow()) {
+    RCLCPP_WARN(get_node()->get_logger(), "ActuatorPosition reference ignored: it has an Inf value");
   }
 
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {

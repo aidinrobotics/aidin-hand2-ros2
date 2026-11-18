@@ -142,9 +142,11 @@ void JointImpedanceController::subscribe()
       JointStateCommand<ah2::kActiveJointCount> command;
       if (!resolve_joint_state_command(
             *message, active_joint_names_, JointStateField::kPosition, command.values)) {
-        RCLCPP_WARN_THROTTLE(
-          get_node()->get_logger(), *get_node()->get_clock(), 5000,
-          "JointImpedance command dropped — name and position differ in length, or a name repeats");
+        if (command_warning_.allow()) {
+          RCLCPP_WARN(
+            get_node()->get_logger(),
+            "JointImpedance command dropped: name and position differ in length, or a name repeats");
+        }
         return;
       }
       command.sequence = ++command_sequence_;
@@ -244,10 +246,8 @@ controller_interface::return_type JointImpedanceController::update_and_write_com
     }
   }
 
-  if (invalid) {
-    RCLCPP_WARN_THROTTLE(
-      get_node()->get_logger(), *get_node()->get_clock(), 5000,
-      "JointImpedance reference has an Inf value — ignored");
+  if (invalid && reference_warning_.allow()) {
+    RCLCPP_WARN(get_node()->get_logger(), "JointImpedance reference ignored: it has an Inf value");
   }
 
   for (std::size_t i = 0; i < ah2::kActiveJointCount; ++i) {

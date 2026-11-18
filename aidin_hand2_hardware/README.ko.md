@@ -48,10 +48,10 @@ controller의 `active`·homing 상태의 차이는
 |---|---|---|---|---|---|
 | `~/run` | `Connected` · `Running` · `Stopped` | `Running` | actuator enable | 4000 ms | `running` |
 | `~/stop` | `Running` · `Stopped` | `Stopped` | actuator quick stop | 500 ms | `stopped` |
-| `~/home` | `Connected` · `Running` · `Stopped` | `Running` | 없음. 시작만 확인 | 없음 | `homing started — poll diagnostics 'homing_state'` |
-| `~/reconnect` | `Faulted` | `Connected` | 첫 state 수신 | 300 ms | `reconnected — call ~/run to resume control` |
-| `~/set_tactile_bias` | `Connected` · `Running` · `Stopped` | 변화 없음 | 없음 | 없음 | `tactile bias set — current tactile values are now zero` |
-| `~/reset_tactile_bias` | `Connected` · `Running` · `Stopped` | 변화 없음 | 없음 | 없음 | `tactile bias reset — tactile values are raw again` |
+| `~/home` | `Connected` · `Running` · `Stopped` | `Running` | 없음. 시작만 확인 | 없음 | `homing started, watch homing_state in diagnostics` |
+| `~/reconnect` | `Faulted` | `Connected` | 첫 state 수신 | 300 ms | `reconnected, call ~/run to resume control` |
+| `~/set_tactile_bias` | `Connected` · `Running` · `Stopped` | 변화 없음 | 없음 | 없음 | `tactile bias set, current tactile values read as zero` |
+| `~/reset_tactile_bias` | `Connected` · `Running` · `Stopped` | 변화 없음 | 없음 | 없음 | `tactile bias reset, tactile values are raw again` |
 | `~/get_tactile_bias` | 모든 state | 변화 없음 | 없음 | 없음 | `tactile bias read` |
 
 `~/get_tactile_bias` service의 타입은 `aidin_hand2_msgs/srv/GetTactileBias`이고 응답 필드는
@@ -154,7 +154,7 @@ quick stop을 포함한 어떤 frame도 전송하지 않습니다. drive가 마�
 ros2 service call /left_hand_control/reconnect std_srvs/srv/Trigger
 ```
 
-`success=True`이고 응답이 `reconnected — call ~/run to resume control`이면 제어를 시작합니다.
+`success=True`이고 응답이 `reconnected, call ~/run to resume control`이면 제어를 시작합니다.
 실패하면 다음 명령으로 진행하지 말고 응답의 원인을 확인하십시오.
 
 ```bash

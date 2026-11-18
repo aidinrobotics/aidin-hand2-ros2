@@ -58,10 +58,20 @@ ros2 topic echo /left_diagnostics_broadcaster/hand_diagnostics --once
 ip -details -statistics link show can0
 ```
 
-SDK의 log는 hardware component가 ROS logger `aidin_hand2`로 중계하므로 `/rosout` topic에서 봅니다.
+log는 launch를 실행한 terminal과 `/rosout` topic에 나옵니다. 로봇 핸드마다 hardware component의 이름
+(`left_hand_control`·`right_hand_control`)이 logger 이름이며, SDK가 남기는 줄도 앞의 `[left]`·`[right]`에 따라
+그 손의 logger로 나옵니다.
 
 ```bash
 ros2 topic echo /rosout
+```
+
+더 자세한 log가 필요하면 `log_level` 인자를 `debug`로 주고 launch합니다. 한 손만 바꾸려면 값 앞에 logger
+이름을 붙입니다. `hand_bringup.yaml`의 `log_level` 키로도 지정할 수 있습니다.
+
+```bash
+ros2 launch aidin_hand2_bringup aidin_hand2.launch.py log_level:=debug
+ros2 launch aidin_hand2_bringup aidin_hand2.launch.py log_level:=left_hand_control:=debug
 ```
 
 SDK의 오류 줄과 예외 문구는 다음 형태입니다. 앞의 `[left]`·`[right]`는 어느 로봇 핸드인지를 나타내고,
@@ -74,8 +84,8 @@ SDK의 오류 줄과 예외 문구는 다음 형태입니다. 앞의 `[left]`·`
 
 첫 줄은 SDK 함수가 던진 예외 문구입니다. configure·activate·deactivate가 실패하면 hardware component가 이
 문구를 자기 이름의 logger(`left_hand_control` 등)에 ERROR로 남기고, service가 실패하면 응답의 `message`
-필드에 같은 문구를 담습니다. 둘째 줄은 통신 끊김처럼 호출과 상관없이 생긴 사건을 SDK가 `aidin_hand2`
-logger에 남긴 것입니다. 번호별 원인과 조치는 SDK 문서의
+필드에 같은 문구를 담습니다. 둘째 줄은 통신 끊김처럼 호출과 상관없이 생긴 사건을 SDK가 남긴 것이며,
+같은 손의 logger로 나옵니다. 번호별 원인과 조치는 SDK 문서의
 [Error messages](https://github.com/aidinrobotics/aidin-hand2-sdk/blob/main/docs/ko/15_error_messages.md)에
 있습니다.
 
@@ -306,7 +316,7 @@ controller 층의 증상은 mode 전환, command topic, controller parameter에�
 ### 4.1 Mode switch is rejected
 
 ```text
-rejected mode switch: command interfaces must be one complete mode port plus command_lock
+cannot switch mode: command interfaces must be one complete mode port plus command_lock
 ```
 
 로봇 핸드마다 command controller 하나만 활성화할 수 있습니다. 현재 활성화된 controller와
@@ -352,7 +362,7 @@ command를 error 없이 건너뜁니다. 조건은 [4.1 When commands are applie
 ### 4.3 Part of a command is ignored
 
 ```text
-command has axes that were never commanded — skipped. Send a complete command once.
+command skipped: some axes have never been commanded
 ```
 
 message의 일부 축이 NaN인데 NaN인 축에 직전 command가 없는 경우입니다. 첫 command는 16개 모두 유한해야
@@ -360,7 +370,7 @@ message의 일부 축이 NaN인데 NaN인 축에 직전 command가 없는 경우
 남깁니다.
 
 ```text
-JointPosition reference has an Inf value — ignored
+JointPosition reference ignored: it has an Inf value
 ```
 
 값이 유한한데도 `hand_diagnostics` topic의 `nan_command_count` 값이 늘면 SDK가 거부한 것입니다.

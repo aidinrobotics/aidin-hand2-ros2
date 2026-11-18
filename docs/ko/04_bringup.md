@@ -200,7 +200,7 @@ ros2 service call /left_hand_control/home std_srvs/srv/Trigger
 
 ```text
 response:
-std_srvs.srv.Trigger_Response(success=True, message="homing started — poll diagnostics 'homing_state'")
+std_srvs.srv.Trigger_Response(success=True, message='homing started, watch homing_state in diagnostics')
 ```
 
 이 응답은 시작 접수이고 완료가 아닙니다. `homing_state` 값을 계속 읽습니다.

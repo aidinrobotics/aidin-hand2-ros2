@@ -48,7 +48,7 @@ ros2 launch aidin_hand2_bringup aidin_hand2.launch.py auto_home:=false
 
 ### 2.1 Arguments
 
-`config`를 뺀 인자 14개의 기본값은 `hand_bringup.yaml`에서 전달됩니다. `auto_home` parameter와
+`config`를 뺀 인자 15개의 기본값은 `hand_bringup.yaml`에서 전달됩니다. `auto_home`·`log_level` parameter와
 이름이 `auto_reconnect`로 시작하는 인자 셋은 양손 공통이고,
 `*_hand_interface`·`*_hand_model`·`*_hand_cpu_affinity`·`*_hand_disabled_actuators` parameter는 손별입니다.
 
@@ -68,6 +68,7 @@ ros2 launch aidin_hand2_bringup aidin_hand2.launch.py auto_home:=false
 | `auto_reconnect` | `false` | 통신 오류가 발생하면 SDK가 재연결을 반복 시도합니다 |
 | `auto_reconnect_timeout_ms` | `0` | 자동 재연결 제한 시간 [ms]. `0`은 제한 없음 |
 | `auto_reconnect_home` | `false` | 자동 재연결 뒤 homing을 수행합니다 |
+| `log_level` | `info` | `ros2_control_node`의 log level. `debug`·`info`·`warn`·`error`·`fatal` 중 하나이고, `left_hand_control:=debug`처럼 logger 이름을 붙이면 그 logger만 바꿉니다 |
 | `config` | `<share>/config/hand_bringup.yaml` | 위 인자의 기본값을 담은 YAML 경로 |
 
 model은 로봇 핸드를 전달할 때 함께 알려 줍니다. kinematics를 정하므로 실제 로봇 핸드와 맞게 지정하십시오.

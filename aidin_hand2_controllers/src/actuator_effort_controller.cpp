@@ -141,9 +141,11 @@ void ActuatorEffortController::subscribe()
       JointStateCommand<ah2::kActuatorCount> command;
       if (!resolve_joint_state_command(
             *message, actuator_names_, JointStateField::kEffort, command.values)) {
-        RCLCPP_WARN_THROTTLE(
-          get_node()->get_logger(), *get_node()->get_clock(), 5000,
-          "ActuatorEffort command dropped — name and effort differ in length, or a name repeats");
+        if (command_warning_.allow()) {
+          RCLCPP_WARN(
+            get_node()->get_logger(),
+            "ActuatorEffort command dropped: name and effort differ in length, or a name repeats");
+        }
         return;
       }
       command.sequence = ++command_sequence_;
@@ -243,10 +245,8 @@ controller_interface::return_type ActuatorEffortController::update_and_write_com
     }
   }
 
-  if (invalid) {
-    RCLCPP_WARN_THROTTLE(
-      get_node()->get_logger(), *get_node()->get_clock(), 5000,
-      "ActuatorEffort reference has an Inf value — ignored");
+  if (invalid && reference_warning_.allow()) {
+    RCLCPP_WARN(get_node()->get_logger(), "ActuatorEffort reference ignored: it has an Inf value");
   }
 
   for (std::size_t i = 0; i < ah2::kActuatorCount; ++i) {
