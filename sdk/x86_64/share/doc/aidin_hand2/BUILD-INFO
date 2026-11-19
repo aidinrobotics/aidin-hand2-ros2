@@ -1,0 +1,7 @@
+sdk_version:   0.9.1
+commit:        1450a9a272d08adc778be07414c0c4862cc8ebef
+source_dirty:  no
+built:         2026-11-18T13:27:43Z
+arch:          x86_64
+compiler:      c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
+glibc:         2.35
