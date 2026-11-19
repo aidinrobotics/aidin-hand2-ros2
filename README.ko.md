@@ -40,7 +40,10 @@ AIDIN Hand Gen2를 ROS 2에서 제어하는 `ros2_control` wrapper입니다. con
 
 [ros2_control](https://control.ros.org/humble/index.html)을 기반으로 로봇 핸드 제어를 위한 controller와 상태 관측을 위한 broadcaster를 제공합니다.
 
-![AIDIN Hand Gen2 ROS 2 architecture](docs/assets/aidin_hand2_ros2_architecture.webp)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture_dark.svg">
+  <img src="docs/assets/architecture.svg" alt="아키텍처">
+</picture>
 
 사용자 node가 command를 보내는 경로는 둘입니다.
 
@@ -59,7 +62,7 @@ cycle 하나에서 닫히므로 topic 왕복이 없는 제어 루프가 됩니�
 틀이고, 알고리즘 자리에는 입력에 0을 곱하는 한 줄이 들어 있습니다. 읽을 수 있는 state interface
 목록과 실행 절차는 [Chainable controller examples](aidin_hand2_examples/EXAMPLE.md)에 있습니다.
 
-user node는 상태를 `/joint_states`, `~/hand_state`, `~/hand_diagnostics` topic으로 읽습니다. `~`는 해당
+user node는 상태를 `/joint_states`, `~/hand_state`, `~/hand_diagnostics`, `~/controller_config` topic으로 읽습니다. `~`는 해당
 topic이나 service를 제공하는 node 이름입니다. 예를 들어 `~/cmd` topic은 `/left_joint_position_controller/cmd`가 됩니다.
 effort 상한과 filter·stiffness는 hardware node의 ROS parameter로 설정합니다.
 

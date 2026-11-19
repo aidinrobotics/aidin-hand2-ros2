@@ -40,7 +40,10 @@ We verify that the wrapper builds and runs on the configuration below.
 
 Built on [ros2_control](https://control.ros.org/humble/index.html), this wrapper provides controllers for commanding the robot hand and broadcasters for observing its state.
 
-![AIDIN Hand Gen2 ROS 2 architecture](docs/assets/aidin_hand2_ros2_architecture.webp)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture_dark.svg">
+  <img src="docs/assets/architecture.svg" alt="Architecture">
+</picture>
 
 A user node sends a command by one of two paths.
 
@@ -62,7 +65,8 @@ target computation close within one 500 Hz cycle, so the control loop has no top
 where the algorithm goes. The state interfaces they can read and the steps to run one are in
 [Chainable controller examples](aidin_hand2_examples/EXAMPLE.md).
 
-A user node reads state through the `/joint_states`, `~/hand_state` and `~/hand_diagnostics` topics.
+A user node reads state through the `/joint_states`, `~/hand_state`, `~/hand_diagnostics` and
+`~/controller_config` topics.
 The `~` denotes the name of the node providing a topic or service; for example, `~/cmd` becomes
 `/left_joint_position_controller/cmd`. Effort limits, filters and stiffness are ROS parameters of the
 hardware node.
