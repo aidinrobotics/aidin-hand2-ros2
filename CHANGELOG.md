@@ -10,7 +10,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ### Notable changes
 
 - Build
-  - Requires SDK 0.9. Rebuild the SDK from the `v0.9.0` pin, then every package.
+  - The `sdk` folder carries the prebuilt SDK 0.9.1, and `sudo ./sdk/install.sh` installs it in
+    `/usr/local` in place of building the SDK.
+  - SDK 0.9 is required. Install it with `sdk/install.sh` or rebuild it from the `v0.9.0` pin, then
+    rebuild every package.
 - Hand model
   - The `hand_model` hardware parameter and the `left_hand_model` and `right_hand_model` launch
     arguments are added. They default to `gen2`, so a Gen2 setup runs unchanged.
@@ -51,6 +54,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **The `sdk` folder carries the prebuilt SDK 0.9.1 for x86_64 and aarch64, and `sdk/install.sh`
+  installs it in `/usr/local`.** Run `sudo ./sdk/install.sh` from the repository once in place of
+  building the SDK. It runs `ldconfig` and keeps a newer SDK unless given `--force`. If an SDK is
+  also in `~/.local`, remove it and the `LD_LIBRARY_PATH` and `CMAKE_PREFIX_PATH` lines added for
+  it, so that the one in `/usr/local` is used.
+
 - **The hardware takes a `hand_model` parameter, `gen2` or `gen2b`.** The `left_hand_model` and
   `right_hand_model` launch arguments, the `hand_bringup.yaml` keys of the same names and the
   `hand_model` argument of the ros2_control xacro macro pass it on, and the mock uses it for its
@@ -83,8 +92,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - **Breaking: requires SDK 0.9.x.** `find_package(aidin_hand2 0.9 REQUIRED)` fails at configure time
-  against 0.8, and `aidin_hand2.repos` pins `v0.9.0`. Rebuild the SDK from the new pin, run
-  `sudo ldconfig`, and rebuild every package.
+  against 0.8. Install SDK 0.9 with `sudo ./sdk/install.sh`, or rebuild it from the `v0.9.0` pin in
+  `aidin_hand2.repos` and run `sudo ldconfig`, then rebuild every package.
 
 - **Breaking: `joint_impedance_controller.stiffness` takes a value from 0 to 1 per active joint.**
   It holds 1 or 16 values in the order thumb_joint0 to baby_joint3, where 1 is the joint's hard

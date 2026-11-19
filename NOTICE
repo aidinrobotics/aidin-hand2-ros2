@@ -6,3 +6,8 @@ https://github.com/aidinrobotics/aidin-hand2-ros2
 
 Licensed under the Apache License, Version 2.0. The full license text is in the
 LICENSE file at the root of this repository.
+
+The sdk folder carries the prebuilt AIDIN Hand Gen2 SDK, which includes
+third-party software. Its notices and license texts are in
+sdk/<arch>/share/doc/aidin_hand2, and sdk/install.sh installs them to
+/usr/local/share/doc/aidin_hand2.
